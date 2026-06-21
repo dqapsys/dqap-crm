@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,7 +15,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   
   <style>
@@ -586,7 +586,7 @@
   <!-- Toast Notifications -->
   <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
 
-  <div class="container">
+  <div class="container" id="crmApp" style="display: none;">
     <!-- HEADER -->
     <div class="header">
       <div>
@@ -594,8 +594,8 @@
         <p>DQAP Systems – Manage Leads, Deals & Targets</p>
       </div>
       <div class="header-right">
-        <div class="user-info" id="userDisplay">User</div>
-        <div class="user-quota" id="userQuota">Quota: —</div>
+        <div class="user-info" id="userDisplay">Authenticating…</div>
+        <div class="user-quota" id="userQuota">Wiki session required</div>
       </div>
     </div>
     
@@ -929,61 +929,6 @@
     </div>
   </div>
   
-    <!-- AUTH MODAL (Login / Sign Up) - HIDDEN BY DEFAULT -->
-    <div id="authModal" class="modal">
-      <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-          <span id="authModalTitle">Login to DQAP Sales CRM</span>
-          <button class="modal-close" onclick="closeAuthModal()" style="display: none;">✕</button>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-          <div class="tabs" style="border-bottom: 2px solid var(--bd); margin-bottom: 16px;">
-            <button class="tab-btn active" onclick="switchAuthTab('login')" style="border-bottom: 3px solid var(--p);">Login</button>
-            <button class="tab-btn" onclick="switchAuthTab('signup')" style="border-bottom: 3px solid transparent;">Sign Up</button>
-          </div>
-        </div>
-        
-        <!-- Login Form -->
-        <div id="authLoginForm" class="tab-content active">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="loginEmail" placeholder="your@email.com">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="••••••••">
-          </div>
-          <div id="loginError" style="color: var(--danger); font-size: 12px; margin-bottom: 12px; display: none;"></div>
-          <button class="btn primary" onclick="handleLogin()" style="width: 100%;">Login</button>
-          <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--t2);">
-            Demo account: demo@dqap.com / demo123
-          </div>
-        </div>
-        
-        <!-- Sign Up Form -->
-        <div id="authSignupForm" class="tab-content">
-          <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" id="signupName" placeholder="John Doe">
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="signupEmail" placeholder="your@email.com">
-          </div>
-          <div class="form-group">
-            <label>Password (min 6 chars)</label>
-            <input type="password" id="signupPassword" placeholder="••••••••" minlength="6">
-          </div>
-          <div id="signupError" style="color: var(--danger); font-size: 12px; margin-bottom: 12px; display: none;"></div>
-          <button class="btn primary" onclick="handleSignup()" style="width: 100%;">Create Account</button>
-          <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--t2);">
-            Accounts created here are for testing only
-          </div>
-        </div>
-      </div>
-    </div>
-
   <script>
     // ═══════════════════════════════════════════════════════════════════════════
     // FIREBASE CONFIG & INITIALIZATION
@@ -997,7 +942,7 @@
       appId: "1:932523956178:web:cc83a8e7369eaa80649a0b"
     };
     
-    let app, db, auth;
+    let app, db;
     let currentUser = null;
     let customerData = {};
     let dealData = {};
@@ -1016,7 +961,6 @@
     try {
       app = firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
-      auth = firebase.auth();
     } catch (err) {
       console.error('Firebase init error:', err);
       document.querySelector('.header h1').innerHTML = '<i class="ti ti-alert-circle"></i> CRM Setup Required';
@@ -1037,6 +981,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
+    const CRM_BUILD = '20260621.1';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1053,13 +998,14 @@
 
       // Try sessionStorage as fallback
       try { 
-        sess = sessionStorage.getItem('dqap_sess'); 
+        sess = sessionStorage.getItem('dqap_sess');
+        if (sess) console.log('Found session in sessionStorage');
       } catch (e) {
         console.warn('Session storage unavailable');
       }
 
-      // Prefer URL fragment (not sent to server)
-      if (!sess) sess = handoffSession;
+      // A fresh Wiki handoff takes precedence over any older tab session.
+      if (handoffSession) sess = handoffSession;
 
       if (sess) {
         // Store in sessionStorage if possible
@@ -1075,38 +1021,65 @@
         // User logged in via Wiki - auto-login
         try {
           wikiSession = JSON.parse(sess);
+          console.log('✅ Session found, calling autoLoginFromWiki');
           autoLoginFromWiki(wikiSession);
         } catch (e) {
           console.error('❌ Wiki session parse error:', e);
-          document.querySelector('.header p').textContent = 'Session error. Please login to Wiki.';
-          setupDemoMode();
+          const headerP = document.querySelector('.header p');
+          if (headerP) headerP.textContent = 'Session error. Please login to Wiki.';
+          showAccessRequired('Session error. Please return to Wiki and open CRM again.');
         }
       } else {
-        // No Wiki session - use Demo Mode
-        console.warn('⚠️ No Wiki session detected - using Demo Mode');
-        document.querySelector('.header p').textContent = 'Demo Mode (not logged into Wiki)';
-        setupDemoMode();
+        // CRM is Wiki-only; direct access is not permitted.
+        console.warn('⚠️ No Wiki session detected');
+        const headerP = document.querySelector('.header p');
+        if (headerP) headerP.textContent = 'Wiki login required';
+        showAccessRequired();
       }
     }
 
     // Auto-login from Wiki session - lookup user in dqap_users collection
     async function autoLoginFromWiki(session) {
       try {
+        if (!session || !session.username) {
+          console.error('Invalid session:', session);
+          document.querySelector('.header p').textContent = 'Invalid Wiki session.';
+          showAccessRequired('Invalid session. Please return to Wiki and open CRM again.');
+          return;
+        }
+
         const username = session.username;
         const displayName = session.fullName || session.displayName || username;
         
         console.log('🔍 Looking up user:', username);
         
+        // Check if db is initialized
+        if (!db) {
+          console.error('Firestore not initialized');
+          document.querySelector('.header p').textContent = 'Database not initialized.';
+          showAccessRequired('CRM could not connect to the DQAP database.');
+          return;
+        }
+        
         // Look up user in dqap_users collection
         const usersRef = db.collection('dqap_users');
-        const userQuery = await usersRef.where('username', '==', username).limit(1).get();
+        console.log('Querying dqap_users for username:', username);
+        
+        let userQuery = null;
+        try {
+          userQuery = await usersRef.where('username', '==', username).limit(1).get();
+        } catch (queryErr) {
+          console.warn('Wiki user lookup failed; using the authenticated session:', queryErr.message);
+        }
+        
         let userData = null;
 
-        if (!userQuery.empty) {
+        if (userQuery && !userQuery.empty) {
           // Found by username field
           userData = userQuery.docs[0].data();
           console.log('✅ Found user:', userData.fullName || username);
         } else {
+          console.log('User not found by username, trying legacy doc lookup');
           // Fallback: try document ID (legacy)
           try {
             const legacyUserDoc = await usersRef.doc(username).get();
@@ -1140,8 +1113,20 @@
           };
           
           // Update UI
-          document.getElementById('userDisplay').textContent = displayName;
-          document.querySelector('.header p').textContent = 
+          const resolvedDisplayName = currentUserData.fullName || currentUserData.displayName || displayName;
+          const roleLabel = String(currentUserData.role || session.role || 'user')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, letter => letter.toUpperCase());
+          const userDisplay = document.getElementById('userDisplay');
+          const userQuota = document.getElementById('userQuota');
+          const headerP = document.querySelector('.header p');
+          const crmApp = document.getElementById('crmApp');
+          const accessScreen = document.getElementById('crmAccessRequired');
+          if (accessScreen) accessScreen.remove();
+          if (crmApp) crmApp.style.display = 'block';
+          if (userDisplay) userDisplay.textContent = resolvedDisplayName;
+          if (userQuota) userQuota.textContent = `${roleLabel} · @${username}`;
+          if (headerP) headerP.textContent = 
             'Professional sales pipeline, activity tracking & target management';
           
           // Load and render data
@@ -1153,7 +1138,7 @@
             renderCalendar();
             renderTargets();
             renderActivities();
-            showToast(`✅ Welcome, ${displayName}!`, 'success');
+            showToast(`✅ Welcome, ${resolvedDisplayName}!`, 'success');
             console.log('✅ Auto-logged in from Wiki:', username);
           } catch (err) {
             console.error('Load error:', err);
@@ -1162,50 +1147,41 @@
         } else {
           const msg = `User "${username}" not found in dqap_users collection`;
           console.warn('⚠️', msg);
-          document.querySelector('.header p').textContent = msg;
-          setupDemoMode();
+          const headerP = document.querySelector('.header p');
+          if (headerP) headerP.textContent = msg;
+          showAccessRequired(msg);
         }
       } catch (err) {
-        console.error('Auto-login error:', err);
-        document.querySelector('.header p').textContent = 'Auth error. Using Demo Mode.';
-        setupDemoMode();
+        console.error('❌ Auto-login error:', err);
+        console.error('Error stack:', err.stack);
+        const headerP = document.querySelector('.header p');
+        if (headerP) headerP.textContent = 'Auth error: ' + err.message;
+        showAccessRequired('CRM authorization failed. Please return to Wiki and try again.');
       }
     }
     
-    // Demo mode for testing without Firebase
-    function setupDemoMode() {
-      currentUser = 'demo_user';
-      currentUserData = { fullName: 'Demo User', role: 'user' };
-      document.getElementById('userDisplay').textContent = 'Demo User';
-      
-      // Add some sample data
-      customerData = {
-        'c1': { id: 'c1', name: 'Indian Oil Corporation', contact: 'Raj Kumar', email: 'raj@iocl.in', phone: '+91-11-2334-5678', industry: 'Oil & Gas', notes: 'Large account', username: currentUser },
-        'c2': { id: 'c2', name: 'JSW Steel', contact: 'Priya Singh', email: 'priya@jsw.in', phone: '+91-22-4040-5678', industry: 'Steel', notes: 'Quarterly meetings', username: currentUser }
-      };
-      
-      dealData = {
-        'd1': { id: 'd1', title: 'PA System Installation - Delhi Plant', customerId: 'c1', value: 500000, stage: 'Negotiations', probability: 65, closeDate: '2025-03-15', notes: 'Waiting for technical approval', username: currentUser, createdAt: new Date() },
-        'd2': { id: 'd2', title: 'Fire Detection System - Plant 2', customerId: 'c2', value: 750000, stage: 'Bid Submission', probability: 45, closeDate: '2025-02-28', notes: '', username: currentUser, createdAt: new Date() }
-      };
-      
-      activityData = {
-        'a1': { id: 'a1', activityType: 'Call', dealId: 'd1', activityDate: new Date().toISOString().split('T')[0], activityTime: '10:00', description: 'Discussed technical specs', nextActivityDate: null, username: currentUser }
-      };
-      
-      targetData = {
-        't1': { id: 't1', quarter: 1, year: 2025, revenueTarget: 2000000, billingTarget: 1900000, annualRevenueTarget: 8000000, annualBillingTarget: 7600000, marginTarget: 22, username: currentUser }
-      };
-      
-      populateCustomerDropdowns();
-      renderDashboard();
-      renderCustomers();
-      renderDeals();
-      renderCalendar();
-      renderTargets();
-      renderActivities();
+    function showAccessRequired(message = 'This CRM must be opened from the DQAP Wiki after login.') {
+      const crmApp = document.getElementById('crmApp');
+      if (crmApp) crmApp.style.display = 'none';
+
+      let screen = document.getElementById('crmAccessRequired');
+      if (!screen) {
+        screen = document.createElement('div');
+        screen.id = 'crmAccessRequired';
+        screen.style.cssText = 'position:fixed;inset:0;background:#F4F6FA;display:flex;align-items:center;justify-content:center;padding:20px;z-index:99999;font-family:DM Sans,Segoe UI,sans-serif';
+        screen.innerHTML = `
+          <div style="background:#fff;border-radius:14px;padding:34px 30px;max-width:520px;width:100%;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.18)">
+            <div style="font-size:46px;margin-bottom:14px">⚠️</div>
+            <h2 style="color:#006994;margin-bottom:10px">Access Required</h2>
+            <p id="crmAccessMessage" style="color:#666;line-height:1.6;margin-bottom:22px"></p>
+            <button type="button" onclick="location.href='https://dqapsys.github.io/dqap-wiki/'" style="background:#006994;color:#fff;border:0;border-radius:8px;padding:11px 22px;font-weight:600;cursor:pointer">Go to Wiki</button>
+          </div>`;
+        document.body.appendChild(screen);
+      }
+      const messageElement = document.getElementById('crmAccessMessage');
+      if (messageElement) messageElement.textContent = message;
     }
-    
+
     async function loadAllData() {
       if (!currentUser) {
         console.log('Not authenticated, skipping data load');
