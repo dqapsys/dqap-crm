@@ -1027,80 +1027,121 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // WIKI SESSION HANDOFF (Same as Debt Management)
     // ═══════════════════════════════════════════════════════════════════════════
+    // WIKI SESSION AUTHENTICATION (Following Debt Management Pattern)
+    // Uses dqap_users collection for user lookup, username as identifier
+    // ═══════════════════════════════════════════════════════════════════════════
+    let currentUserData = null;
     let wikiSession = null;
+    let authInitialized = false;
     
-    function parseWikiSession() {
-      // Try URL parameter first: ?sess=... or #sess=...
-      const urlParams = new URLSearchParams(window.location.search);
-      let sessParm = urlParams.get('sess');
-      
-      if (!sessParm) {
-        const hashParams = new URLSearchParams(window.location.hash.slice(1));
-        sessParm = hashParams.get('sess');
-      }
-      
-      // If found in URL, use it and store in sessionStorage
-      if (sessParm) {
-        try {
-          wikiSession = JSON.parse(decodeURIComponent(sessParm));
-          sessionStorage.setItem('dqap_sess', JSON.stringify(wikiSession));
-          return wikiSession;
-        } catch (err) {
-          console.warn('Failed to parse URL session:', err);
-        }
-      }
-      
-      // Fall back to sessionStorage
-      const stored = sessionStorage.getItem('dqap_sess');
-      if (stored) {
-        try {
-          wikiSession = JSON.parse(stored);
-          return wikiSession;
-        } catch (err) {
-          console.warn('Failed to parse stored session:', err);
-        }
-      }
-      
-      return null;
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // AUTHENTICATION (Wiki Session Handoff - Auto-Login)
-    // ═══════════════════════════════════════════════════════════════════════════
     function initializeAuth() {
-      if (!auth) {
-        console.error('Firebase not configured');
-        setupDemoMode();
-        return;
+      // Prevent double initialization
+      if (authInitialized) return;
+      authInitialized = true;
+
+      let sess = null;
+
+      // Get session from URL fragment (#sess=...) - not sent to server
+      const fragment = new URLSearchParams(window.location.hash.slice(1));
+      const query = new URLSearchParams(window.location.search);
+      const handoffSession = fragment.get('sess') || query.get('sess');
+      const receivedHandoff = !!handoffSession;
+
+      // Try sessionStorage as fallback
+      try { 
+        sess = sessionStorage.getItem('dqap_sess'); 
+      } catch (e) {
+        console.warn('Session storage unavailable');
+      }
+
+      // Prefer URL fragment (not sent to server)
+      if (!sess) sess = handoffSession;
+
+      if (sess) {
+        // Store in sessionStorage if possible
+        try { 
+          sessionStorage.setItem('dqap_sess', sess); 
+        } catch (e) { /* still works */ }
+        
+        // Clean up URL after reading
+        if (receivedHandoff) history.replaceState(null, document.title, window.location.pathname);
       }
       
-      // Parse Wiki session from URL or sessionStorage
-      const wikisess = parseWikiSession();
-      
-      if (!wikisess) {
-        console.log('No Wiki session found - using Demo Mode');
+      if (sess) {
+        // User logged in via Wiki - auto-login
+        try {
+          wikiSession = JSON.parse(sess);
+          autoLoginFromWiki(wikiSession);
+        } catch (e) {
+          console.error('❌ Wiki session parse error:', e);
+          document.querySelector('.header p').textContent = 'Session error. Please login to Wiki.';
+          setupDemoMode();
+        }
+      } else {
+        // No Wiki session - use Demo Mode
+        console.warn('⚠️ No Wiki session detected - using Demo Mode');
         document.querySelector('.header p').textContent = 'Demo Mode (not logged into Wiki)';
         setupDemoMode();
-        return;
       }
-      
-      // Use Wiki username to create Firebase email: username@dqap.in
-      const wikiEmail = `${wikisess.username}@dqap.in`;
-      const wikiPassword = 'WikiSession@2025';
-      
-      console.log('Wiki session found, authenticating:', wikisess.fullName);
-      document.querySelector('.header p').textContent = `Authenticating as ${wikisess.fullName}...`;
-      
-      // Try to sign in with Wiki credentials
-      auth.signInWithEmailAndPassword(wikiEmail, wikiPassword)
-        .then(async (userCred) => {
-          console.log('Signed in successfully:', userCred.user.email);
-          currentUser = userCred.user.uid;
-          document.getElementById('userDisplay').textContent = wikisess.fullName;
-          document.querySelector('.header p').textContent = 'Professional sales pipeline, activity tracking & target management';
+    }
+
+    // Auto-login from Wiki session - lookup user in dqap_users collection
+    async function autoLoginFromWiki(session) {
+      try {
+        const username = session.username;
+        const displayName = session.fullName || session.displayName || username;
+        
+        console.log('🔍 Looking up user:', username);
+        
+        // Look up user in dqap_users collection
+        const usersRef = db.collection('dqap_users');
+        const userQuery = await usersRef.where('username', '==', username).limit(1).get();
+        let userData = null;
+
+        if (!userQuery.empty) {
+          // Found by username field
+          userData = userQuery.docs[0].data();
+          console.log('✅ Found user:', userData.fullName || username);
+        } else {
+          // Fallback: try document ID (legacy)
+          try {
+            const legacyUserDoc = await usersRef.doc(username).get();
+            if (legacyUserDoc.exists) {
+              userData = legacyUserDoc.data();
+              console.log('✅ Found user (legacy):', userData.fullName || username);
+            }
+          } catch (e) {
+            console.log('No legacy user doc found');
+          }
+        }
+
+        // If no record found, use Wiki session data as fallback
+        // (Wiki already authenticated this session)
+        if (!userData && session.username && session.role) {
+          console.warn('User not in dqap_users, using Wiki session data');
+          userData = {
+            username: session.username,
+            fullName: displayName,
+            role: session.role
+          };
+        }
+
+        // Set current user and load data
+        if (userData) {
+          currentUser = username; // Set to username (string), not Firebase UID
+          currentUserData = {
+            ...userData,
+            fullName: userData.fullName || displayName,
+            displayName: userData.displayName || displayName
+          };
           
+          // Update UI
+          document.getElementById('userDisplay').textContent = displayName;
+          document.querySelector('.header p').textContent = 
+            'Professional sales pipeline, activity tracking & target management';
+          
+          // Load and render data
           try {
             await loadAllData();
             renderDashboard();
@@ -1109,84 +1150,48 @@
             renderCalendar();
             renderTargets();
             renderActivities();
-            showToast(`Welcome, ${wikisess.fullName}!`, 'success');
+            showToast(`✅ Welcome, ${displayName}!`, 'success');
+            console.log('✅ Auto-logged in from Wiki:', username);
           } catch (err) {
             console.error('Load error:', err);
             showToast('Error loading data: ' + err.message, 'error');
           }
-        })
-        .catch(async (error) => {
-          console.log('Sign in failed, error code:', error.code);
-          
-          // Handle specific errors
-          if (error.code === 'auth/operation-not-allowed') {
-            console.error('Email/Password auth not enabled in Firebase Console');
-            document.querySelector('.header p').textContent = 'Firebase auth not configured. Using Demo Mode.';
-            showToast('Enable Email/Password authentication in Firebase Console', 'error');
-            setupDemoMode();
-            return;
-          }
-          
-          if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            // Try to create account
-            try {
-              console.log('Creating new Firebase account:', wikiEmail);
-              const userCred = await auth.createUserWithEmailAndPassword(wikiEmail, wikiPassword);
-              currentUser = userCred.user.uid;
-              document.getElementById('userDisplay').textContent = wikisess.fullName;
-              document.querySelector('.header p').textContent = 'Professional sales pipeline, activity tracking & target management';
-              
-              // Set display name
-              await userCred.user.updateProfile({ displayName: wikisess.fullName });
-              
-              try {
-                await loadAllData();
-                renderDashboard();
-                renderCustomers();
-                renderDeals();
-                renderCalendar();
-                renderTargets();
-                renderActivities();
-                showToast(`Account created. Welcome, ${wikisess.fullName}!`, 'success');
-              } catch (err) {
-                console.error('Load error after account creation:', err);
-                showToast('Error loading data: ' + err.message, 'error');
-              }
-            } catch (createErr) {
-              console.error('Account creation failed:', createErr);
-              document.querySelector('.header p').textContent = 'Account creation failed. Using Demo Mode.';
-              setupDemoMode();
-            }
-          } else {
-            console.error('Auth error:', error);
-            document.querySelector('.header p').textContent = 'Auth error. Using Demo Mode.';
-            setupDemoMode();
-          }
-        });
+        } else {
+          const msg = `User "${username}" not found in dqap_users collection`;
+          console.warn('⚠️', msg);
+          document.querySelector('.header p').textContent = msg;
+          setupDemoMode();
+        }
+      } catch (err) {
+        console.error('Auto-login error:', err);
+        document.querySelector('.header p').textContent = 'Auth error. Using Demo Mode.';
+        setupDemoMode();
+      }
     }
     
     // Demo mode for testing without Firebase
     function setupDemoMode() {
       currentUser = 'demo_user';
+      currentUserData = { fullName: 'Demo User', role: 'user' };
       document.getElementById('userDisplay').textContent = 'Demo User';
       
       // Add some sample data
       customerData = {
-        'c1': { id: 'c1', name: 'Indian Oil Corporation', contact: 'Raj Kumar', email: 'raj@iocl.in', phone: '+91-11-2334-5678', industry: 'Oil & Gas', notes: 'Large account' },
-        'c2': { id: 'c2', name: 'JSW Steel', contact: 'Priya Singh', email: 'priya@jsw.in', phone: '+91-22-4040-5678', industry: 'Steel', notes: 'Quarterly meetings' }
+        'c1': { id: 'c1', name: 'Indian Oil Corporation', contact: 'Raj Kumar', email: 'raj@iocl.in', phone: '+91-11-2334-5678', industry: 'Oil & Gas', notes: 'Large account', username: currentUser },
+        'c2': { id: 'c2', name: 'JSW Steel', contact: 'Priya Singh', email: 'priya@jsw.in', phone: '+91-22-4040-5678', industry: 'Steel', notes: 'Quarterly meetings', username: currentUser }
       };
       
       dealData = {
-        'd1': { id: 'd1', title: 'PA System Installation - Delhi Plant', customerId: 'c1', value: 500000, stage: 'Negotiations', probability: 65, closeDate: '2025-03-15', notes: 'Waiting for technical approval', salesPersonId: currentUser, createdAt: new Date() },
-        'd2': { id: 'd2', title: 'Fire Detection System - Plant 2', customerId: 'c2', value: 750000, stage: 'Bid Submission', probability: 45, closeDate: '2025-02-28', notes: '', salesPersonId: currentUser, createdAt: new Date() }
+        'd1': { id: 'd1', title: 'PA System Installation - Delhi Plant', customerId: 'c1', value: 500000, stage: 'Negotiations', probability: 65, closeDate: '2025-03-15', notes: 'Waiting for technical approval', username: currentUser, createdAt: new Date() },
+        'd2': { id: 'd2', title: 'Fire Detection System - Plant 2', customerId: 'c2', value: 750000, stage: 'Bid Submission', probability: 45, closeDate: '2025-02-28', notes: '', username: currentUser, createdAt: new Date() }
       };
       
       activityData = {
-        'a1': { id: 'a1', activityType: 'Call', dealId: 'd1', activityDate: new Date().toISOString().split('T')[0], activityTime: '10:00', description: 'Discussed technical specs', nextActivityDate: null, salesPersonId: currentUser }
+        'a1': { id: 'a1', activityType: 'Call', dealId: 'd1', activityDate: new Date().toISOString().split('T')[0], activityTime: '10:00', description: 'Discussed technical specs', nextActivityDate: null, username: currentUser }
       };
       
       targetData = {
-        't1': { id: 't1', quarter: 1, year: 2025, revenueTarget: 2000000, billingTarget: 1900000, annualRevenueTarget: 8000000, annualBillingTarget: 7600000, marginTarget: 22, salesPersonId: currentUser }
+        't1': { id: 't1', quarter: 1, year: 2025, revenueTarget: 2000000, billingTarget: 1900000, annualRevenueTarget: 8000000, annualBillingTarget: 7600000, marginTarget: 22, username: currentUser }
       };
       
       populateCustomerDropdowns();
@@ -1199,39 +1204,42 @@
     }
     
     async function loadAllData() {
+      if (!currentUser) {
+        console.log('Not authenticated, skipping data load');
+        return;
+      }
+
       try {
-        // Load customers
-        const customersSnap = await db.collection(CRM_CUSTOMERS).where('salesPersonId', '==', currentUser).get();
+        // Load customers filtered by username
+        const customersSnap = await db.collection(CRM_CUSTOMERS).where('username', '==', currentUser).get();
         customersSnap.forEach(doc => {
           customerData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        console.log(`Loaded ${customersSnap.size} customers for ${currentUser}`);
         
-        // Load deals
-        const dealsSnap = await db.collection(CRM_DEALS).where('salesPersonId', '==', currentUser).get();
+        // Load deals filtered by username
+        const dealsSnap = await db.collection(CRM_DEALS).where('username', '==', currentUser).get();
         dealsSnap.forEach(doc => {
           dealData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        console.log(`Loaded ${dealsSnap.size} deals for ${currentUser}`);
         
-        // Load activities
-        const activitiesSnap = await db.collection(CRM_ACTIVITIES).where('salesPersonId', '==', currentUser).get();
+        // Load activities filtered by username
+        const activitiesSnap = await db.collection(CRM_ACTIVITIES).where('username', '==', currentUser).get();
         activitiesSnap.forEach(doc => {
           activityData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        console.log(`Loaded ${activitiesSnap.size} activities for ${currentUser}`);
         
-        // Load targets
-        const targetsSnap = await db.collection(CRM_TARGETS).where('salesPersonId', '==', currentUser).get();
+        // Load targets filtered by username
+        const targetsSnap = await db.collection(CRM_TARGETS).where('username', '==', currentUser).get();
         targetsSnap.forEach(doc => {
           targetData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        console.log(`Loaded ${targetsSnap.size} targets for ${currentUser}`);
         
-        // Populate dropdowns and render
+        // Populate dropdowns
         populateCustomerDropdowns();
-        renderDashboard();
-        renderCustomers();
-        renderDeals();
-        renderCalendar();
-        renderTargets();
-        renderActivities();
       } catch (err) {
         console.error('Load error:', err);
       }
@@ -1251,6 +1259,11 @@
     }
     
     async function saveCustomer() {
+      if (!currentUser) {
+        showToast('Not authenticated', 'error');
+        return;
+      }
+
       const name = document.getElementById('customerName').value.trim();
       const contact = document.getElementById('customerContact').value.trim();
       const email = document.getElementById('customerEmail').value.trim();
@@ -1267,13 +1280,13 @@
         const custRef = db.collection(CRM_CUSTOMERS).doc();
         await custRef.set({
           name, contact, email, phone, industry, notes,
-          salesPersonId: currentUser,
+          username: currentUser,  // Use username instead of salesPersonId
           createdAt: new Date(),
           updatedAt: new Date()
         });
         
         customerData[custRef.id] = {
-          id: custRef.id, name, contact, email, phone, industry, notes, salesPersonId: currentUser
+          id: custRef.id, name, contact, email, phone, industry, notes, username: currentUser
         };
         
         populateCustomerDropdowns();
@@ -1362,6 +1375,11 @@
     });
     
     async function saveDeal() {
+      if (!currentUser) {
+        showToast('Not authenticated', 'error');
+        return;
+      }
+
       const title = document.getElementById('dealTitle').value.trim();
       const customerId = document.getElementById('dealCustomer').value;
       const value = parseInt(document.getElementById('dealValue').value) || 0;
@@ -1378,7 +1396,7 @@
       try {
         const dealObj = {
           title, customerId, value, stage, probability, closeDate, notes,
-          salesPersonId: currentUser,
+          username: currentUser,  // Use username instead of salesPersonId
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -1580,6 +1598,11 @@
     }
     
     async function saveTargets() {
+      if (!currentUser) {
+        showToast('Not authenticated', 'error');
+        return;
+      }
+
       const revenue = parseInt(document.getElementById('targetRevenue').value) || 0;
       const billing = parseInt(document.getElementById('targetBilling').value) || 0;
       const annualRevenue = parseInt(document.getElementById('targetAnnualRevenue').value) || 0;
@@ -1594,7 +1617,7 @@
       
       try {
         const year = new Date().getFullYear();
-        const existingTarget = Object.values(targetData).find(t => t.quarter === quarter && t.year === year && t.salesPersonId === currentUser);
+        const existingTarget = Object.values(targetData).find(t => t.quarter === quarter && t.year === year && t.username === currentUser);
         
         if (existingTarget) {
           await db.collection(CRM_TARGETS).doc(existingTarget.id).update({
@@ -1620,14 +1643,14 @@
             billingActual: 0,
             annualRevenueActual: 0,
             annualBillingActual: 0,
-            salesPersonId: currentUser,
+            username: currentUser,  // Use username instead of salesPersonId
             createdAt: new Date(),
             updatedAt: new Date()
           });
           targetData[tgtRef.id] = {
             id: tgtRef.id,
             quarter, year, revenueTarget: revenue, billingTarget: billing, annualRevenueTarget: annualRevenue, annualBillingTarget: annualBilling, marginTarget: margin,
-            revenueActual: 0, billingActual: 0, annualRevenueActual: 0, annualBillingActual: 0, salesPersonId: currentUser
+            revenueActual: 0, billingActual: 0, annualRevenueActual: 0, annualBillingActual: 0, username: currentUser
           };
         }
         
@@ -1764,6 +1787,11 @@
     }
     
     async function saveActivity() {
+      if (!currentUser) {
+        showToast('Not authenticated', 'error');
+        return;
+      }
+
       const type = document.getElementById('activityType').value;
       const dealId = document.getElementById('activityDeal').value;
       const date = document.getElementById('activityDate').value;
@@ -1785,7 +1813,7 @@
           activityTime: time,
           description: desc,
           nextActivityDate: nextDate,
-          salesPersonId: currentUser,
+          username: currentUser,  // Use username instead of salesPersonId
           createdAt: new Date(),
           completedDate: null
         });
@@ -1793,7 +1821,7 @@
         activityData[actRef.id] = {
           id: actRef.id,
           activityType: type,
-          dealId, activityDate: date, activityTime: time, description: desc, nextActivityDate: nextDate, salesPersonId: currentUser
+          dealId, activityDate: date, activityTime: time, description: desc, nextActivityDate: nextDate, username: currentUser
         };
         
         closeModal('addActivityModal');
