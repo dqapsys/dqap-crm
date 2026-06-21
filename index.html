@@ -926,8 +926,8 @@
     </div>
   </div>
   
-    <!-- AUTH MODAL (Login / Sign Up) -->
-    <div id="authModal" class="modal active">
+    <!-- AUTH MODAL (Login / Sign Up) - HIDDEN BY DEFAULT -->
+    <div id="authModal" class="modal">
       <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
           <span id="authModalTitle">Login to DQAP Sales CRM</span>
@@ -1067,11 +1067,11 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // AUTHENTICATION (Wiki Session Handoff)
+    // AUTHENTICATION (Wiki Session Handoff - Auto-Login)
     // ═══════════════════════════════════════════════════════════════════════════
     function initializeAuth() {
       if (!auth) {
-        showToast('Firebase not configured', 'error');
+        console.error('Firebase not configured');
         setupDemoMode();
         return;
       }
@@ -1080,21 +1080,23 @@
       const wikisess = parseWikiSession();
       
       if (!wikisess) {
-        // No Wiki session found - use Demo Mode
-        document.querySelector('.header p').textContent = 'No Wiki session. Using Demo Mode.';
+        console.log('No Wiki session found - using Demo Mode');
+        document.querySelector('.header p').textContent = 'Demo Mode (not logged into Wiki)';
         setupDemoMode();
         return;
       }
       
       // Use Wiki username to create Firebase email: username@dqap.in
       const wikiEmail = `${wikisess.username}@dqap.in`;
-      const wikiPassword = 'WikiSession@2025'; // Standard wiki session password
+      const wikiPassword = 'WikiSession@2025';
       
+      console.log('Wiki session found, authenticating:', wikisess.fullName);
       document.querySelector('.header p').textContent = `Authenticating as ${wikisess.fullName}...`;
       
       // Try to sign in with Wiki credentials
       auth.signInWithEmailAndPassword(wikiEmail, wikiPassword)
         .then(async (userCred) => {
+          console.log('Signed in successfully:', userCred.user.email);
           currentUser = userCred.user.uid;
           document.getElementById('userDisplay').textContent = wikisess.fullName;
           document.querySelector('.header p').textContent = 'Professional sales pipeline, activity tracking & target management';
@@ -1114,17 +1116,27 @@
           }
         })
         .catch(async (error) => {
-          // If sign in fails, try to create account with Wiki credentials
-          console.log('Sign in failed, attempting to create account:', error.code);
+          console.log('Sign in failed, error code:', error.code);
+          
+          // Handle specific errors
+          if (error.code === 'auth/operation-not-allowed') {
+            console.error('Email/Password auth not enabled in Firebase Console');
+            document.querySelector('.header p').textContent = 'Firebase auth not configured. Using Demo Mode.';
+            showToast('Enable Email/Password authentication in Firebase Console', 'error');
+            setupDemoMode();
+            return;
+          }
           
           if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            // Try to create account
             try {
+              console.log('Creating new Firebase account:', wikiEmail);
               const userCred = await auth.createUserWithEmailAndPassword(wikiEmail, wikiPassword);
               currentUser = userCred.user.uid;
               document.getElementById('userDisplay').textContent = wikisess.fullName;
               document.querySelector('.header p').textContent = 'Professional sales pipeline, activity tracking & target management';
               
-              // Set display name to Wiki fullName
+              // Set display name
               await userCred.user.updateProfile({ displayName: wikisess.fullName });
               
               try {
@@ -1135,14 +1147,14 @@
                 renderCalendar();
                 renderTargets();
                 renderActivities();
-                showToast(`Account created and logged in as ${wikisess.fullName}!`, 'success');
+                showToast(`Account created. Welcome, ${wikisess.fullName}!`, 'success');
               } catch (err) {
-                console.error('Load error:', err);
+                console.error('Load error after account creation:', err);
                 showToast('Error loading data: ' + err.message, 'error');
               }
             } catch (createErr) {
               console.error('Account creation failed:', createErr);
-              document.querySelector('.header p').textContent = 'Auth failed. Using Demo Mode.';
+              document.querySelector('.header p').textContent = 'Account creation failed. Using Demo Mode.';
               setupDemoMode();
             }
           } else {
