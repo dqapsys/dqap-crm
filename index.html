@@ -1,1 +1,2364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>DQAP Sales CRM</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect fill='%23006994' width='64' height='64' rx='12'/%3E%3Ctext x='32' y='43' font-size='36' text-anchor='middle'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --p: #006994;
+      --pd: #004A68;
+      --pl: #E4F1FA;
+      --bg: #F4F6FA;
+      --card: #fff;
+      --t1: #111;
+      --t2: #666;
+      --bd: rgba(0,0,0,.11);
+      --bds: rgba(0,0,0,.22);
+      --rad: 10px;
+      --success: #3F704D;
+      --warning: #E65100;
+      --danger: #C62828;
+    }
+    
+    body {
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      font-size: 13px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, var(--p), var(--pd));
+      color: #fff;
+      padding: 30px 20px;
+      border-radius: var(--rad);
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    
+    .header-right {
+      text-align: right;
+      font-size: 13px;
+    }
+    
+    .user-info {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .user-quota {
+      opacity: 0.85;
+      font-size: 12px;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--bd);
+    }
+    
+    .tab-btn {
+      padding: 12px 16px;
+      border: none;
+      background: transparent;
+      color: var(--t2);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 3px solid transparent;
+    }
+    
+    .tab-btn:hover {
+      color: var(--p);
+    }
+    
+    .tab-btn.active {
+      color: var(--p);
+      border-bottom-color: var(--p);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .card {
+      background: var(--card);
+      border-radius: var(--rad);
+      border: 0.5px solid var(--bd);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .card-header {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .stat {
+      background: var(--card);
+      border-radius: var(--rad);
+      border: 0.5px solid var(--bd);
+      padding: 15px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--pl);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--p);
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    
+    .stat-content {
+      flex: 1;
+    }
+    
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--t1);
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: var(--t2);
+      margin-top: 4px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--t1);
+      text-transform: uppercase;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="date"],
+    input[type="number"],
+    input[type="tel"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 0.5px solid var(--bd);
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      background: #fff;
+      color: var(--t1);
+      transition: border-color 0.15s;
+    }
+    
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--p);
+      box-shadow: 0 0 0 3px var(--pl);
+    }
+    
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 0.5px solid var(--bds);
+      background: var(--card);
+      color: var(--t1);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: inherit;
+    }
+    
+    .btn:hover {
+      border-color: var(--p);
+      background: var(--pl);
+    }
+    
+    .btn.primary {
+      background: var(--p);
+      color: #fff;
+      border-color: var(--p);
+    }
+    
+    .btn.primary:hover {
+      background: var(--pd);
+      border-color: var(--pd);
+    }
+    
+    .btn.danger {
+      color: #C00;
+      border-color: #C00;
+    }
+    
+    .btn.danger:hover {
+      background: #FFE5E5;
+    }
+    
+    .btn.sm {
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    
+    thead {
+      background: #f5f5f5;
+      border-bottom: 1px solid var(--bd);
+    }
+    
+    th {
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--t1);
+    }
+    
+    td {
+      padding: 10px;
+      border-bottom: 0.5px solid var(--bd);
+    }
+    
+    tr:hover {
+      background: #fafafa;
+    }
+    
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .badge {
+      display: inline-flex;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
+    .badge.new {
+      background: #E3F2FD;
+      color: #006994;
+    }
+    
+    .badge.proposal {
+      background: #FFF3E0;
+      color: #E65100;
+    }
+    
+    .badge.negotiation {
+      background: #FCE4EC;
+      color: #C2185B;
+    }
+    
+    .badge.won {
+      background: #E8F5E9;
+      color: #3F704D;
+    }
+    
+    .badge.lost {
+      background: #FFEBEE;
+      color: #C62828;
+    }
+    
+    .badge.pending {
+      background: #FFF3E0;
+      color: #E65100;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: var(--card);
+      border-radius: var(--rad);
+      padding: 24px;
+      max-width: 700px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    .modal-header {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--t2);
+    }
+    
+    .customer-card {
+      background: var(--card);
+      border-radius: var(--rad);
+      border: 0.5px solid var(--bd);
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .customer-card:hover {
+      border-color: var(--p);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .customer-name {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    
+    .customer-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--t2);
+    }
+    
+    .contact-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      background: #f5f5f5;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+    
+    .pipeline-stage {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: var(--pl);
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--p);
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #f0f0f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: var(--p);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+    
+    .activity-item {
+      background: var(--card);
+      border-radius: var(--rad);
+      border: 0.5px solid var(--bd);
+      padding: 14px;
+      margin-bottom: 10px;
+      border-left: 3px solid var(--p);
+    }
+    
+    .activity-type {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--p);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    
+    .activity-title {
+      font-weight: 600;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    
+    .activity-meta {
+      font-size: 11px;
+      color: var(--t2);
+      display: flex;
+      gap: 12px;
+    }
+    
+    .alert {
+      padding: 12px 14px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+      border-left: 3px solid;
+    }
+    
+    .alert.warning {
+      background: #FFF3E0;
+      color: #E65100;
+      border-color: #E65100;
+    }
+    
+    .alert.success {
+      background: #E8F5E9;
+      color: #3F704D;
+      border-color: #3F704D;
+    }
+    
+    .alert.danger {
+      background: #FFEBEE;
+      color: #C62828;
+      border-color: #C62828;
+    }
+    
+    .meeting-calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 12px;
+    }
+    
+    .calendar-day {
+      aspect-ratio: 1;
+      border: 0.5px solid var(--bd);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .calendar-day:hover {
+      border-color: var(--p);
+      background: var(--pl);
+    }
+    
+    .calendar-day.has-meeting {
+      background: var(--p);
+      color: #fff;
+      font-weight: 600;
+    }
+    
+    .target-row {
+      display: grid;
+      grid-template-columns: 150px 1fr 100px 100px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 0.5px solid var(--bd);
+    }
+    
+    .target-row:last-child {
+      border-bottom: none;
+    }
+    
+    .target-name {
+      font-weight: 500;
+    }
+    
+    .target-progress {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .target-value {
+      font-size: 12px;
+      font-weight: 600;
+      text-align: right;
+      min-width: 80px;
+    }
+    
+    .target-status {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: right;
+      min-width: 80px;
+    }
+    
+    .status-good {
+      color: var(--success);
+    }
+    
+    .status-warning {
+      color: var(--warning);
+    }
+    
+    .status-danger {
+      color: var(--danger);
+    }
+    
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--t2);
+    }
+    
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1B5E20;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 2000;
+      animation: slideIn 0.3s ease;
+    }
+    
+    .toast.error {
+      background: #B71C1C;
+    }
+    
+    .toast.warning {
+      background: #E65100;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .blocking-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .blocking-overlay.active {
+      display: flex;
+    }
+    
+    .blocking-dialog {
+      background: var(--card);
+      border-radius: var(--rad);
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    .blocking-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--danger);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .blocking-message {
+      font-size: 13px;
+      color: var(--t1);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    
+    .blocking-checklist {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    
+    .blocking-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 12px;
+    }
+    
+    .blocking-item.complete {
+      color: var(--success);
+    }
+    
+    .blocking-item.incomplete {
+      color: var(--danger);
+    }
+    
+    .checkbox {
+      width: 18px;
+      height: 18px;
+      border: 0.5px solid var(--bd);
+      border-radius: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    
+    .checkbox.checked {
+      background: var(--p);
+      border-color: var(--p);
+      position: relative;
+    }
+    
+    .checkbox.checked::after {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 12px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    .divider {
+      border: none;
+      border-top: 0.5px solid var(--bd);
+      margin: 16px 0;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 12px;
+      }
+      .header {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px;
+      }
+      .header-right {
+        margin-top: 12px;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      .target-row {
+        grid-template-columns: 1fr;
+      }
+      .meeting-calendar {
+        grid-template-columns: repeat(7, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
 
+<!-- BLOCKING DIALOG (Activity Log Reminder) -->
+<div id="blockingOverlay" class="blocking-overlay">
+  <div class="blocking-dialog">
+    <div class="blocking-title">
+      <i class="ti ti-alert-circle" style="font-size: 20px;"></i>
+      Action Required Before Continuing
+    </div>
+    <div class="blocking-message">
+      You must complete your activity log and schedule the next meeting before you can access other sections. This ensures CRM data stays accurate and your targets are on track.
+    </div>
+    
+    <div class="blocking-checklist">
+      <div class="blocking-item" id="block-activity">
+        <div class="checkbox" onclick="toggleCheck(this)" style="background: #f0f0f0;"></div>
+        <span>✓ Log today's activity (call/visit/email)</span>
+      </div>
+      <div class="blocking-item" id="block-nextplan">
+        <div class="checkbox" onclick="toggleCheck(this)" style="background: #f0f0f0;"></div>
+        <span>✓ Plan next activity with date</span>
+      </div>
+    </div>
+    
+    <div class="alert warning" style="margin-bottom: 16px;">
+      <i class="ti ti-info-circle" style="font-size: 13px; margin-right: 6px;"></i>
+      Weekly Target: 8 meetings minimum. Current: <span id="weeklyCount">0</span>/8
+    </div>
+    
+    <button class="btn primary" style="width: 100%; justify-content: center;" onclick="goToActivities()">
+      <i class="ti ti-arrow-right"></i> Go to Activity Log
+    </button>
+  </div>
+</div>
+
+<!-- CONTAINER -->
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1><i class="ti ti-target"></i> Sales CRM</h1>
+    <p>Professional sales pipeline, activity tracking & target management</p>
+  </div>
+  <div class="header-right">
+    <div class="user-info" id="userDisplay">Loading...</div>
+    <div class="user-quota" id="quotaDisplay">—</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('customers')"><i class="ti ti-users"></i> Customers</button>
+  <button class="tab-btn" onclick="switchTab('pipeline')"><i class="ti ti-activity"></i> Pipeline</button>
+  <button class="tab-btn" onclick="switchTab('activities')"><i class="ti ti-history"></i> Activities</button>
+  <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
+  <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-chart-bar"></i> Quarterly Targets</button>
+</div>
+
+<!-- DASHBOARD TAB -->
+<div id="tab-dashboard" class="tab-content active">
+  <!-- Alerts -->
+  <div id="alertsContainer"></div>
+  
+  <!-- Key Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-icon">👥</div>
+      <div class="stat-content">
+        <div class="stat-value" id="statCustomers">0</div>
+        <div class="stat-label">Total Customers</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">🎯</div>
+      <div class="stat-content">
+        <div class="stat-value" id="statDeals">0</div>
+        <div class="stat-label">Active Deals</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">💰</div>
+      <div class="stat-content">
+        <div class="stat-value" id="statPipeline">₹0</div>
+        <div class="stat-label">Pipeline Value</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">📅</div>
+      <div class="stat-content">
+        <div class="stat-value" id="statMeetingsWeek">0/8</div>
+        <div class="stat-label">Meetings This Week</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-value" id="statActivitiesMonth">0</div>
+        <div class="stat-label">Activities (30 Days)</div>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-content">
+        <div class="stat-value" id="statWonValue">₹0</div>
+        <div class="stat-label">Won This Quarter</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-header">
+      <span>Pipeline Distribution</span>
+    </div>
+    <canvas id="pipelineChart" style="max-height: 300px;"></canvas>
+  </div>
+  
+  <div class="card">
+    <div class="card-header">
+      <span>Recent Activities</span>
+      <button class="btn sm primary" onclick="switchTab('activities')"><i class="ti ti-arrow-right"></i> View All</button>
+    </div>
+    <div id="recentActivitiesContainer"></div>
+  </div>
+</div>
+
+<!-- CUSTOMERS TAB -->
+<div id="tab-customers" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <span>Customer Directory</span>
+      <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Customer</button>
+    </div>
+    
+    <div style="margin-bottom: 14px;">
+      <input type="text" id="customerSearch" placeholder="Search customers..." onkeyup="filterCustomers()" style="width: 100%; max-width: 300px;">
+    </div>
+    
+    <div id="customersContainer"></div>
+  </div>
+</div>
+
+<!-- PIPELINE TAB -->
+<div id="tab-pipeline" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <span>Sales Pipeline</span>
+      <button class="btn primary" onclick="openAddDealModal()"><i class="ti ti-plus"></i> Add Deal</button>
+    </div>
+    
+    <div id="pipelineContainer"></div>
+  </div>
+</div>
+
+<!-- ACTIVITIES TAB -->
+<div id="tab-activities" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <span>Activity Log</span>
+      <button class="btn primary" onclick="openLogActivityModal()"><i class="ti ti-plus"></i> Log Activity</button>
+    </div>
+    
+    <div id="activitiesContainer"></div>
+  </div>
+</div>
+
+<!-- MEETING CALENDAR TAB -->
+<div id="tab-calendar" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <span id="calendarTitle">This Week's Meetings</span>
+    </div>
+    
+    <div style="margin-bottom: 16px;">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button class="btn sm" onclick="prevWeek()"><i class="ti ti-chevron-left"></i></button>
+        <button class="btn sm" onclick="currentWeek()">This Week</button>
+        <button class="btn sm" onclick="nextWeek()"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div id="meetingCalendarView"></div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div style="margin-top: 16px;">
+      <div style="font-weight: 600; margin-bottom: 10px;">📊 Weekly Meeting Metrics</div>
+      <div class="target-row" style="border: none; padding: 0; grid-template-columns: 1fr auto;">
+        <span>Target Meetings / Week</span>
+        <span style="font-weight: 600;">8</span>
+      </div>
+      <div class="target-row" style="border: none; padding: 0; grid-template-columns: 1fr auto;">
+        <span id="thisWeekLabel">This Week Completed</span>
+        <span style="font-weight: 600;" id="thisWeekMeetings">0</span>
+      </div>
+    </div>
+    
+    <div id="meetingAlert" style="margin-top: 16px;"></div>
+  </div>
+</div>
+
+<!-- QUARTERLY TARGETS TAB -->
+<div id="tab-targets" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <span>Quarterly Targets (Q<span id="currentQuarter">1</span>)</span>
+      <button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Set Targets</button>
+    </div>
+    
+    <div id="targetsContainer"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ MODALS ═══════════════════════════════════════════════════════════ -->
+
+<!-- ADD CUSTOMER MODAL -->
+<div id="addCustomerModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>Add New Customer</span>
+      <button class="modal-close" onclick="closeModal('addCustomerModal')"><i class="ti ti-x"></i></button>
+    </div>
+    
+    <div class="form-group">
+      <label>Customer Name (Company) *</label>
+      <input type="text" id="custName" placeholder="e.g., JSW Steel, Indian Oil Corp">
+    </div>
+    
+    <div class="form-group">
+      <label>Industry Segment *</label>
+      <select id="custIndustry">
+        <option value="">-- Select --</option>
+        <option value="Oil & Gas">Oil & Gas</option>
+        <option value="Mining">Mining</option>
+        <option value="Steel">Steel</option>
+        <option value="Power">Power</option>
+        <option value="Manufacturing">Manufacturing</option>
+        <option value="Automotive">Automotive</option>
+        <option value="Telecom">Telecom</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Location</label>
+        <input type="text" id="custLocation" placeholder="City">
+      </div>
+      <div class="form-group">
+        <label>GST No.</label>
+        <input type="text" id="custGST" placeholder="22AAAAA0000A1Z5">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>Website / URL</label>
+      <input type="text" id="custWebsite" placeholder="https://...">
+    </div>
+    
+    <div class="form-group">
+      <label>Primary Contact Person *</label>
+      <input type="text" id="custContactName" placeholder="Full name">
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Mobile *</label>
+        <input type="tel" id="custContactMobile" placeholder="10-digit mobile">
+      </div>
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" id="custContactEmail" placeholder="email@company.com">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>Designation / Role</label>
+      <input type="text" id="custContactRole" placeholder="e.g., Purchase Manager, Plant Head">
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button class="btn" onclick="closeModal('addCustomerModal')">Cancel</button>
+      <button class="btn primary" onclick="saveCustomer()"><i class="ti ti-check"></i> Save Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CONTACT TO CUSTOMER MODAL -->
+<div id="addContactModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>Add Contact Person to <span id="contactModalCustName"></span></span>
+      <button class="modal-close" onclick="closeModal('addContactModal')"><i class="ti ti-x"></i></button>
+    </div>
+    
+    <div class="form-group">
+      <label>Contact Person Name *</label>
+      <input type="text" id="newContactName" placeholder="Full name">
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Mobile *</label>
+        <input type="tel" id="newContactMobile" placeholder="10-digit mobile">
+      </div>
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" id="newContactEmail" placeholder="email@company.com">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>Designation / Role</label>
+      <input type="text" id="newContactRole" placeholder="e.g., Purchase Manager">
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button class="btn" onclick="closeModal('addContactModal')">Cancel</button>
+      <button class="btn primary" onclick="saveContact()"><i class="ti ti-check"></i> Add Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DEAL MODAL -->
+<div id="addDealModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>Add New Deal</span>
+      <button class="modal-close" onclick="closeModal('addDealModal')"><i class="ti ti-x"></i></button>
+    </div>
+    
+    <div class="form-group">
+      <label>Deal Title / Project Name *</label>
+      <input type="text" id="dealTitle" placeholder="e.g., Fire Alarm System - Plant A">
+    </div>
+    
+    <div class="form-group">
+      <label>Customer *</label>
+      <select id="dealCustomer" onchange="updateDealContactOptions()">
+        <option value="">-- Select Customer --</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Primary Contact</label>
+      <select id="dealContact">
+        <option value="">-- Select Contact --</option>
+      </select>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Deal Value (₹) *</label>
+        <input type="number" id="dealValue" placeholder="0" min="0" step="10000">
+      </div>
+      <div class="form-group">
+        <label>Probability %</label>
+        <input type="number" id="dealProbability" placeholder="50" min="0" max="100">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>Current Stage *</label>
+      <select id="dealStage">
+        <option value="Lead">Lead</option>
+        <option value="Proposal" selected>Proposal</option>
+        <option value="Negotiation">Negotiation</option>
+        <option value="Won">Won</option>
+        <option value="Lost">Lost</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Expected Close Date</label>
+      <input type="date" id="dealCloseDate">
+    </div>
+    
+    <div class="form-group">
+      <label>Notes / Next Steps</label>
+      <textarea id="dealNotes" placeholder="Key discussion points, objections, next steps..."></textarea>
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button class="btn" onclick="closeModal('addDealModal')">Cancel</button>
+      <button class="btn primary" onclick="saveDeal()"><i class="ti ti-check"></i> Add Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOG ACTIVITY MODAL -->
+<div id="logActivityModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>Log Activity</span>
+      <button class="modal-close" onclick="closeModal('logActivityModal')"><i class="ti ti-x"></i></button>
+    </div>
+    
+    <div class="form-group">
+      <label>Activity Type *</label>
+      <select id="activityType">
+        <option value="">-- Select --</option>
+        <option value="Call">📞 Call</option>
+        <option value="Meeting">🤝 Meeting (In-person)</option>
+        <option value="Email">📧 Email</option>
+        <option value="Quote">📄 Quote Sent</option>
+        <option value="Demo">🎥 Product Demo</option>
+        <option value="Follow-up">↩️ Follow-up</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Customer *</label>
+      <select id="activityCustomer">
+        <option value="">-- Select Customer --</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Deal (Optional)</label>
+      <select id="activityDeal">
+        <option value="">-- Select Deal --</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Activity Description *</label>
+      <textarea id="activityDescription" placeholder="What happened? Key discussion points, outcomes, objections..."></textarea>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Activity Date *</label>
+        <input type="date" id="activityDate">
+      </div>
+      <div class="form-group">
+        <label>Duration (minutes)</label>
+        <input type="number" id="activityDuration" placeholder="30" min="1">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>Next Activity Plan *</label>
+      <input type="text" id="activityNextPlan" placeholder="e.g., Send quotation, Schedule follow-up call">
+    </div>
+    
+    <div class="form-group">
+      <label>Schedule Next Activity By *</label>
+      <input type="date" id="activityNextDate">
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button class="btn" onclick="closeModal('logActivityModal')">Cancel</button>
+      <button class="btn primary" onclick="saveActivity()"><i class="ti ti-check"></i> Log Activity</button>
+    </div>
+  </div>
+</div>
+
+<!-- SET TARGETS MODAL -->
+<div id="setTargetModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>Set Quarterly Targets (Q<span id="targetQuarterDisplay">1</span>)</span>
+      <button class="modal-close" onclick="closeModal('setTargetModal')"><i class="ti ti-x"></i></button>
+    </div>
+    
+    <div class="form-group">
+      <label>Revenue Target (₹) *</label>
+      <input type="number" id="targetRevenue" placeholder="5000000" min="0" step="10000">
+    </div>
+    
+    <div class="form-group">
+      <label>Billing Target (₹) *</label>
+      <input type="number" id="targetBilling" placeholder="4000000" min="0" step="10000">
+    </div>
+    
+    <div class="form-group">
+      <label>Gross Margin Target (%) *</label>
+      <input type="number" id="targetMargin" placeholder="35" min="0" max="100" step="0.1">
+    </div>
+    
+    <div class="alert warning" style="margin-top: 16px;">
+      <i class="ti ti-info-circle"></i> These targets will be used to track your progress and flag shortfalls.
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+      <button class="btn" onclick="closeModal('setTargetModal')">Cancel</button>
+      <button class="btn primary" onclick="saveTargets()"><i class="ti ti-check"></i> Save Targets</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- END CONTAINER -->
+
+<!-- TOAST NOTIFICATIONS -->
+<div id="toastContainer"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// FIREBASE CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════
+firebase.initializeApp({
+  apiKey: "AIzaSyBV2ZQwfqvgPyzLz75wsSIg9N5gjPHY-R8",
+  authDomain: "dqap-wiki.firebaseapp.com",
+  projectId: "dqap-wiki",
+  storageBucket: "dqap-wiki.firebasestorage.app",
+  messagingSenderId: "932523956178",
+  appId: "1:932523956178:web:cc83a8e7369eaa80649a0b"
+});
+
+const db = firebase.firestore();
+const CRM_CUSTOMERS = 'dqap_crm_customers';
+const CRM_DEALS = 'dqap_crm_deals';
+const CRM_ACTIVITIES = 'dqap_crm_activities';
+const CRM_TARGETS = 'dqap_crm_targets';
+const CRM_MEETINGS = 'dqap_crm_meetings';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let currentUser = null;
+let currentUserData = null;
+let authInitialized = false;
+let currentEditingCustomerId = null;
+let currentEditingDealId = null;
+let customerData = {};
+let dealData = {};
+let activityData = {};
+let targetData = {};
+let meetingData = {};
+let selectedWeekStart = getMonday(new Date());
+let pipelineChart = null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTHENTICATION
+// ═══════════════════════════════════════════════════════════════════════════
+function initializeAuth() {
+  if (authInitialized) return;
+  authInitialized = true;
+
+  let sess = null;
+  const fragment = new URLSearchParams(window.location.hash.slice(1));
+  sess = fragment.get('sess');
+
+  if (!sess) {
+    const params = new URLSearchParams(window.location.search);
+    sess = params.get('sess');
+  }
+
+  if (sess) {
+    sessionStorage.setItem('wikiSessionData', sess);
+    const data = JSON.parse(atob(sess));
+    currentUser = data.userId;
+    currentUserData = data;
+    loadData();
+  } else {
+    const stored = sessionStorage.getItem('wikiSessionData');
+    if (stored) {
+      try {
+        const data = JSON.parse(atob(stored));
+        currentUser = data.userId;
+        currentUserData = data;
+        loadData();
+      } catch (e) {
+        console.error('Session parse error:', e);
+        showToast('Session expired. Please login from Wiki.', 'error');
+      }
+    } else {
+      showToast('Not authenticated. Opening Wiki login...', 'error');
+      window.location.href = '/dqap-wiki/?module=crm';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA LOADING & SYNC
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadData() {
+  updateUserDisplay();
+  
+  try {
+    // Load all collections for this user
+    const custSnap = await db.collection(CRM_CUSTOMERS).where('salesPersonId', '==', currentUser).get();
+    custSnap.forEach(doc => {
+      customerData[doc.id] = { id: doc.id, ...doc.data() };
+    });
+    
+    const dealSnap = await db.collection(CRM_DEALS).where('salesPersonId', '==', currentUser).get();
+    dealSnap.forEach(doc => {
+      dealData[doc.id] = { id: doc.id, ...doc.data() };
+    });
+    
+    const actSnap = await db.collection(CRM_ACTIVITIES).where('salesPersonId', '==', currentUser).get();
+    actSnap.forEach(doc => {
+      activityData[doc.id] = { id: doc.id, ...doc.data() };
+    });
+    
+    const tgtSnap = await db.collection(CRM_TARGETS).where('salesPersonId', '==', currentUser).get();
+    tgtSnap.forEach(doc => {
+      targetData[doc.id] = { id: doc.id, ...doc.data() };
+    });
+    
+    const mtgSnap = await db.collection(CRM_MEETINGS).where('salesPersonId', '==', currentUser).get();
+    mtgSnap.forEach(doc => {
+      meetingData[doc.id] = { id: doc.id, ...doc.data() };
+    });
+    
+    // Populate dropdowns
+    updateCustomerDropdowns();
+    updateDealDropdowns();
+    
+    // Render all views
+    renderDashboard();
+    renderCustomers();
+    renderPipeline();
+    renderActivities();
+    renderCalendar();
+    renderTargets();
+    
+    // Check for blocking conditions
+    checkBlockingConditions();
+    
+  } catch (err) {
+    console.error('Load error:', err);
+    showToast('Error loading data: ' + err.message, 'error');
+  }
+}
+
+function updateUserDisplay() {
+  const name = currentUserData?.fullName || currentUserData?.displayName || currentUser;
+  const quota = getWeeklyQuota();
+  document.getElementById('userDisplay').textContent = name;
+  document.getElementById('quotaDisplay').textContent = `Target: 8 meetings/week | This week: ${quota.completed}/${quota.target}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLOCKING CONDITIONS CHECK
+// ═══════════════════════════════════════════════════════════════════════════
+function checkBlockingConditions() {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  // Check if today's activity is logged
+  const todayActivity = Object.values(activityData).find(a => a.activityDate === todayStr);
+  
+  // Check if next plan is set (for existing activities with no logged follow-up)
+  const pendingNextPlan = Object.values(activityData).some(a => 
+    a.nextActivityDate && new Date(a.nextActivityDate) <= today && !a.completedDate
+  );
+  
+  if (!todayActivity) {
+    // Show blocking modal only once per session
+    if (!sessionStorage.getItem('blockingShown-' + todayStr)) {
+      showBlockingDialog();
+      sessionStorage.setItem('blockingShown-' + todayStr, 'true');
+    }
+  }
+}
+
+function showBlockingDialog() {
+  document.getElementById('blockingOverlay').classList.add('active');
+  updateBlockingChecklist();
+}
+
+function updateBlockingChecklist() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayActivity = Object.values(activityData).find(a => a.activityDate === today);
+  const hasNextPlan = Object.values(activityData).some(a => a.nextActivityDate);
+  const weeklyCount = getWeeklyQuota().completed;
+  
+  document.getElementById('block-activity').className = todayActivity ? 'blocking-item complete' : 'blocking-item incomplete';
+  document.getElementById('block-nextplan').className = hasNextPlan ? 'blocking-item complete' : 'blocking-item incomplete';
+  document.getElementById('weeklyCount').textContent = weeklyCount;
+}
+
+function toggleCheck(elem) {
+  elem.classList.toggle('checked');
+}
+
+function goToActivities() {
+  document.getElementById('blockingOverlay').classList.remove('active');
+  switchTab('activities');
+  openLogActivityModal();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CUSTOMER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+async function saveCustomer() {
+  const name = document.getElementById('custName').value.trim();
+  const industry = document.getElementById('custIndustry').value;
+  const location = document.getElementById('custLocation').value.trim();
+  const gst = document.getElementById('custGST').value.trim();
+  const website = document.getElementById('custWebsite').value.trim();
+  const contactName = document.getElementById('custContactName').value.trim();
+  const contactMobile = document.getElementById('custContactMobile').value.trim();
+  const contactEmail = document.getElementById('custContactEmail').value.trim();
+  const contactRole = document.getElementById('custContactRole').value.trim();
+  
+  if (!name || !industry || !contactName || !contactMobile || !contactEmail) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+  
+  try {
+    const custRef = db.collection(CRM_CUSTOMERS).doc();
+    const contacts = [{
+      id: generateId(),
+      name: contactName,
+      mobile: contactMobile,
+      email: contactEmail,
+      role: contactRole,
+      isPrimary: true
+    }];
+    
+    await custRef.set({
+      name: name,
+      industry: industry,
+      location: location,
+      gst: gst,
+      website: website,
+      contacts: contacts,
+      salesPersonId: currentUser,
+      createdAt: new Date(),
+      lastUpdated: new Date()
+    });
+    
+    customerData[custRef.id] = {
+      id: custRef.id,
+      name, industry, location, gst, website, contacts, salesPersonId: currentUser
+    };
+    
+    closeModal('addCustomerModal');
+    renderCustomers();
+    updateCustomerDropdowns();
+    renderDashboard();
+    showToast('Customer added successfully!', 'success');
+  } catch (err) {
+    showToast('Error saving customer: ' + err.message, 'error');
+  }
+}
+
+async function saveContact() {
+  const custId = currentEditingCustomerId;
+  const name = document.getElementById('newContactName').value.trim();
+  const mobile = document.getElementById('newContactMobile').value.trim();
+  const email = document.getElementById('newContactEmail').value.trim();
+  const role = document.getElementById('newContactRole').value.trim();
+  
+  if (!name || !mobile || !email) {
+    showToast('Please fill required fields', 'error');
+    return;
+  }
+  
+  try {
+    const cust = customerData[custId];
+    const newContact = {
+      id: generateId(),
+      name: name,
+      mobile: mobile,
+      email: email,
+      role: role,
+      isPrimary: false
+    };
+    
+    cust.contacts.push(newContact);
+    
+    await db.collection(CRM_CUSTOMERS).doc(custId).update({
+      contacts: cust.contacts,
+      lastUpdated: new Date()
+    });
+    
+    closeModal('addContactModal');
+    renderCustomers();
+    updateDealDropdowns();
+    showToast('Contact person added!', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function renderCustomers() {
+  const container = document.getElementById('customersContainer');
+  const custs = Object.values(customerData).sort((a, b) => a.name.localeCompare(b.name));
+  
+  if (custs.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No customers yet. Add one to get started.</p></div>';
+    return;
+  }
+  
+  let html = '';
+  custs.forEach(cust => {
+    const dealCount = Object.values(dealData).filter(d => d.customerId === cust.id).length;
+    const activeDealValue = Object.values(dealData)
+      .filter(d => d.customerId === cust.id && d.stage !== 'Lost')
+      .reduce((sum, d) => sum + (parseInt(d.value) || 0), 0);
+    
+    html += `
+      <div class="customer-card" onclick="toggleCustomerDetail('${cust.id}')">
+        <div class="customer-name">${cust.name}</div>
+        <div class="customer-meta">
+          <span>📍 ${cust.location || 'N/A'}</span>
+          <span>📊 ${cust.industry}</span>
+          <span>🎯 ${dealCount} deals (₹${formatCurrency(activeDealValue)})</span>
+        </div>
+        <div style="margin-top: 8px;">
+          ${cust.contacts.map(c => `
+            <div class="contact-chip">
+              <i class="ti ti-phone" style="font-size: 10px;"></i>
+              ${c.name} ${!c.isPrimary ? '(+)' : ''}
+            </div>
+          `).join('')}
+        </div>
+        <div id="custDetail-${cust.id}" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--bd);">
+          ${cust.contacts.map(c => `
+            <div style="font-size: 11px; margin-bottom: 6px;">
+              <strong>${c.name}</strong> ${c.role ? '(' + c.role + ')' : ''}<br>
+              📞 ${c.mobile} | 📧 ${c.email}
+            </div>
+          `).join('')}
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <button class="btn sm" onclick="editCustomer('${cust.id}')"><i class="ti ti-edit"></i> Edit</button>
+            <button class="btn sm" onclick="openAddContactModal('${cust.id}')"><i class="ti ti-plus"></i> Add Contact</button>
+            <button class="btn sm danger" onclick="deleteCustomer('${cust.id}')"><i class="ti ti-trash"></i> Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function toggleCustomerDetail(custId) {
+  const detail = document.getElementById('custDetail-' + custId);
+  if (detail) {
+    detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function filterCustomers() {
+  const query = document.getElementById('customerSearch').value.toLowerCase();
+  const cards = document.querySelectorAll('.customer-card');
+  cards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(query) ? 'block' : 'none';
+  });
+}
+
+function openAddCustomerModal() {
+  document.getElementById('custName').value = '';
+  document.getElementById('custIndustry').value = '';
+  document.getElementById('custLocation').value = '';
+  document.getElementById('custGST').value = '';
+  document.getElementById('custWebsite').value = '';
+  document.getElementById('custContactName').value = '';
+  document.getElementById('custContactMobile').value = '';
+  document.getElementById('custContactEmail').value = '';
+  document.getElementById('custContactRole').value = '';
+  currentEditingCustomerId = null;
+  openModal('addCustomerModal');
+}
+
+function openAddContactModal(custId) {
+  const cust = customerData[custId];
+  document.getElementById('contactModalCustName').textContent = cust.name;
+  document.getElementById('newContactName').value = '';
+  document.getElementById('newContactMobile').value = '';
+  document.getElementById('newContactEmail').value = '';
+  document.getElementById('newContactRole').value = '';
+  currentEditingCustomerId = custId;
+  openModal('addContactModal');
+}
+
+async function deleteCustomer(custId) {
+  if (!confirm('Delete this customer? Associated deals will remain but orphaned.')) return;
+  
+  try {
+    await db.collection(CRM_CUSTOMERS).doc(custId).delete();
+    delete customerData[custId];
+    renderCustomers();
+    updateCustomerDropdowns();
+    showToast('Customer deleted', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function updateCustomerDropdowns() {
+  const custs = Object.values(customerData).sort((a, b) => a.name.localeCompare(b.name));
+  const opts = custs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  
+  document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Customer --</option>' + opts;
+  document.getElementById('activityCustomer').innerHTML = '<option value="">-- Select Customer --</option>' + opts;
+}
+
+function updateDealContactOptions() {
+  const custId = document.getElementById('dealCustomer').value;
+  const cust = customerData[custId];
+  const contactOpts = cust?.contacts?.map(c => `<option value="${c.id}">${c.name}</option>`).join('') || '';
+  document.getElementById('dealContact').innerHTML = '<option value="">-- Select Contact --</option>' + contactOpts;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PIPELINE / DEALS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+async function saveDeal() {
+  const title = document.getElementById('dealTitle').value.trim();
+  const custId = document.getElementById('dealCustomer').value;
+  const contactId = document.getElementById('dealContact').value;
+  const value = parseInt(document.getElementById('dealValue').value) || 0;
+  const prob = parseInt(document.getElementById('dealProbability').value) || 50;
+  const stage = document.getElementById('dealStage').value;
+  const closeDate = document.getElementById('dealCloseDate').value;
+  const notes = document.getElementById('dealNotes').value.trim();
+  
+  if (!title || !custId || value <= 0 || !stage) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+  
+  try {
+    const dealRef = db.collection(CRM_DEALS).doc();
+    
+    await dealRef.set({
+      title: title,
+      customerId: custId,
+      contactId: contactId || null,
+      value: value,
+      probability: prob,
+      stage: stage,
+      closeDate: closeDate || null,
+      notes: notes,
+      salesPersonId: currentUser,
+      createdAt: new Date(),
+      lastUpdated: new Date()
+    });
+    
+    dealData[dealRef.id] = {
+      id: dealRef.id,
+      title, customerId: custId, contactId, value, probability: prob, stage, closeDate, notes, salesPersonId: currentUser
+    };
+    
+    closeModal('addDealModal');
+    renderPipeline();
+    updateDealDropdowns();
+    renderDashboard();
+    showToast('Deal added successfully!', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function renderPipeline() {
+  const container = document.getElementById('pipelineContainer');
+  const deals = Object.values(dealData).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  
+  if (deals.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">🎯</div><p>No deals yet. Create one to start building your pipeline.</p></div>';
+    return;
+  }
+  
+  let html = '';
+  deals.forEach(deal => {
+    const cust = customerData[deal.customerId];
+    const custName = cust?.name || 'Unknown';
+    const stageColor = {
+      'Lead': '#1565C0', 'Proposal': '#F57F17', 'Negotiation': '#2E7D32',
+      'Won': '#1B5E20', 'Lost': '#C62828'
+    }[deal.stage] || '#666';
+    
+    html += `
+      <div class="card" style="border-left: 4px solid ${stageColor}; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+          <div>
+            <div style="font-weight: 600; font-size: 13px;">${deal.title}</div>
+            <div style="font-size: 11px; color: var(--t2); margin-top: 2px;">${custName}</div>
+          </div>
+          <span class="pipeline-stage" style="background: ${stageColor}; color: #fff;">${deal.stage}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: auto auto auto auto; gap: 16px; margin: 10px 0;">
+          <div>
+            <div style="font-size: 10px; color: var(--t2); text-transform: uppercase;">Value</div>
+            <div style="font-weight: 600; margin-top: 2px;">₹${formatCurrency(deal.value)}</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: var(--t2); text-transform: uppercase;">Probability</div>
+            <div style="font-weight: 600; margin-top: 2px;">${deal.probability}%</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: var(--t2); text-transform: uppercase;">Expected Close</div>
+            <div style="font-weight: 600; margin-top: 2px;">${deal.closeDate ? formatDate(deal.closeDate) : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: var(--t2); text-transform: uppercase;">Weighted Value</div>
+            <div style="font-weight: 600; margin-top: 2px;">₹${formatCurrency(deal.value * deal.probability / 100)}</div>
+          </div>
+        </div>
+        ${deal.notes ? `<div style="font-size: 11px; color: var(--t2); padding: 8px; background: #f5f5f5; border-radius: 4px; margin: 8px 0;">📝 ${deal.notes}</div>` : ''}
+        <div style="display: flex; gap: 6px; margin-top: 10px;">
+          <button class="btn sm" onclick="editDeal('${deal.id}')"><i class="ti ti-edit"></i> Edit</button>
+          <button class="btn sm danger" onclick="deleteDeal('${deal.id}')"><i class="ti ti-trash"></i> Delete</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function openAddDealModal() {
+  document.getElementById('dealTitle').value = '';
+  document.getElementById('dealCustomer').value = '';
+  document.getElementById('dealContact').value = '';
+  document.getElementById('dealValue').value = '';
+  document.getElementById('dealProbability').value = '50';
+  document.getElementById('dealStage').value = 'Proposal';
+  document.getElementById('dealCloseDate').value = '';
+  document.getElementById('dealNotes').value = '';
+  currentEditingDealId = null;
+  openModal('addDealModal');
+}
+
+async function deleteDeal(dealId) {
+  if (!confirm('Delete this deal?')) return;
+  
+  try {
+    await db.collection(CRM_DEALS).doc(dealId).delete();
+    delete dealData[dealId];
+    renderPipeline();
+    renderDashboard();
+    showToast('Deal deleted', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function updateDealDropdowns() {
+  const custId = document.getElementById('activityCustomer').value;
+  if (!custId) {
+    document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>';
+    return;
+  }
+  
+  const deals = Object.values(dealData).filter(d => d.customerId === custId && d.stage !== 'Lost');
+  const opts = deals.map(d => `<option value="${d.id}">${d.title}</option>`).join('');
+  document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' + opts;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIVITY MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+async function saveActivity() {
+  const type = document.getElementById('activityType').value;
+  const custId = document.getElementById('activityCustomer').value;
+  const dealId = document.getElementById('activityDeal').value;
+  const description = document.getElementById('activityDescription').value.trim();
+  const date = document.getElementById('activityDate').value;
+  const duration = parseInt(document.getElementById('activityDuration').value) || 15;
+  const nextPlan = document.getElementById('activityNextPlan').value.trim();
+  const nextDate = document.getElementById('activityNextDate').value;
+  
+  if (!type || !custId || !description || !date || !nextPlan || !nextDate) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+  
+  if (new Date(nextDate) <= new Date(date)) {
+    showToast('Next activity date must be after activity date', 'error');
+    return;
+  }
+  
+  try {
+    const actRef = db.collection(CRM_ACTIVITIES).doc();
+    
+    // If type is Meeting, also mark it in calendar
+    if (type === 'Meeting') {
+      const mtgRef = db.collection(CRM_MEETINGS).doc();
+      await mtgRef.set({
+        date: date,
+        customerId: custId,
+        salesPersonId: currentUser,
+        description: description,
+        createdAt: new Date()
+      });
+      meetingData[mtgRef.id] = {
+        id: mtgRef.id,
+        date, customerId: custId, salesPersonId: currentUser, description
+      };
+    }
+    
+    await actRef.set({
+      type: type,
+      customerId: custId,
+      dealId: dealId || null,
+      description: description,
+      activityDate: date,
+      duration: duration,
+      nextActivityPlan: nextPlan,
+      nextActivityDate: nextDate,
+      salesPersonId: currentUser,
+      createdAt: new Date(),
+      completedDate: null
+    });
+    
+    activityData[actRef.id] = {
+      id: actRef.id,
+      type, customerId: custId, dealId, description, activityDate: date, duration,
+      nextActivityPlan: nextPlan, nextActivityDate: nextDate, salesPersonId: currentUser
+    };
+    
+    closeModal('logActivityModal');
+    renderActivities();
+    renderDashboard();
+    renderCalendar();
+    checkBlockingConditions();
+    updateUserDisplay();
+    showToast('Activity logged! 📝', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function renderActivities() {
+  const container = document.getElementById('activitiesContainer');
+  const acts = Object.values(activityData).sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate));
+  
+  if (acts.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><p>No activities yet. Log your first one!</p></div>';
+    return;
+  }
+  
+  let html = '';
+  acts.forEach(act => {
+    const cust = customerData[act.customerId];
+    const custName = cust?.name || 'Unknown';
+    const icons = { 'Call': '📞', 'Meeting': '🤝', 'Email': '📧', 'Quote': '📄', 'Demo': '🎥', 'Follow-up': '↩️' };
+    const isFuture = new Date(act.nextActivityDate) > new Date();
+    
+    html += `
+      <div class="activity-item" style="border-left-color: ${isFuture ? '#1B5E20' : '#E65100'};">
+        <div class="activity-type">${icons[act.type] || '📌'} ${act.type}</div>
+        <div class="activity-title">${custName}</div>
+        <div class="activity-meta">
+          <span>📅 ${formatDate(act.activityDate)}</span>
+          <span>⏱️ ${act.duration} min</span>
+        </div>
+        <div style="margin-top: 6px; font-size: 12px; color: var(--t1);">${act.description}</div>
+        <div style="margin-top: 8px; padding: 8px; background: var(--pl); border-radius: 4px; font-size: 11px;">
+          <strong>Next:</strong> ${act.nextActivityPlan} <span style="float: right;">📅 ${formatDate(act.nextActivityDate)}</span>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function renderRecentActivities() {
+  const container = document.getElementById('recentActivitiesContainer');
+  const acts = Object.values(activityData)
+    .sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate))
+    .slice(0, 5);
+  
+  if (acts.length === 0) {
+    container.innerHTML = '<p style="color: var(--t2); text-align: center; padding: 20px;">No activities yet</p>';
+    return;
+  }
+  
+  let html = '';
+  acts.forEach(act => {
+    const cust = customerData[act.customerId];
+    const icons = { 'Call': '📞', 'Meeting': '🤝', 'Email': '📧', 'Quote': '📄', 'Demo': '🎥', 'Follow-up': '↩️' };
+    html += `
+      <div style="padding: 8px; border-bottom: 0.5px solid var(--bd); font-size: 11px;">
+        <span style="color: var(--p); font-weight: 600;">${icons[act.type]} ${act.type}</span> with <strong>${cust?.name}</strong> on ${formatDate(act.activityDate)}
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function openLogActivityModal() {
+  document.getElementById('activityType').value = '';
+  document.getElementById('activityCustomer').value = '';
+  document.getElementById('activityDeal').value = '';
+  document.getElementById('activityDescription').value = '';
+  document.getElementById('activityDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('activityDuration').value = '';
+  document.getElementById('activityNextPlan').value = '';
+  document.getElementById('activityNextDate').value = '';
+  currentEditingCustomerId = null;
+  openModal('logActivityModal');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MEETING CALENDAR
+// ═══════════════════════════════════════════════════════════════════════════
+function renderCalendar() {
+  const weekStart = selectedWeekStart;
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    weekDays.push(d);
+  }
+  
+  // Count meetings for this week
+  const weekMeetings = weekDays.map(day => {
+    const dayStr = day.toISOString().split('T')[0];
+    return Object.values(meetingData).filter(m => m.date === dayStr).length;
+  });
+  const totalMeetings = weekMeetings.reduce((a, b) => a + b, 0);
+  
+  document.getElementById('thisWeekMeetings').textContent = totalMeetings;
+  document.getElementById('thisWeekLabel').textContent = isCurrentWeek(weekStart) ? 'This Week' : formatDate(weekStart) + ' - ' + formatDate(weekEnd);
+  
+  // Alert for under-target
+  const alertContainer = document.getElementById('meetingAlert');
+  if (totalMeetings < 8) {
+    alertContainer.innerHTML = `
+      <div class="alert warning">
+        <i class="ti ti-alert-triangle"></i> Only ${totalMeetings} meetings scheduled for this week. Target is 8. Schedule ${8 - totalMeetings} more!
+      </div>
+    `;
+  } else {
+    alertContainer.innerHTML = `
+      <div class="alert success">
+        <i class="ti ti-check"></i> Great! You've met your weekly target of 8 meetings. Keep it up! 🎉
+      </div>
+    `;
+  }
+  
+  // Render calendar
+  let html = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;">';
+  weekDays.forEach((day, idx) => {
+    const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = day.getDate();
+    const dayStr = day.toISOString().split('T')[0];
+    const meetings = Object.values(meetingData).filter(m => m.date === dayStr);
+    
+    html += `
+      <div style="text-align: center;">
+        <div style="font-size: 10px; font-weight: 600; color: var(--t2); margin-bottom: 4px;">${dayName}</div>
+        <div style="aspect-ratio: 1; border: 0.5px solid var(--bd); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; ${meetings.length > 0 ? 'background: var(--p); color: #fff;' : 'hover: background: var(--pl);'}">
+          <div style="font-weight: 600; font-size: 16px;">${dayNum}</div>
+          <div style="font-size: 10px; margin-top: 2px; font-weight: 600;">${meetings.length} 📅</div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  document.getElementById('meetingCalendarView').innerHTML = html;
+}
+
+function getMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+}
+
+function isCurrentWeek(weekStart) {
+  const today = new Date();
+  const monday = getMonday(today);
+  return weekStart.toISOString().split('T')[0] === monday.toISOString().split('T')[0];
+}
+
+function prevWeek() {
+  selectedWeekStart.setDate(selectedWeekStart.getDate() - 7);
+  renderCalendar();
+}
+
+function nextWeek() {
+  selectedWeekStart.setDate(selectedWeekStart.getDate() + 7);
+  renderCalendar();
+}
+
+function currentWeek() {
+  selectedWeekStart = getMonday(new Date());
+  renderCalendar();
+}
+
+function getWeeklyQuota() {
+  const weekStart = getMonday(new Date());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  
+  let completed = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const dayStr = d.toISOString().split('T')[0];
+    if (Object.values(meetingData).some(m => m.date === dayStr)) {
+      completed++;
+    }
+  }
+  
+  return { completed, target: 8 };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUARTERLY TARGETS
+// ═══════════════════════════════════════════════════════════════════════════
+function getQuarter(date = new Date()) {
+  const month = date.getMonth();
+  return Math.floor(month / 3) + 1;
+}
+
+function getQuarterYear(quarter = getQuarter()) {
+  const year = new Date().getFullYear();
+  return `Q${quarter}-${year}`;
+}
+
+async function saveTargets() {
+  const quarter = getQuarter();
+  const qKey = getQuarterYear(quarter);
+  const revenue = parseInt(document.getElementById('targetRevenue').value) || 0;
+  const billing = parseInt(document.getElementById('targetBilling').value) || 0;
+  const margin = parseFloat(document.getElementById('targetMargin').value) || 0;
+  
+  if (revenue <= 0 || billing <= 0 || margin <= 0) {
+    showToast('Please enter valid targets', 'error');
+    return;
+  }
+  
+  try {
+    const existingTarget = Object.values(targetData).find(t => t.quarter === quarter && t.salesPersonId === currentUser);
+    
+    if (existingTarget) {
+      await db.collection(CRM_TARGETS).doc(existingTarget.id).update({
+        revenueTarget: revenue,
+        billingTarget: billing,
+        marginTarget: margin,
+        updatedAt: new Date()
+      });
+      targetData[existingTarget.id] = { ...existingTarget, revenueTarget: revenue, billingTarget: billing, marginTarget: margin };
+    } else {
+      const tgtRef = db.collection(CRM_TARGETS).doc();
+      await tgtRef.set({
+        quarter: quarter,
+        year: new Date().getFullYear(),
+        revenueTarget: revenue,
+        billingTarget: billing,
+        marginTarget: margin,
+        revenueActual: 0,
+        billingActual: 0,
+        marginActual: 0,
+        salesPersonId: currentUser,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      targetData[tgtRef.id] = {
+        id: tgtRef.id,
+        quarter, revenueTarget: revenue, billingTarget: billing, marginTarget: margin,
+        revenueActual: 0, billingActual: 0, marginActual: 0, salesPersonId: currentUser
+      };
+    }
+    
+    closeModal('setTargetModal');
+    renderTargets();
+    renderDashboard();
+    showToast('Targets saved!', 'success');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function renderTargets() {
+  const container = document.getElementById('targetsContainer');
+  const quarter = getQuarter();
+  const qYear = new Date().getFullYear();
+  
+  const target = Object.values(targetData).find(t => t.quarter === quarter && t.year === qYear && t.salesPersonId === currentUser);
+  
+  document.getElementById('currentQuarter').textContent = quarter;
+  document.getElementById('targetQuarterDisplay').textContent = quarter;
+  
+  if (!target) {
+    container.innerHTML = `
+      <div class="empty" style="padding: 40px;">
+        <div class="empty-icon">🎯</div>
+        <p>No targets set for Q${quarter}. Set your quarterly targets to track progress!</p>
+        <button class="btn primary" onclick="openSetTargetModal()" style="margin-top: 12px;"><i class="ti ti-plus"></i> Set Targets Now</button>
+      </div>
+    `;
+    return;
+  }
+  
+  // Calculate actuals from deals won this quarter
+  let actualRevenue = 0, actualBilling = 0;
+  Object.values(dealData).forEach(deal => {
+    if (deal.stage === 'Won' && deal.createdAt) {
+      const dealQuarter = getQuarter(new Date(deal.createdAt));
+      if (dealQuarter === quarter) {
+        actualRevenue += deal.value;
+        actualBilling += deal.value * 0.95; // Assume 95% billing rate
+      }
+    }
+  });
+  
+  const revenuePct = Math.round(actualRevenue / target.revenueTarget * 100);
+  const billingPct = Math.round(actualBilling / target.billingTarget * 100);
+  
+  let html = `
+    <div class="alert" style="background: var(--pl); border-color: var(--p); margin-bottom: 16px;">
+      Q${quarter} Progress Tracking | Actual Revenue: ₹${formatCurrency(actualRevenue)} / Target: ₹${formatCurrency(target.revenueTarget)}
+    </div>
+    
+    <div class="target-row">
+      <span class="target-name">Revenue Target</span>
+      <div class="target-progress">
+        <div class="progress-bar" style="flex: 1;">
+          <div class="progress-fill" style="width: ${Math.min(revenuePct, 100)}%"></div>
+        </div>
+      </div>
+      <div class="target-value">₹${formatCurrency(actualRevenue)}</div>
+      <div class="target-status ${revenuePct >= 100 ? 'status-good' : revenuePct >= 70 ? 'status-warning' : 'status-danger'}">${revenuePct}%</div>
+    </div>
+    
+    <div class="target-row">
+      <span class="target-name">Billing Target</span>
+      <div class="target-progress">
+        <div class="progress-bar" style="flex: 1;">
+          <div class="progress-fill" style="width: ${Math.min(billingPct, 100)}%"></div>
+        </div>
+      </div>
+      <div class="target-value">₹${formatCurrency(actualBilling)}</div>
+      <div class="target-status ${billingPct >= 100 ? 'status-good' : billingPct >= 70 ? 'status-warning' : 'status-danger'}">${billingPct}%</div>
+    </div>
+    
+    <div class="target-row">
+      <span class="target-name">Target Margin</span>
+      <div class="target-progress" style="flex: 1;">
+        <span style="font-size: 12px; color: var(--t2);">${target.marginTarget}%</span>
+      </div>
+      <div class="target-value">—</div>
+      <div class="target-status">Target</div>
+    </div>
+    
+    <button class="btn primary" onclick="openSetTargetModal()" style="margin-top: 14px;"><i class="ti ti-edit"></i> Update Targets</button>
+  `;
+  
+  container.innerHTML = html;
+}
+
+function openSetTargetModal() {
+  const quarter = getQuarter();
+  const target = Object.values(targetData).find(t => t.quarter === quarter && t.salesPersonId === currentUser);
+  
+  document.getElementById('targetRevenue').value = target?.revenueTarget || '';
+  document.getElementById('targetBilling').value = target?.billingTarget || '';
+  document.getElementById('targetMargin').value = target?.marginTarget || '';
+  openModal('setTargetModal');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  // Stats
+  document.getElementById('statCustomers').textContent = Object.keys(customerData).length;
+  
+  const activeDeals = Object.values(dealData).filter(d => d.stage !== 'Won' && d.stage !== 'Lost').length;
+  document.getElementById('statDeals').textContent = activeDeals;
+  
+  const pipelineValue = Object.values(dealData)
+    .filter(d => d.stage !== 'Won' && d.stage !== 'Lost')
+    .reduce((sum, d) => sum + (d.value * d.probability / 100), 0);
+  document.getElementById('statPipeline').textContent = '₹' + formatCurrency(pipelineValue);
+  
+  const quota = getWeeklyQuota();
+  document.getElementById('statMeetingsWeek').textContent = `${quota.completed}/8`;
+  
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentActivities = Object.values(activityData)
+    .filter(a => new Date(a.activityDate) >= thirtyDaysAgo).length;
+  document.getElementById('statActivitiesMonth').textContent = recentActivities;
+  
+  const wonValue = Object.values(dealData)
+    .filter(d => d.stage === 'Won')
+    .reduce((sum, d) => sum + d.value, 0);
+  document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
+  
+  // Pipeline chart
+  const stages = ['Lead', 'Proposal', 'Negotiation', 'Won'];
+  const stageCounts = stages.map(s => Object.values(dealData).filter(d => d.stage === s).length);
+  const stageValues = stages.map(s => 
+    Object.values(dealData)
+      .filter(d => d.stage === s)
+      .reduce((sum, d) => sum + d.value, 0)
+  );
+  
+  const ctx = document.getElementById('pipelineChart').getContext('2d');
+  if (pipelineChart) pipelineChart.destroy();
+  pipelineChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: stages,
+      datasets: [{
+        label: 'Deal Value (₹)',
+        data: stageValues,
+        backgroundColor: ['#1565C0', '#F57F17', '#2E7D32', '#1B5E20'],
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => '₹' + formatCurrency(v) }
+        }
+      }
+    }
+  });
+  
+  // Recent activities
+  renderRecentActivities();
+  
+  // Alerts
+  const alertsContainer = document.getElementById('alertsContainer');
+  let alerts = '';
+  
+  if (quota.completed < 8) {
+    alerts += `
+      <div class="alert warning">
+        <i class="ti ti-alert-triangle"></i> <strong>Weekly Target Not Met:</strong> You have ${quota.completed}/8 meetings this week. Schedule ${8 - quota.completed} more!
+      </div>
+    `;
+  }
+  
+  const overdueActivities = Object.values(activityData).filter(a => new Date(a.nextActivityDate) <= new Date() && !a.completedDate);
+  if (overdueActivities.length > 0) {
+    alerts += `
+      <div class="alert danger">
+        <i class="ti ti-alert-circle"></i> <strong>Overdue Activities:</strong> You have ${overdueActivities.length} overdue follow-up(s). Check Activities tab!
+      </div>
+    `;
+  }
+  
+  alertsContainer.innerHTML = alerts || '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById('tab-' + tabName).classList.add('active');
+  document.querySelector(`[onclick*="'${tabName}'"]`).classList.add('active');
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function formatCurrency(val) {
+  return (val / 100000).toFixed(2) + 'L';
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function generateId() {
+  return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', initializeAuth);
+window.addEventListener('load', initializeAuth);
+</script>
+
+</body>
+</html>
