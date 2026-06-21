@@ -583,6 +583,9 @@
 </head>
 <body>
 
+  <!-- Toast Notifications -->
+  <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
+
   <div class="container">
     <!-- HEADER -->
     <div class="header">
@@ -2065,6 +2068,10 @@
     
     function showToast(msg, type = 'success') {
       const container = document.getElementById('toastContainer');
+      if (!container) {
+        console.warn('Toast container not found, skipping notification:', msg);
+        return;
+      }
       const toast = document.createElement('div');
       toast.className = 'toast ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
       toast.textContent = msg;
