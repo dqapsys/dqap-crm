@@ -484,16 +484,31 @@
     .calendar {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
+    }
+    
+    .calendar thead {
+      background: var(--bg);
+    }
+    
+    .calendar th {
+      text-align: center;
+      padding: 12px 8px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--bd);
+      font-size: 12px;
     }
     
     .calendar td {
       border: 0.5px solid var(--bd);
       padding: 8px;
-      min-height: 80px;
+      height: 100px;
       vertical-align: top;
       background: #fff;
       cursor: pointer;
       transition: background 0.15s;
+      word-wrap: break-word;
+      overflow: hidden;
     }
     
     .calendar td:hover {
@@ -521,6 +536,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: block;
     }
     
     .meeting-detail {
@@ -918,13 +934,12 @@
     // FIREBASE CONFIG & INITIALIZATION
     // ═══════════════════════════════════════════════════════════════════════════
     const firebaseConfig = {
-      apiKey: "AIzaSyAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      authDomain: "dqap-prod.firebaseapp.com",
-      projectId: "dqap-prod",
-      storageBucket: "dqap-prod.appspot.com",
-      messagingSenderId: "xxxxxxxxxx",
-      appId: "1:xxxxxxxxxx:web:xxxxxxxxxxxxxxxx",
-      measurementId: "G-XXXXXXXXXX"
+      apiKey: "AIzaSyBV2ZQwfqvgPyzLz75wsSIg9N5gjPHY-R8",
+      authDomain: "dqap-wiki.firebaseapp.com",
+      projectId: "dqap-wiki",
+      storageBucket: "dqap-wiki.firebasestorage.app",
+      messagingSenderId: "932523956178",
+      appId: "1:932523956178:web:cc83a8e7369eaa80649a0b"
     };
     
     let app, db, auth;
@@ -1314,20 +1329,28 @@
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const daysInPrevMonth = new Date(year, month, 0).getDate();
       
-      let html = '<tr>';
+      let html = '<thead><tr>';
       const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       dayLabels.forEach(label => {
-        html += `<th style="text-align: center; padding: 10px; font-weight: 600; background: var(--bg);">${label}</th>`;
+        html += `<th>${label}</th>`;
       });
-      html += '</tr><tr>';
+      html += '</tr></thead><tbody><tr>';
+      
+      let cellCount = 0;
       
       // Previous month days
       for (let i = firstDay - 1; i >= 0; i--) {
         html += `<td class="other-month"><div class="day-num">${daysInPrevMonth - i}</div></td>`;
+        cellCount++;
       }
       
       // Current month days
       for (let day = 1; day <= daysInMonth; day++) {
+        if (cellCount === 7) {
+          html += '</tr><tr>';
+          cellCount = 0;
+        }
+        
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayActivities = Object.values(activityData).filter(a => a.activityDate === dateStr);
         
@@ -1339,23 +1362,22 @@
         });
         
         if (dayActivities.length > 3) {
-          html += `<div class="event" style="font-size: 9px;">+${dayActivities.length - 3} more</div>`;
+          html += `<div class="event" style="font-size: 9px;">+${dayActivities.length - 3}</div>`;
         }
         
         html += '</td>';
-        
-        if ((day + firstDay) % 7 === 0 && day !== daysInMonth) {
-          html += '</tr><tr>';
-        }
+        cellCount++;
       }
       
       // Next month days
-      const remaining = 42 - (firstDay + daysInMonth);
-      for (let i = 1; i <= remaining; i++) {
-        html += `<td class="other-month"><div class="day-num">${i}</div></td>`;
+      while (cellCount > 0 && cellCount < 7) {
+        const nextDay = cellCount === 0 ? 1 : (7 - cellCount + 1);
+        for (let i = nextDay; cellCount < 7; i++, cellCount++) {
+          html += `<td class="other-month"><div class="day-num">${i}</div></td>`;
+        }
       }
       
-      html += '</tr>';
+      html += '</tr></tbody>';
       document.getElementById('calendarTable').innerHTML = html;
     }
     
