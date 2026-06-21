@@ -585,7 +585,7 @@
       <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-home"></i> Dashboard</button>
       <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Leads & Customers</button>
       <button class="tab-btn" onclick="switchTab('deals')"><i class="ti ti-briefcase"></i> Deals</button>
-      <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Calendar</button>
+      <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
       <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-target"></i> Targets</button>
       <button class="tab-btn" onclick="switchTab('activities')"><i class="ti ti-notes"></i> Activities</button>
     </div>
@@ -918,19 +918,16 @@
     // FIREBASE CONFIG & INITIALIZATION
     // ═══════════════════════════════════════════════════════════════════════════
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
+      apiKey: "AIzaSyAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       authDomain: "dqap-prod.firebaseapp.com",
       projectId: "dqap-prod",
       storageBucket: "dqap-prod.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID",
-      measurementId: "YOUR_MEASUREMENT_ID"
+      messagingSenderId: "xxxxxxxxxx",
+      appId: "1:xxxxxxxxxx:web:xxxxxxxxxxxxxxxx",
+      measurementId: "G-XXXXXXXXXX"
     };
     
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    
+    let app, db, auth;
     let currentUser = null;
     let customerData = {};
     let dealData = {};
@@ -938,25 +935,103 @@
     let targetData = {};
     let pipelineChart = null;
     let currentCalendarDate = new Date();
+    let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
     
     const CRM_CUSTOMERS = 'dqap_crm_customers';
     const CRM_DEALS = 'dqap_crm_deals';
     const CRM_ACTIVITIES = 'dqap_crm_activities';
     const CRM_TARGETS = 'dqap_crm_targets';
     
+    // Safe Firebase initialization
+    try {
+      app = firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      auth = firebase.auth();
+    } catch (err) {
+      console.error('Firebase init error:', err);
+      document.querySelector('.header h1').innerHTML = '<i class="ti ti-alert-circle"></i> CRM Setup Required';
+      document.querySelector('.header p').textContent = 'Please configure Firebase credentials in the HTML file.';
+    }
+    
+    function getWeekStart() {
+      const d = new Date();
+      d.setDate(d.getDate() - d.getDay());
+      return d.toISOString().split('T')[0];
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION
     // ═══════════════════════════════════════════════════════════════════════════
     function initializeAuth() {
-      auth.onAuthStateChanged(async (user) => {
+      if (!auth) {
+        showToast('Firebase not configured', 'error');
+        setupDemoMode();
+        return;
+      }
+      
+      const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        const headerLoading = document.querySelector('.header p');
+        
         if (user) {
           currentUser = user.uid;
           document.getElementById('userDisplay').textContent = user.email || user.displayName || 'User';
-          loadAllData();
+          headerLoading.textContent = 'Professional sales pipeline, activity tracking & target management';
+          
+          try {
+            await loadAllData();
+            renderDashboard();
+            renderCustomers();
+            renderDeals();
+            renderCalendar();
+            renderTargets();
+            renderActivities();
+          } catch (err) {
+            console.error('Load error:', err);
+            showToast('Error loading data: ' + err.message, 'error');
+            headerLoading.textContent = 'Error: Could not load data. Check Firestore permissions.';
+          }
         } else {
-          window.location.href = '/login'; // Redirect to login if not authenticated
+          headerLoading.textContent = 'Demo Mode – No live data';
+          setupDemoMode();
         }
+      }, (error) => {
+        console.error('Auth error:', error);
+        document.querySelector('.header p').textContent = 'Auth error: ' + error.message;
+        setupDemoMode();
       });
+    }
+    
+    // Demo mode for testing without Firebase
+    function setupDemoMode() {
+      currentUser = 'demo_user';
+      document.getElementById('userDisplay').textContent = 'Demo User';
+      
+      // Add some sample data
+      customerData = {
+        'c1': { id: 'c1', name: 'Indian Oil Corporation', contact: 'Raj Kumar', email: 'raj@iocl.in', phone: '+91-11-2334-5678', industry: 'Oil & Gas', notes: 'Large account' },
+        'c2': { id: 'c2', name: 'JSW Steel', contact: 'Priya Singh', email: 'priya@jsw.in', phone: '+91-22-4040-5678', industry: 'Steel', notes: 'Quarterly meetings' }
+      };
+      
+      dealData = {
+        'd1': { id: 'd1', title: 'PA System Installation - Delhi Plant', customerId: 'c1', value: 500000, stage: 'Negotiations', probability: 65, closeDate: '2025-03-15', notes: 'Waiting for technical approval', salesPersonId: currentUser, createdAt: new Date() },
+        'd2': { id: 'd2', title: 'Fire Detection System - Plant 2', customerId: 'c2', value: 750000, stage: 'Bid Submission', probability: 45, closeDate: '2025-02-28', notes: '', salesPersonId: currentUser, createdAt: new Date() }
+      };
+      
+      activityData = {
+        'a1': { id: 'a1', activityType: 'Call', dealId: 'd1', activityDate: new Date().toISOString().split('T')[0], activityTime: '10:00', description: 'Discussed technical specs', nextActivityDate: null, salesPersonId: currentUser }
+      };
+      
+      targetData = {
+        't1': { id: 't1', quarter: 1, year: 2025, revenueTarget: 2000000, billingTarget: 1900000, annualRevenueTarget: 8000000, annualBillingTarget: 7600000, marginTarget: 22, salesPersonId: currentUser }
+      };
+      
+      populateCustomerDropdowns();
+      renderDashboard();
+      renderCustomers();
+      renderDeals();
+      renderCalendar();
+      renderTargets();
+      renderActivities();
     }
     
     async function loadAllData() {
@@ -1630,13 +1705,8 @@
         .reduce((sum, d) => sum + (d.value * d.probability / 100), 0);
       document.getElementById('statPipeline').textContent = '₹' + formatCurrency(pipelineValue);
       
-      const thisWeekActivities = Object.values(activityData).filter(a => {
-        const actDate = new Date(a.activityDate);
-        const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        return actDate >= weekStart;
-      }).length;
-      document.getElementById('statMeetingsWeek').textContent = `${thisWeekActivities}/8`;
+      const quotaStatus = getMeetingQuotaStatus();
+      document.getElementById('statMeetingsWeek').textContent = `${quotaStatus.new + quotaStatus.existing}/4`;
       
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -1689,10 +1759,17 @@
       const alertsContainer = document.getElementById('alertsContainer');
       let alerts = '';
       
-      if (thisWeekActivities < 8) {
+      // Meeting quota alert
+      if (!quotaStatus.quotaMet) {
         alerts += `
           <div class="alert warning">
-            <i class="ti ti-alert-triangle"></i> <strong>Weekly Target Not Met:</strong> You have ${thisWeekActivities}/8 activities this week. Schedule ${8 - thisWeekActivities} more!
+            <i class="ti ti-alert-triangle"></i> <strong>Meeting Quota:</strong> This week: ${quotaStatus.new}/2 new customers, ${quotaStatus.existing}/2 existing. Need ${quotaStatus.totalRemaining} more!
+          </div>
+        `;
+      } else {
+        alerts += `
+          <div class="alert success">
+            <i class="ti ti-check"></i> <strong>Meeting Quota Met!</strong> Completed: 2 new customers, 2 existing customers this week.
           </div>
         `;
       }
@@ -1707,6 +1784,56 @@
       }
       
       alertsContainer.innerHTML = alerts || '';
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MEETING QUOTA TRACKING (2 new + 2 existing customers per week)
+    // ═══════════════════════════════════════════════════════════════════════════
+    function updateMeetingQuota() {
+      const weekStart = getWeekStart();
+      
+      // Reset if new week
+      if (weekStart !== meetingQuota.weekStart) {
+        meetingQuota = { new: 0, existing: 0, weekStart };
+      }
+      
+      // Count meetings by customer type this week
+      let newCount = 0, existingCount = 0;
+      Object.values(activityData).forEach(activity => {
+        if (activity.activityDate >= weekStart && (activity.activityType === 'Meeting' || activity.activityType === 'Call' || activity.activityType === 'Site Visit')) {
+          const deal = dealData[activity.dealId];
+          if (!deal) return;
+          
+          const customer = customerData[deal.customerId];
+          if (!customer) return;
+          
+          // New customer = created this week or no deals before
+          const custCreated = new Date(customer.createdAt || new Date()).toISOString().split('T')[0];
+          const isNew = custCreated >= weekStart && Object.values(dealData).filter(d => d.customerId === customer.id).length === 0;
+          
+          if (isNew) newCount++;
+          else existingCount++;
+        }
+      });
+      
+      meetingQuota.new = newCount;
+      meetingQuota.existing = existingCount;
+    }
+    
+    function getMeetingQuotaStatus() {
+      updateMeetingQuota();
+      const newRemaining = Math.max(0, 2 - meetingQuota.new);
+      const existingRemaining = Math.max(0, 2 - meetingQuota.existing);
+      const totalRemaining = newRemaining + existingRemaining;
+      
+      return {
+        new: meetingQuota.new,
+        existing: meetingQuota.existing,
+        newRemaining,
+        existingRemaining,
+        totalRemaining,
+        quotaMet: meetingQuota.new >= 2 && meetingQuota.existing >= 2
+      };
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1726,6 +1853,16 @@
     function closeModal(id) {
       document.getElementById(id).classList.remove('active');
     }
+    
+    // Escape key closes any open modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        const activeModals = document.querySelectorAll('.modal.active');
+        activeModals.forEach(modal => {
+          modal.classList.remove('active');
+        });
+      }
+    });
     
     function showToast(msg, type = 'success') {
       const container = document.getElementById('toastContainer');
