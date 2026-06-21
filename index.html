@@ -815,7 +815,7 @@
   <button class="tab-btn" onclick="switchTab('pipeline')"><i class="ti ti-activity"></i> Pipeline</button>
   <button class="tab-btn" onclick="switchTab('activities')"><i class="ti ti-history"></i> Activities</button>
   <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
-  <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-chart-bar"></i> Targets</button>
+  <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-chart-bar"></i> Quarterly Targets</button>
 </div>
 
 <!-- DASHBOARD TAB -->
@@ -938,7 +938,7 @@
         <button class="btn sm" onclick="currentWeek()">This Week</button>
         <button class="btn sm" onclick="nextWeek()"><i class="ti ti-chevron-right"></i></button>
       </div>
-      <div id="meetingCalendarView" style="cursor: pointer;"></div>
+      <div id="meetingCalendarView"></div>
     </div>
     
     <div class="divider"></div>
@@ -959,22 +959,12 @@
   </div>
 </div>
 
-<!-- TARGETS TAB (Quarterly + Annual) -->
+<!-- QUARTERLY TARGETS TAB -->
 <div id="tab-targets" class="tab-content">
   <div class="card">
     <div class="card-header">
-      <span>Targets & Progress Monitoring</span>
+      <span>Quarterly Targets (Q<span id="currentQuarter">1</span>)</span>
       <button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Set Targets</button>
-    </div>
-    
-    <!-- Target Type Selector -->
-    <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--bd); padding-bottom: 12px;">
-      <button class="btn" id="btn-quarterly" onclick="switchTargetView('quarterly')" style="background: var(--p); color: #fff; border-color: var(--p);">
-        <i class="ti ti-calendar-quarter"></i> Quarterly (Q<span id="displayQuarter">1</span>)
-      </button>
-      <button class="btn" id="btn-annual" onclick="switchTargetView('annual')" style="border-color: var(--bds);">
-        <i class="ti ti-calendar-year"></i> Annual
-      </button>
     </div>
     
     <div id="targetsContainer"></div>
@@ -1133,41 +1123,13 @@
     
     <div class="form-group">
       <label>Current Stage *</label>
-    <div class="form-group">
-      <label>Current Stage *</label>
-      <select id="dealStage" onchange="toggleLostReason()">
+      <select id="dealStage">
         <option value="Lead">Lead</option>
-        <option value="Suspect">Suspect</option>
-        <option value="Prospect">Prospect</option>
-        <option value="Tender Submission">Tender Submission</option>
-        <option value="Bid Submission">Bid Submission</option>
-        <option value="Technical Evaluation">Technical Evaluation</option>
-        <option value="Negotiations" selected>Negotiations</option>
-        <option value="Close">Close</option>
-        <option value="Order">Order (Won)</option>
+        <option value="Proposal" selected>Proposal</option>
+        <option value="Negotiation">Negotiation</option>
+        <option value="Won">Won</option>
         <option value="Lost">Lost</option>
-        <option value="Engineering Approvals">Engineering Approvals</option>
-        <option value="Billed">Billed</option>
       </select>
-    </div>
-
-    <!-- LOST REASON FIELDS (Hidden by default) -->
-    <div id="lostReasonGroup" style="display: none;">
-      <div class="form-group">
-        <label>Reason for Loss *</label>
-        <select id="dealLossReason" onchange="toggleCustomLossReason()">
-          <option value="">-- Select Reason --</option>
-          <option value="Pricing">Pricing</option>
-          <option value="Withdrawn">Withdrawn</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      
-      <div class="form-group" id="customLossGroup" style="display: none;">
-        <label>Please specify reason</label>
-        <textarea id="dealLossDetails" placeholder="Enter custom reason for loss..."></textarea>
-      </div>
-    </div>
     </div>
     
     <div class="form-group">
@@ -1255,105 +1217,36 @@
   </div>
 </div>
 
-<!-- SET TARGETS MODAL (Quarterly + Annual) -->
+<!-- SET TARGETS MODAL -->
 <div id="setTargetModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <span>Set Targets</span>
+      <span>Set Quarterly Targets (Q<span id="targetQuarterDisplay">1</span>)</span>
       <button class="modal-close" onclick="closeModal('setTargetModal')"><i class="ti ti-x"></i></button>
     </div>
     
-    <!-- Target Period Selector -->
-    <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--bd); padding-bottom: 12px;">
-      <button class="btn" id="btn-modal-quarterly" onclick="switchModalTargetType('quarterly')" style="background: var(--p); color: #fff; border-color: var(--p);">
-        <i class="ti ti-calendar-quarter"></i> Quarterly (Q<span id="modalQuarter">1</span>)
-      </button>
-      <button class="btn" id="btn-modal-annual" onclick="switchModalTargetType('annual')" style="border-color: var(--bds);">
-        <i class="ti ti-calendar-year"></i> Annual
-      </button>
+    <div class="form-group">
+      <label>Revenue Target (₹) *</label>
+      <input type="number" id="targetRevenue" placeholder="5000000" min="0" step="10000">
     </div>
     
-    <!-- Quarterly Targets Section -->
-    <div id="quarterly-targets-section">
-      <div class="alert warning" style="margin-bottom: 16px;">
-        <i class="ti ti-info-circle"></i> Set targets for Q<span id="quarterDisplay">1</span> <span id="yearDisplay">2026</span>
-      </div>
-      
-      <div class="form-group">
-        <label>Revenue Target (₹) *</label>
-        <input type="number" id="targetRevenue" placeholder="5000000" min="0" step="10000">
-      </div>
-      
-      <div class="form-group">
-        <label>Billing Target (₹) *</label>
-        <input type="number" id="targetBilling" placeholder="4000000" min="0" step="10000">
-      </div>
-      
-      <div class="form-group">
-        <label>Gross Margin Target (%) *</label>
-        <input type="number" id="targetMargin" placeholder="35" min="0" max="100" step="0.1">
-      </div>
+    <div class="form-group">
+      <label>Billing Target (₹) *</label>
+      <input type="number" id="targetBilling" placeholder="4000000" min="0" step="10000">
     </div>
     
-    <!-- Annual Targets Section (Hidden by default) -->
-    <div id="annual-targets-section" style="display: none;">
-      <div class="alert warning" style="margin-bottom: 16px;">
-        <i class="ti ti-info-circle"></i> Set targets for full year <span id="annualYearDisplay">2026</span>
-      </div>
-      
-      <div class="form-group">
-        <label>Annual Revenue Target (₹) *</label>
-        <input type="number" id="targetAnnualRevenue" placeholder="20000000" min="0" step="10000">
-      </div>
-      
-      <div class="form-group">
-        <label>Annual Billing Target (₹) *</label>
-        <input type="number" id="targetAnnualBilling" placeholder="16000000" min="0" step="10000">
-      </div>
-      
-      <div class="form-group">
-        <label>Annual Gross Margin Target (%) *</label>
-        <input type="number" id="targetAnnualMargin" placeholder="35" min="0" max="100" step="0.1">
-      </div>
+    <div class="form-group">
+      <label>Gross Margin Target (%) *</label>
+      <input type="number" id="targetMargin" placeholder="35" min="0" max="100" step="0.1">
+    </div>
+    
+    <div class="alert warning" style="margin-top: 16px;">
+      <i class="ti ti-info-circle"></i> These targets will be used to track your progress and flag shortfalls.
     </div>
     
     <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
       <button class="btn" onclick="closeModal('setTargetModal')">Cancel</button>
       <button class="btn primary" onclick="saveTargets()"><i class="ti ti-check"></i> Save Targets</button>
-    </div>
-  </div>
-</div>
-<!-- MEETING DETAILS MODAL -->
-<div id="meetingDetailsModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span id="meetingDetailsDate">Meetings - Monday, June 21</span>
-      <button class="modal-close" onclick="closeModal('meetingDetailsModal')"><i class="ti ti-x"></i></button>
-    </div>
-    
-    <div id="meetingDetailsContainer"></div>
-    
-    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
-      <button class="btn primary" onclick="closeModal('meetingDetailsModal')"><i class="ti ti-check"></i> Close</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- MEETING DETAILS MODAL -->
-<div id="meetingDetailsModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span id="meetingDateDisplay">Meeting Details</span>
-      <button class="modal-close" onclick="closeModal('meetingDetailsModal')"><i class="ti ti-x"></i></button>
-    </div>
-    
-    <div id="meetingDetailsContainer" style="max-height: 400px; overflow-y: auto;">
-      <!-- Meetings for selected day populated here -->
-    </div>
-    
-    <div style="margin-top: 16px; padding-top: 16px; border-top: 0.5px solid var(--bd);">
-      <button class="btn primary" onclick="closeModal('meetingDetailsModal')" style="width: 100%; justify-content: center;">Close</button>
     </div>
   </div>
 </div>
@@ -1398,8 +1291,6 @@ let targetData = {};
 let meetingData = {};
 let selectedWeekStart = getMonday(new Date());
 let pipelineChart = null;
-let currentTargetView = 'quarterly';  // 'quarterly' or 'annual'
-let currentModalTargetType = 'quarterly';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTHENTICATION
@@ -2467,83 +2358,6 @@ function generateId() {
 // ═══════════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', initializeAuth);
 window.addEventListener('load', initializeAuth);
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CRM V2.0 - NEW FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-let currentTargetView = 'quarterly';
-
-// Toggle lost reason fields when stage changes
-function toggleLostReason() {
-  const stage = document.getElementById('dealStage').value;
-  const lostGroup = document.getElementById('lostReasonGroup');
-  if (stage === 'Lost') {
-    lostGroup.style.display = 'block';
-  } else {
-    lostGroup.style.display = 'none';
-  }
-}
-
-// Toggle custom loss reason text field
-function toggleCustomLossReason() {
-  const reason = document.getElementById('dealLossReason').value;
-  const customGroup = document.getElementById('customLossGroup');
-  if (reason === 'Other') {
-    customGroup.style.display = 'block';
-  } else {
-    customGroup.style.display = 'none';
-  }
-}
-
-// Show meeting details when calendar day is clicked
-function showMeetingDetails(dateStr) {
-  const meetings = Object.values(meetingData).filter(m => m.date === dateStr);
-  const date = new Date(dateStr);
-  const dateDisplay = date.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  
-  document.getElementById('meetingDateDisplay').textContent = '📅 Meetings - ' + dateDisplay;
-  
-  let html = '';
-  if (meetings.length === 0) {
-    html = '<div class="empty"><p style="color: var(--t2);">No meetings scheduled for this day</p></div>';
-  } else {
-    html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
-    meetings.forEach((mtg, idx) => {
-      const cust = customerData[mtg.customerId];
-      const custName = cust?.name || 'Unknown';
-      const description = mtg.description || 'No details added';
-      html += '<div class="card" style="margin: 0;"><div style="font-weight: 600;">🤝 ' + custName + '</div>';
-      html += '<div style="font-size: 12px; color: var(--t1); margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;">📝 ' + description + '</div></div>';
-    });
-    html += '</div>';
-  }
-  
-  document.getElementById('meetingDetailsContainer').innerHTML = html;
-  openModal('meetingDetailsModal');
-}
-
-// Switch between quarterly and annual target views
-function switchTargetView(view) {
-  currentTargetView = view;
-  document.getElementById('btn-quarterly').style.background = view === 'quarterly' ? 'var(--p)' : 'transparent';
-  document.getElementById('btn-quarterly').style.color = view === 'quarterly' ? '#fff' : 'var(--t1)';
-  document.getElementById('btn-annual').style.background = view === 'annual' ? 'var(--p)' : 'transparent';
-  document.getElementById('btn-annual').style.color = view === 'annual' ? '#fff' : 'var(--t1)';
-  renderTargets();
-}
-
-// Switch modal target view
-function switchModalTargetView(view) {
-  document.getElementById('modal-btn-q').style.background = view === 'quarterly' ? 'var(--p)' : 'transparent';
-  document.getElementById('modal-btn-q').style.color = view === 'quarterly' ? '#fff' : 'var(--t1)';
-  document.getElementById('modal-btn-a').style.background = view === 'annual' ? 'var(--p)' : 'transparent';
-  document.getElementById('modal-btn-a').style.color = view === 'annual' ? '#fff' : 'var(--t1)';
-  
-  document.getElementById('quarterly-targets-form').style.display = view === 'quarterly' ? 'block' : 'none';
-  document.getElementById('annual-targets-form').style.display = view === 'annual' ? 'block' : 'none';
-}
-
 </script>
 
 </body>
