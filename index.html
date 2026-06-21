@@ -926,8 +926,60 @@
     </div>
   </div>
   
-  <!-- Toast Container -->
-  <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 2000;"></div>
+    <!-- AUTH MODAL (Login / Sign Up) -->
+    <div id="authModal" class="modal active">
+      <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+          <span id="authModalTitle">Login to DQAP Sales CRM</span>
+          <button class="modal-close" onclick="closeAuthModal()" style="display: none;">✕</button>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <div class="tabs" style="border-bottom: 2px solid var(--bd); margin-bottom: 16px;">
+            <button class="tab-btn active" onclick="switchAuthTab('login')" style="border-bottom: 3px solid var(--p);">Login</button>
+            <button class="tab-btn" onclick="switchAuthTab('signup')" style="border-bottom: 3px solid transparent;">Sign Up</button>
+          </div>
+        </div>
+        
+        <!-- Login Form -->
+        <div id="authLoginForm" class="tab-content active">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••">
+          </div>
+          <div id="loginError" style="color: var(--danger); font-size: 12px; margin-bottom: 12px; display: none;"></div>
+          <button class="btn primary" onclick="handleLogin()" style="width: 100%;">Login</button>
+          <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--t2);">
+            Demo account: demo@dqap.com / demo123
+          </div>
+        </div>
+        
+        <!-- Sign Up Form -->
+        <div id="authSignupForm" class="tab-content">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="signupName" placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="signupEmail" placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label>Password (min 6 chars)</label>
+            <input type="password" id="signupPassword" placeholder="••••••••" minlength="6">
+          </div>
+          <div id="signupError" style="color: var(--danger); font-size: 12px; margin-bottom: 12px; display: none;"></div>
+          <button class="btn primary" onclick="handleSignup()" style="width: 100%;">Create Account</button>
+          <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--t2);">
+            Accounts created here are for testing only
+          </div>
+        </div>
+      </div>
+    </div>
 
   <script>
     // ═══════════════════════════════════════════════════════════════════════════
@@ -975,7 +1027,47 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // AUTHENTICATION
+    // WIKI SESSION HANDOFF (Same as Debt Management)
+    // ═══════════════════════════════════════════════════════════════════════════
+    let wikiSession = null;
+    
+    function parseWikiSession() {
+      // Try URL parameter first: ?sess=... or #sess=...
+      const urlParams = new URLSearchParams(window.location.search);
+      let sessParm = urlParams.get('sess');
+      
+      if (!sessParm) {
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        sessParm = hashParams.get('sess');
+      }
+      
+      // If found in URL, use it and store in sessionStorage
+      if (sessParm) {
+        try {
+          wikiSession = JSON.parse(decodeURIComponent(sessParm));
+          sessionStorage.setItem('dqap_sess', JSON.stringify(wikiSession));
+          return wikiSession;
+        } catch (err) {
+          console.warn('Failed to parse URL session:', err);
+        }
+      }
+      
+      // Fall back to sessionStorage
+      const stored = sessionStorage.getItem('dqap_sess');
+      if (stored) {
+        try {
+          wikiSession = JSON.parse(stored);
+          return wikiSession;
+        } catch (err) {
+          console.warn('Failed to parse stored session:', err);
+        }
+      }
+      
+      return null;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUTHENTICATION (Wiki Session Handoff)
     // ═══════════════════════════════════════════════════════════════════════════
     function initializeAuth() {
       if (!auth) {
@@ -984,13 +1076,28 @@
         return;
       }
       
-      const unsubscribe = auth.onAuthStateChanged(async (user) => {
-        const headerLoading = document.querySelector('.header p');
-        
-        if (user) {
-          currentUser = user.uid;
-          document.getElementById('userDisplay').textContent = user.email || user.displayName || 'User';
-          headerLoading.textContent = 'Professional sales pipeline, activity tracking & target management';
+      // Parse Wiki session from URL or sessionStorage
+      const wikisess = parseWikiSession();
+      
+      if (!wikisess) {
+        // No Wiki session found - use Demo Mode
+        document.querySelector('.header p').textContent = 'No Wiki session. Using Demo Mode.';
+        setupDemoMode();
+        return;
+      }
+      
+      // Use Wiki username to create Firebase email: username@dqap.in
+      const wikiEmail = `${wikisess.username}@dqap.in`;
+      const wikiPassword = 'WikiSession@2025'; // Standard wiki session password
+      
+      document.querySelector('.header p').textContent = `Authenticating as ${wikisess.fullName}...`;
+      
+      // Try to sign in with Wiki credentials
+      auth.signInWithEmailAndPassword(wikiEmail, wikiPassword)
+        .then(async (userCred) => {
+          currentUser = userCred.user.uid;
+          document.getElementById('userDisplay').textContent = wikisess.fullName;
+          document.querySelector('.header p').textContent = 'Professional sales pipeline, activity tracking & target management';
           
           try {
             await loadAllData();
@@ -1000,20 +1107,50 @@
             renderCalendar();
             renderTargets();
             renderActivities();
+            showToast(`Welcome, ${wikisess.fullName}!`, 'success');
           } catch (err) {
             console.error('Load error:', err);
             showToast('Error loading data: ' + err.message, 'error');
-            headerLoading.textContent = 'Error: Could not load data. Check Firestore permissions.';
           }
-        } else {
-          headerLoading.textContent = 'Demo Mode – No live data';
-          setupDemoMode();
-        }
-      }, (error) => {
-        console.error('Auth error:', error);
-        document.querySelector('.header p').textContent = 'Auth error: ' + error.message;
-        setupDemoMode();
-      });
+        })
+        .catch(async (error) => {
+          // If sign in fails, try to create account with Wiki credentials
+          console.log('Sign in failed, attempting to create account:', error.code);
+          
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            try {
+              const userCred = await auth.createUserWithEmailAndPassword(wikiEmail, wikiPassword);
+              currentUser = userCred.user.uid;
+              document.getElementById('userDisplay').textContent = wikisess.fullName;
+              document.querySelector('.header p').textContent = 'Professional sales pipeline, activity tracking & target management';
+              
+              // Set display name to Wiki fullName
+              await userCred.user.updateProfile({ displayName: wikisess.fullName });
+              
+              try {
+                await loadAllData();
+                renderDashboard();
+                renderCustomers();
+                renderDeals();
+                renderCalendar();
+                renderTargets();
+                renderActivities();
+                showToast(`Account created and logged in as ${wikisess.fullName}!`, 'success');
+              } catch (err) {
+                console.error('Load error:', err);
+                showToast('Error loading data: ' + err.message, 'error');
+              }
+            } catch (createErr) {
+              console.error('Account creation failed:', createErr);
+              document.querySelector('.header p').textContent = 'Auth failed. Using Demo Mode.';
+              setupDemoMode();
+            }
+          } else {
+            console.error('Auth error:', error);
+            document.querySelector('.header p').textContent = 'Auth error. Using Demo Mode.';
+            setupDemoMode();
+          }
+        });
     }
     
     // Demo mode for testing without Firebase
