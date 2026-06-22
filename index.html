@@ -782,9 +782,10 @@
   <div id="addDealModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>Add Deal</span>
+        <span id="dealModalTitle">Add Deal</span>
         <button class="modal-close" onclick="closeModal('addDealModal')">✕</button>
       </div>
+      <input type="hidden" id="dealEditId">
       <div class="form-group">
         <label>Deal Title</label>
         <input type="text" id="dealTitle" placeholder="Project name">
@@ -847,7 +848,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('addDealModal')">Cancel</button>
-        <button class="btn primary" onclick="saveDeal()">Save Deal</button>
+        <button class="btn primary" id="dealSaveButton" onclick="saveDeal()">Save Deal</button>
       </div>
     </div>
   </div>
@@ -1049,7 +1050,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.1';
+    const CRM_BUILD = '20260622.2';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1648,6 +1649,9 @@
     // DEALS
     // ═══════════════════════════════════════════════════════════════════════════
     function openAddDealModal() {
+      document.getElementById('dealEditId').value = '';
+      document.getElementById('dealModalTitle').textContent = 'Add Deal';
+      document.getElementById('dealSaveButton').textContent = 'Save Deal';
       document.getElementById('dealTitle').value = '';
       document.getElementById('dealCustomer').value = '';
       document.getElementById('dealValue').value = '';
@@ -1659,6 +1663,31 @@
       document.getElementById('customLossReasonText').value = '';
       document.getElementById('lossReasonGroup').classList.remove('visible');
       document.getElementById('customLossReasonGroup').classList.remove('visible');
+      openModal('addDealModal');
+    }
+
+    function openEditDealModal(id) {
+      const deal = dealData[id];
+      if (!deal || deal.username !== currentUser) {
+        showToast('You can only edit your own deals', 'error');
+        return;
+      }
+
+      populateCustomerDropdowns();
+      document.getElementById('dealEditId').value = id;
+      document.getElementById('dealModalTitle').textContent = 'Edit Deal';
+      document.getElementById('dealSaveButton').textContent = 'Update Deal';
+      document.getElementById('dealTitle').value = deal.title || '';
+      document.getElementById('dealCustomer').value = deal.customerId || '';
+      document.getElementById('dealValue').value = deal.value || '';
+      document.getElementById('dealStage').value = deal.stage || 'Lead';
+      document.getElementById('dealProbability').value = deal.probability ?? 0;
+      document.getElementById('dealCloseDate').value = deal.closeDate || '';
+      document.getElementById('dealNotes').value = deal.notes || '';
+      document.getElementById('dealLossReason').value = deal.lossReason || '';
+      document.getElementById('customLossReasonText').value = deal.customLossReason || '';
+      document.getElementById('lossReasonGroup').classList.toggle('visible', deal.stage === 'Lost');
+      document.getElementById('customLossReasonGroup').classList.toggle('visible', deal.stage === 'Lost' && deal.lossReason === 'Other');
       openModal('addDealModal');
     }
     
@@ -1692,6 +1721,13 @@
         return;
       }
 
+      const editId = document.getElementById('dealEditId').value;
+      const existingDeal = editId ? dealData[editId] : null;
+      if (editId && (!existingDeal || existingDeal.username !== currentUser)) {
+        showToast('You can only edit your own deals', 'error');
+        return;
+      }
+
       const title = document.getElementById('dealTitle').value.trim();
       const customerId = document.getElementById('dealCustomer').value;
       const value = parseInt(document.getElementById('dealValue').value) || 0;
@@ -1709,7 +1745,6 @@
         const dealObj = {
           title, customerId, value, stage, probability, closeDate, notes,
           username: currentUser,  // Use username instead of salesPersonId
-          createdAt: new Date(),
           updatedAt: new Date()
         };
         
@@ -1728,20 +1763,30 @@
               return;
             }
             dealObj.customLossReason = customReason;
+          } else {
+            dealObj.customLossReason = null;
           }
+        } else {
+          dealObj.lossReason = null;
+          dealObj.customLossReason = null;
         }
-        
-        const dealRef = db.collection(CRM_DEALS).doc();
-        await dealRef.set(dealObj);
-        
-        dealData[dealRef.id] = { id: dealRef.id, ...dealObj };
+
+        if (editId) {
+          await db.collection(CRM_DEALS).doc(editId).update(dealObj);
+          dealData[editId] = { ...existingDeal, ...dealObj, id: editId };
+        } else {
+          const dealRef = db.collection(CRM_DEALS).doc();
+          dealObj.createdAt = new Date();
+          await dealRef.set(dealObj);
+          dealData[dealRef.id] = { id: dealRef.id, ...dealObj };
+        }
         
         populateCustomerDropdowns();
         closeModal('addDealModal');
         renderDeals();
         renderActivityDeals();
         renderDashboard();
-        showToast('Deal added!', 'success');
+        showToast(editId ? 'Deal updated!' : 'Deal added!', 'success');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -1749,7 +1794,7 @@
     
     function renderDeals() {
       const container = document.getElementById('dealsContainer');
-      const deals = Object.values(dealData);
+      const deals = Object.values(dealData).filter(deal => deal.username === currentUser);
       
       if (deals.length === 0) {
         container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No deals yet.</p></div>';
@@ -1787,6 +1832,7 @@
           
           html += `<div style="font-size: 11px; color: var(--t2);">Probability: ${d.probability}%</div>
             ${d.closeDate ? `<div style="font-size: 11px; color: var(--t2);">Close: ${formatDate(d.closeDate)}</div>` : ''}
+            <button class="btn sm" style="margin-top:9px" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>
           </div>`;
         });
         
@@ -1998,8 +2044,10 @@
       let qtrRevenue = 0, qtrBilling = 0, annualRevenue = 0, annualBilling = 0;
       Object.values(dealData).forEach(deal => {
         if (deal.stage === 'Billed' && deal.createdAt) {
-          const dealYear = new Date(deal.createdAt).getFullYear();
-          const dealQuarter = getQuarter(new Date(deal.createdAt));
+          const dealCreatedDate = toDateObject(deal.createdAt);
+          if (!dealCreatedDate) return;
+          const dealYear = dealCreatedDate.getFullYear();
+          const dealQuarter = getQuarter(dealCreatedDate);
           
           if (dealYear === year && dealQuarter === quarter) {
             qtrRevenue += deal.value;
@@ -2192,10 +2240,30 @@
       return ['updesh', 'pratim'].includes(String(username || '').toLowerCase());
     }
 
+    function toDateObject(value) {
+      if (!value) return null;
+      let date;
+      if (typeof value.toDate === 'function') {
+        date = value.toDate();
+      } else if (Number.isFinite(value.seconds)) {
+        date = new Date((value.seconds * 1000) + Math.floor((value.nanoseconds || 0) / 1000000));
+      } else {
+        date = new Date(value);
+      }
+      return Number.isFinite(date.getTime()) ? date : null;
+    }
+
+    function dateKey(value) {
+      const date = toDateObject(value);
+      if (!date) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     function firestoreTime(value) {
-      if (value?.toDate) return value.toDate().getTime();
-      const parsed = new Date(value || 0).getTime();
-      return Number.isFinite(parsed) ? parsed : 0;
+      return toDateObject(value)?.getTime() || 0;
     }
 
     async function createCrmNotification({ recipientUsername, type, activityId, dealId, dueDate, message }) {
@@ -2556,7 +2624,10 @@
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const recentActivities = Object.values(activityData)
-        .filter(a => new Date(a.activityDate) >= thirtyDaysAgo).length;
+        .filter(a => {
+          const activityDate = toDateObject(a.activityDate);
+          return activityDate && activityDate >= thirtyDaysAgo;
+        }).length;
       document.getElementById('statActivitiesMonth').textContent = recentActivities;
       
       const wonValue = Object.values(dealData)
@@ -2619,7 +2690,9 @@
         `;
       }
       
-      const overdueActivities = Object.values(activityData).filter(a => new Date(a.nextActivityDate) <= new Date() && !a.completedDate && a.nextActivityDate);
+      const todayKey = dateKey(new Date());
+      const overdueActivities = Object.values(activityData)
+        .filter(a => a.nextActivityDate && dateKey(a.nextActivityDate) <= todayKey && !a.completedDate);
       if (overdueActivities.length > 0) {
         alerts += `
           <div class="alert danger">
@@ -2645,16 +2718,17 @@
       // Count meetings by customer type this week
       let newCount = 0, existingCount = 0;
       Object.values(activityData).forEach(activity => {
-        if (activity.activityDate >= weekStart && (activity.activityType === 'Meeting' || activity.activityType === 'Call' || activity.activityType === 'Site Visit')) {
+        const activityDate = dateKey(activity.activityDate);
+        if (activity.username === currentUser && activityDate >= weekStart && (activity.activityType === 'Meeting' || activity.activityType === 'Call' || activity.activityType === 'Site Visit')) {
           const deal = dealData[activity.dealId];
           if (!deal) return;
           
           const customer = customerData[deal.customerId];
           if (!customer) return;
           
-          // New customer = created this week or no deals before
-          const custCreated = new Date(customer.createdAt || new Date()).toISOString().split('T')[0];
-          const isNew = custCreated >= weekStart && Object.values(dealData).filter(d => d.customerId === customer.id).length === 0;
+          // Firestore timestamps and imported date strings are both supported.
+          const custCreated = dateKey(customer.createdAt);
+          const isNew = !!custCreated && custCreated >= weekStart;
           
           if (isNew) newCount++;
           else existingCount++;
@@ -2745,7 +2819,8 @@
     }
     
     function formatDate(dateStr) {
-      const d = new Date(dateStr);
+      const d = toDateObject(dateStr);
+      if (!d) return '—';
       return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
     
