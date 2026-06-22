@@ -594,6 +594,7 @@
         <p>DQAP Systems – Manage Leads, Deals & Targets</p>
       </div>
       <div class="header-right">
+        <button type="button" id="crmNotificationBadge" onclick="openTaskCenter()" style="display:none;background:#D32F2F;color:#fff;border:0;border-radius:18px;padding:7px 11px;font-weight:700;cursor:pointer;margin-right:8px">🔔 <span id="crmNotificationCount">0</span></button>
         <div class="user-info" id="userDisplay">Authenticating…</div>
         <div class="user-quota" id="userQuota">Wiki session required</div>
       </div>
@@ -602,7 +603,7 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-home"></i> Dashboard</button>
-      <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Leads & Customers</button>
+      <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Contacts</button>
       <button class="tab-btn" onclick="switchTab('deals')"><i class="ti ti-briefcase"></i> Deals</button>
       <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
       <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-target"></i> Targets</button>
@@ -618,7 +619,7 @@
           <div class="stat-icon">👥</div>
           <div class="stat-content">
             <div class="stat-value" id="statCustomers">0</div>
-            <div class="stat-label">Customers</div>
+            <div class="stat-label">Contacts</div>
           </div>
         </div>
         <div class="stat">
@@ -673,8 +674,11 @@
     <div id="tab-leads" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <span>Leads & Customers</span>
-          <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Lead/Customer</button>
+          <span>Contacts</span>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn" onclick="openImportModal('contacts')"><i class="ti ti-upload"></i> Import Contacts CSV</button>
+            <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Contact</button>
+          </div>
         </div>
         <div id="customersContainer"></div>
       </div>
@@ -685,7 +689,10 @@
       <div class="card">
         <div class="card-header">
           <span>Deals Pipeline</span>
-          <button class="btn primary" onclick="openAddDealModal()"><i class="ti ti-plus"></i> Add Deal</button>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn" onclick="openImportModal('deals')"><i class="ti ti-upload"></i> Import Deals CSV</button>
+            <button class="btn primary" onclick="openAddDealModal()"><i class="ti ti-plus"></i> Add Deal</button>
+          </div>
         </div>
         <div id="dealsContainer"></div>
       </div>
@@ -724,6 +731,8 @@
           <span>Activities & Follow-ups</span>
           <button class="btn primary" onclick="openAddActivityModal()"><i class="ti ti-plus"></i> Log Activity</button>
         </div>
+        <div id="taskCenterPanel" style="display:none;margin-bottom:16px"></div>
+        <div id="activityDealsContainer" style="margin-bottom:16px"></div>
         <div id="activitiesContainer"></div>
       </div>
     </div>
@@ -735,7 +744,7 @@
   <div id="addCustomerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>Add Lead / Customer</span>
+        <span>Add Contact</span>
         <button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button>
       </div>
       <div class="form-group">
@@ -748,11 +757,11 @@
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="customerEmail" placeholder="email@company.com">
+        <input type="email" id="customerEmail" placeholder="email@company.com" required>
       </div>
       <div class="form-group">
-        <label>Phone</label>
-        <input type="tel" id="customerPhone" placeholder="+91 XXXXX XXXXX">
+        <label>Phone (digits only)</label>
+        <input type="text" id="customerPhone" inputmode="numeric" pattern="[0-9]*" maxlength="15" placeholder="919876543210" oninput="this.value=this.value.replace(/\D/g,'')">
       </div>
       <div class="form-group">
         <label>Industry</label>
@@ -781,9 +790,9 @@
         <input type="text" id="dealTitle" placeholder="Project name">
       </div>
       <div class="form-group">
-        <label>Customer</label>
+        <label>Contact / Company</label>
         <select id="dealCustomer">
-          <option value="">-- Select Customer --</option>
+          <option value="">-- Select Contact --</option>
         </select>
       </div>
       <div class="form-group">
@@ -901,7 +910,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Related Customer / Deal</label>
+        <label>Related Deal</label>
         <select id="activityDeal">
           <option value="">-- Select Deal --</option>
         </select>
@@ -909,6 +918,12 @@
       <div class="form-group">
         <label>Activity Date</label>
         <input type="date" id="activityDate">
+      </div>
+      <div class="form-group">
+        <label>Responsible Person *</label>
+        <select id="activityResponsible">
+          <option value="">-- Select Wiki User --</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Activity Time</label>
@@ -925,6 +940,53 @@
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('addActivityModal')">Cancel</button>
         <button class="btn primary" onclick="saveActivity()">Log Activity</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV Import Modal -->
+  <div id="importDataModal" class="modal">
+    <div class="modal-content" style="max-width:680px">
+      <div class="modal-header">
+        <span id="importModalTitle">Import CSV</span>
+        <button class="modal-close" onclick="closeModal('importDataModal')">✕</button>
+      </div>
+      <div style="background:var(--pl);border-left:3px solid var(--p);padding:12px;border-radius:6px;margin-bottom:14px">
+        <div style="font-weight:600;margin-bottom:6px">Required CSV format</div>
+        <code id="importSampleFormat" style="display:block;white-space:pre-wrap;font-size:11px"></code>
+      </div>
+      <div class="form-group">
+        <label>Select CSV file</label>
+        <input type="file" id="importCsvFile" accept=".csv,text/csv">
+      </div>
+      <div id="importValidationMessage" style="font-size:12px;color:var(--danger);margin-bottom:10px"></div>
+      <div class="modal-footer">
+        <button class="btn" onclick="downloadImportSample()">Download Sample CSV</button>
+        <button class="btn" onclick="closeModal('importDataModal')">Cancel</button>
+        <button class="btn primary" id="importCsvButton" onclick="importCsvData()">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Extension Request Modal -->
+  <div id="extensionRequestModal" class="modal">
+    <div class="modal-content" style="max-width:480px">
+      <div class="modal-header">
+        <span>Revise Task Due Date</span>
+        <button class="modal-close" onclick="closeModal('extensionRequestModal')">✕</button>
+      </div>
+      <input type="hidden" id="extensionActivityId">
+      <div class="form-group">
+        <label>Revised Date *</label>
+        <input type="date" id="extensionRevisedDate">
+      </div>
+      <div class="form-group">
+        <label>Reason / Remarks</label>
+        <textarea id="extensionReason" placeholder="Optional reason for extension"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('extensionRequestModal')">Cancel</button>
+        <button class="btn primary" onclick="submitExtensionRequest()">Submit</button>
       </div>
     </div>
   </div>
@@ -948,6 +1010,11 @@
     let dealData = {};
     let activityData = {};
     let targetData = {};
+    let wikiUsers = [];
+    let notificationData = {};
+    let pendingApprovalData = {};
+    let currentImportType = null;
+    let taskRefreshTimer = null;
     let pipelineChart = null;
     let currentCalendarDate = new Date();
     let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
@@ -956,6 +1023,7 @@
     const CRM_DEALS = 'dqap_crm_deals';
     const CRM_ACTIVITIES = 'dqap_crm_activities';
     const CRM_TARGETS = 'dqap_crm_targets';
+    const CRM_NOTIFICATIONS = 'dqap_crm_notifications';
     
     // Safe Firebase initialization
     try {
@@ -981,7 +1049,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260621.1';
+    const CRM_BUILD = '20260622.1';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1138,6 +1206,9 @@
             renderCalendar();
             renderTargets();
             renderActivities();
+            renderActivityDeals();
+            renderTaskCenter();
+            startTaskRefresh();
             showToast(`✅ Welcome, ${resolvedDisplayName}!`, 'success');
             console.log('✅ Auto-logged in from Wiki:', username);
           } catch (err) {
@@ -1189,6 +1260,25 @@
       }
 
       try {
+        customerData = {};
+        dealData = {};
+        activityData = {};
+        targetData = {};
+        notificationData = {};
+        pendingApprovalData = {};
+
+        const usersSnap = await db.collection('dqap_users').get();
+        wikiUsers = usersSnap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            username: String(data.username || '').trim(),
+            fullName: String(data.fullName || data.displayName || data.username || '').trim(),
+            role: data.role || (data.isAdmin ? 'admin' : 'user'),
+            active: data.active !== false && data.disabled !== true
+          };
+        }).filter(user => user.username && user.active)
+          .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
         // Load customers filtered by username
         const customersSnap = await db.collection(CRM_CUSTOMERS).where('username', '==', currentUser).get();
         customersSnap.forEach(doc => {
@@ -1209,6 +1299,29 @@
           activityData[doc.id] = { id: doc.id, ...doc.data() };
         });
         console.log(`Loaded ${activitiesSnap.size} activities for ${currentUser}`);
+
+        // Include tasks assigned to this user, even when another salesperson created them.
+        const assignedActivitiesSnap = await db.collection(CRM_ACTIVITIES)
+          .where('responsibleUsername', '==', currentUser).get();
+        assignedActivitiesSnap.forEach(doc => {
+          activityData[doc.id] = { id: doc.id, ...doc.data() };
+        });
+
+        if (isExtensionApprover()) {
+          const approvalSnap = await db.collection(CRM_ACTIVITIES)
+            .where('extensionStatus', '==', 'pending').get();
+          approvalSnap.forEach(doc => {
+            const activity = { id: doc.id, ...doc.data() };
+            pendingApprovalData[doc.id] = activity;
+            activityData[doc.id] = activity;
+          });
+        }
+
+        const notificationsSnap = await db.collection(CRM_NOTIFICATIONS)
+          .where('recipientUsername', '==', currentUser).get();
+        notificationsSnap.forEach(doc => {
+          notificationData[doc.id] = { id: doc.id, ...doc.data() };
+        });
         
         // Load targets filtered by username
         const targetsSnap = await db.collection(CRM_TARGETS).where('username', '==', currentUser).get();
@@ -1216,11 +1329,220 @@
           targetData[doc.id] = { id: doc.id, ...doc.data() };
         });
         console.log(`Loaded ${targetsSnap.size} targets for ${currentUser}`);
+
+        // Assigned activities may reference another salesperson's deal/contact.
+        const missingDealIds = [...new Set(Object.values(activityData)
+          .map(activity => activity.dealId).filter(id => id && !dealData[id]))];
+        await Promise.all(missingDealIds.map(async id => {
+          const doc = await db.collection(CRM_DEALS).doc(id).get();
+          if (doc.exists) dealData[id] = { id: doc.id, ...doc.data() };
+        }));
+
+        const missingCustomerIds = [...new Set(Object.values(dealData)
+          .map(deal => deal.customerId).filter(id => id && !customerData[id]))];
+        await Promise.all(missingCustomerIds.map(async id => {
+          const doc = await db.collection(CRM_CUSTOMERS).doc(id).get();
+          if (doc.exists) customerData[id] = { id: doc.id, ...doc.data() };
+        }));
         
         // Populate dropdowns
         populateCustomerDropdowns();
+        populateResponsibleUsers();
       } catch (err) {
         console.error('Load error:', err);
+      }
+    }
+
+    const IMPORT_SAMPLES = {
+      contacts: {
+        title: 'Import Contacts CSV',
+        csv: 'Company Name,Contact Person,Email,Phone,Industry,Notes\nABC Industries,Rahul Sharma,rahul@abc.com,919876543210,Manufacturing,Key account'
+      },
+      deals: {
+        title: 'Import Deals CSV',
+        csv: 'Deal Title,Contact Company,Deal Value,Stage,Probability,Expected Close Date,Notes\nPlant Automation,ABC Industries,500000,Prospect,50,2026-07-31,Initial discussion complete'
+      }
+    };
+
+    function openImportModal(type) {
+      currentImportType = type;
+      const sample = IMPORT_SAMPLES[type];
+      if (!sample) return;
+      document.getElementById('importModalTitle').textContent = sample.title;
+      document.getElementById('importSampleFormat').textContent = sample.csv;
+      document.getElementById('importCsvFile').value = '';
+      document.getElementById('importValidationMessage').textContent = '';
+      openModal('importDataModal');
+    }
+
+    function downloadImportSample() {
+      const sample = IMPORT_SAMPLES[currentImportType];
+      if (!sample) return;
+      const blob = new Blob([sample.csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${currentImportType}-sample.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function parseCsvRows(text) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (char === '"') {
+          if (quoted && text[i + 1] === '"') {
+            cell += '"';
+            i++;
+          } else {
+            quoted = !quoted;
+          }
+        } else if (char === ',' && !quoted) {
+          row.push(cell.trim());
+          cell = '';
+        } else if ((char === '\n' || char === '\r') && !quoted) {
+          if (char === '\r' && text[i + 1] === '\n') i++;
+          row.push(cell.trim());
+          if (row.some(value => value !== '')) rows.push(row);
+          row = [];
+          cell = '';
+        } else {
+          cell += char;
+        }
+      }
+      row.push(cell.trim());
+      if (row.some(value => value !== '')) rows.push(row);
+      return rows;
+    }
+
+    function cleanImportedText(value) {
+      return String(value || '').trim().replace(/[<>]/g, '');
+    }
+
+    function csvRecord(headers, row) {
+      const record = {};
+      headers.forEach((header, index) => {
+        record[header.toLowerCase().replace(/[^a-z0-9]/g, '')] = cleanImportedText(row[index]);
+      });
+      return record;
+    }
+
+    async function commitImportedRecords(collectionName, records) {
+      for (let start = 0; start < records.length; start += 400) {
+        const batch = db.batch();
+        records.slice(start, start + 400).forEach(record => batch.set(record.ref, record.data));
+        await batch.commit();
+      }
+    }
+
+    async function importCsvData() {
+      const file = document.getElementById('importCsvFile').files[0];
+      const message = document.getElementById('importValidationMessage');
+      if (!file || !currentImportType) {
+        message.textContent = 'Please select a CSV file.';
+        return;
+      }
+
+      const button = document.getElementById('importCsvButton');
+      button.disabled = true;
+      message.textContent = 'Validating and importing…';
+
+      try {
+        const rows = parseCsvRows(await file.text());
+        if (rows.length < 2) throw new Error('The CSV contains no data rows.');
+        const headers = rows[0];
+        const normalizedHeaders = new Set(headers.map(header => header.toLowerCase().replace(/[^a-z0-9]/g, '')));
+        if (currentImportType === 'contacts' && !normalizedHeaders.has('companyname')) {
+          throw new Error('Contacts CSV must contain the “Company Name” column shown in the sample.');
+        }
+        if (currentImportType === 'deals') {
+          const requiredDealHeaders = ['dealtitle', 'contactcompany', 'dealvalue', 'stage'];
+          const missing = requiredDealHeaders.filter(header => !normalizedHeaders.has(header));
+          if (missing.length) throw new Error('Deals CSV headers do not match the sample format.');
+        }
+        const records = rows.slice(1).map(row => csvRecord(headers, row));
+        let imported = 0;
+        let skipped = 0;
+
+        if (currentImportType === 'contacts') {
+          const writes = [];
+          for (const record of records) {
+            const name = record.companyname || record.company || record.name;
+            const contact = record.contactperson || record.contact;
+            const email = record.email;
+            const phone = record.phone;
+            if (!name || (email && !isValidEmail(email)) || (phone && !/^\d+$/.test(phone))) {
+              skipped++;
+              continue;
+            }
+            const ref = db.collection(CRM_CUSTOMERS).doc();
+            const data = {
+              name, contact, email, phone,
+              industry: record.industry || '',
+              notes: record.notes || '',
+              username: currentUser,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            writes.push({ ref, data });
+          }
+          await commitImportedRecords(CRM_CUSTOMERS, writes);
+          writes.forEach(item => { customerData[item.ref.id] = { id: item.ref.id, ...item.data }; });
+          imported = writes.length;
+          renderCustomers();
+          populateCustomerDropdowns();
+        } else {
+          const customerLookup = new Map(Object.values(customerData)
+            .map(contact => [String(contact.name || '').trim().toLowerCase(), contact]));
+          const validStages = new Set(['Lead','Suspect','Prospect','Tender Submission','Bid Submission','Technical Evaluation','Negotiations','Close','Order','Lost','Engineering Approvals','Billed']);
+          const writes = [];
+          for (const record of records) {
+            const title = record.dealtitle || record.title;
+            const customer = customerLookup.get(String(record.contactcompany || record.customername || record.customer || '').toLowerCase());
+            const value = Number(String(record.dealvalue || record.value || '').replace(/[^0-9.]/g, ''));
+            const stage = record.stage || 'Lead';
+            const probability = Number(record.probability || 0);
+            const closeDate = record.expectedclosedate || record.closedate || '';
+            if (!title || !customer || !(value > 0) || !validStages.has(stage) || probability < 0 || probability > 100 || (closeDate && !/^\d{4}-\d{2}-\d{2}$/.test(closeDate))) {
+              skipped++;
+              continue;
+            }
+            const ref = db.collection(CRM_DEALS).doc();
+            const data = {
+              title,
+              customerId: customer.id,
+              value,
+              stage,
+              probability,
+              closeDate,
+              notes: record.notes || '',
+              username: currentUser,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            writes.push({ ref, data });
+          }
+          await commitImportedRecords(CRM_DEALS, writes);
+          writes.forEach(item => { dealData[item.ref.id] = { id: item.ref.id, ...item.data }; });
+          imported = writes.length;
+          renderDeals();
+          renderActivityDeals();
+          populateCustomerDropdowns();
+        }
+
+        message.textContent = `Imported ${imported} row(s). Skipped ${skipped} invalid row(s).`;
+        showToast(`Imported ${imported} ${currentImportType === 'contacts' ? 'contact(s)' : 'deal(s)'}`, imported ? 'success' : 'warning');
+        if (imported) setTimeout(() => closeModal('importDataModal'), 700);
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        button.disabled = false;
       }
     }
     
@@ -1254,6 +1576,16 @@
         showToast('Please enter company name', 'error');
         return;
       }
+      if (email && !isValidEmail(email)) {
+        showToast('Please enter a valid email address containing @ and a domain', 'error');
+        document.getElementById('customerEmail').focus();
+        return;
+      }
+      if (phone && !/^\d+$/.test(phone)) {
+        showToast('Phone number must contain digits only', 'error');
+        document.getElementById('customerPhone').focus();
+        return;
+      }
       
       try {
         const custRef = db.collection(CRM_CUSTOMERS).doc();
@@ -1271,7 +1603,7 @@
         populateCustomerDropdowns();
         closeModal('addCustomerModal');
         renderCustomers();
-        showToast('Customer added!', 'success');
+        showToast('Contact added!', 'success');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -1281,7 +1613,7 @@
       const opts = Object.values(customerData)
         .map(c => `<option value="${c.id}">${c.name}</option>`)
         .join('');
-      document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Customer --</option>' + opts;
+      document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
       document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
         Object.values(dealData).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
     }
@@ -1291,18 +1623,19 @@
       const custs = Object.values(customerData);
       
       if (custs.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No customers yet.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No contacts yet.</p></div>';
         return;
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align: left; padding: 12px; font-weight: 600;">Company</th><th style="text-align: left; padding: 12px;">Contact</th><th style="text-align: left; padding: 12px;">Email</th><th style="text-align: left; padding: 12px;">Industry</th></tr>';
+      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align: left; padding: 12px; font-weight: 600;">Company</th><th style="text-align: left; padding: 12px;">Contact</th><th style="text-align: left; padding: 12px;">Email</th><th style="text-align: left; padding: 12px;">Phone</th><th style="text-align: left; padding: 12px;">Industry</th></tr>';
       
       custs.forEach(c => {
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
           <td style="padding: 12px; font-weight: 500;">${c.name}</td>
           <td style="padding: 12px;">${c.contact || '—'}</td>
           <td style="padding: 12px;">${c.email || '—'}</td>
+          <td style="padding: 12px;">${c.phone || '—'}</td>
           <td style="padding: 12px;">${c.industry || '—'}</td>
         </tr>`;
       });
@@ -1406,6 +1739,7 @@
         populateCustomerDropdowns();
         closeModal('addDealModal');
         renderDeals();
+        renderActivityDeals();
         renderDashboard();
         showToast('Deal added!', 'success');
       } catch (err) {
@@ -1754,11 +2088,27 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // ACTIVITIES
     // ═══════════════════════════════════════════════════════════════════════════
-    function openAddActivityModal() {
+    function populateResponsibleUsers() {
+      const select = document.getElementById('activityResponsible');
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Select Wiki User --</option>';
+      wikiUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.username;
+        option.textContent = `${user.fullName} (${user.username})`;
+        option.dataset.name = user.fullName;
+        select.appendChild(option);
+      });
+    }
+
+    function openAddActivityModal(dealId = '') {
       const today = new Date().toISOString().split('T')[0];
+      populateCustomerDropdowns();
+      populateResponsibleUsers();
       document.getElementById('activityType').value = 'Call';
-      document.getElementById('activityDeal').value = '';
+      document.getElementById('activityDeal').value = dealId;
       document.getElementById('activityDate').value = today;
+      document.getElementById('activityResponsible').value = currentUser || '';
       document.getElementById('activityTime').value = '';
       document.getElementById('activityDescription').value = '';
       document.getElementById('activityNextDate').value = '';
@@ -1774,48 +2124,354 @@
       const type = document.getElementById('activityType').value;
       const dealId = document.getElementById('activityDeal').value;
       const date = document.getElementById('activityDate').value;
+      const responsibleSelect = document.getElementById('activityResponsible');
+      const responsibleUsername = responsibleSelect.value;
+      const responsibleName = responsibleSelect.options[responsibleSelect.selectedIndex]?.dataset.name || responsibleUsername;
       const time = document.getElementById('activityTime').value;
       const desc = document.getElementById('activityDescription').value.trim();
       const nextDate = document.getElementById('activityNextDate').value;
       
-      if (!date) {
-        showToast('Please select activity date', 'error');
+      if (!dealId || !date || !responsibleUsername || !nextDate) {
+        showToast('Please select a deal, activity date, responsible person and next activity date', 'error');
         return;
       }
       
       try {
         const actRef = db.collection(CRM_ACTIVITIES).doc();
-        await actRef.set({
+        const activityRecord = {
           activityType: type,
-          dealId: dealId || null,
+          dealId,
           activityDate: date,
           activityTime: time,
           description: desc,
           nextActivityDate: nextDate,
-          username: currentUser,  // Use username instead of salesPersonId
+          username: currentUser,
+          creatorName: currentUserData?.fullName || currentUserData?.displayName || currentUser,
+          responsibleUsername,
+          responsibleName,
+          taskStatus: 'open',
+          extensionStatus: null,
           createdAt: new Date(),
           completedDate: null
-        });
+        };
+        await actRef.set(activityRecord);
         
         activityData[actRef.id] = {
           id: actRef.id,
-          activityType: type,
-          dealId, activityDate: date, activityTime: time, description: desc, nextActivityDate: nextDate, username: currentUser
+          ...activityRecord
         };
+
+        let notificationSent = true;
+        try {
+          await createCrmNotification({
+            recipientUsername: responsibleUsername,
+            type: 'activity_assigned',
+            activityId: actRef.id,
+            dealId,
+            dueDate: nextDate,
+            message: `${activityRecord.creatorName} assigned ${type} for ${dealData[dealId]?.title || 'a CRM deal'} due ${formatDate(nextDate)}.`
+          });
+        } catch (notificationError) {
+          notificationSent = false;
+          console.error('Activity saved but notification failed:', notificationError);
+        }
         
         closeModal('addActivityModal');
         renderCalendar();
         renderActivities();
+        renderActivityDeals();
+        renderTaskCenter();
         renderDashboard();
-        showToast('Activity logged!', 'success');
+        showToast(notificationSent ? 'Activity logged and responsible person notified!' : 'Activity logged, but notification could not be sent', notificationSent ? 'success' : 'warning');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
     }
     
+    function isExtensionApprover(username = currentUser) {
+      return ['updesh', 'pratim'].includes(String(username || '').toLowerCase());
+    }
+
+    function firestoreTime(value) {
+      if (value?.toDate) return value.toDate().getTime();
+      const parsed = new Date(value || 0).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    async function createCrmNotification({ recipientUsername, type, activityId, dealId, dueDate, message }) {
+      if (!recipientUsername) return;
+      const ref = db.collection(CRM_NOTIFICATIONS).doc();
+      const record = {
+        recipientUsername: String(recipientUsername).toLowerCase(),
+        senderUsername: currentUser,
+        type,
+        activityId: activityId || null,
+        dealId: dealId || null,
+        dueDate: dueDate || null,
+        message,
+        read: false,
+        createdAt: new Date()
+      };
+      await ref.set(record);
+      if (record.recipientUsername === String(currentUser).toLowerCase()) {
+        notificationData[ref.id] = { id: ref.id, ...record };
+      }
+    }
+
+    async function refreshTaskCenter() {
+      if (!currentUser) return;
+      try {
+        const assignedSnap = await db.collection(CRM_ACTIVITIES)
+          .where('responsibleUsername', '==', currentUser).get();
+        assignedSnap.forEach(doc => { activityData[doc.id] = { id: doc.id, ...doc.data() }; });
+
+        const notificationSnap = await db.collection(CRM_NOTIFICATIONS)
+          .where('recipientUsername', '==', currentUser).get();
+        notificationData = {};
+        notificationSnap.forEach(doc => { notificationData[doc.id] = { id: doc.id, ...doc.data() }; });
+
+        pendingApprovalData = {};
+        if (isExtensionApprover()) {
+          const approvalSnap = await db.collection(CRM_ACTIVITIES)
+            .where('extensionStatus', '==', 'pending').get();
+          approvalSnap.forEach(doc => {
+            const activity = { id: doc.id, ...doc.data() };
+            pendingApprovalData[doc.id] = activity;
+            activityData[doc.id] = activity;
+          });
+        }
+
+        const missingDealIds = [...new Set(Object.values(activityData)
+          .map(activity => activity.dealId).filter(id => id && !dealData[id]))];
+        await Promise.all(missingDealIds.map(async id => {
+          const doc = await db.collection(CRM_DEALS).doc(id).get();
+          if (doc.exists) dealData[id] = { id: doc.id, ...doc.data() };
+        }));
+
+        renderActivities();
+        renderActivityDeals();
+        renderTaskCenter();
+      } catch (error) {
+        console.warn('Could not refresh CRM tasks:', error);
+      }
+    }
+
+    function startTaskRefresh() {
+      if (taskRefreshTimer) clearInterval(taskRefreshTimer);
+      taskRefreshTimer = setInterval(refreshTaskCenter, 60000);
+    }
+
+    function openTaskCenter() {
+      switchTab('activities');
+      const panel = document.getElementById('taskCenterPanel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function markNotificationRead(id) {
+      const notification = notificationData[id];
+      if (!notification) return;
+      await db.collection(CRM_NOTIFICATIONS).doc(id).update({ read: true, readAt: new Date() });
+      notification.read = true;
+      renderTaskCenter();
+    }
+
+    function renderTaskCenter() {
+      const panel = document.getElementById('taskCenterPanel');
+      const badge = document.getElementById('crmNotificationBadge');
+      const badgeCount = document.getElementById('crmNotificationCount');
+      if (!panel || !badge || !badgeCount) return;
+
+      const unread = Object.values(notificationData)
+        .filter(item => !item.read)
+        .sort((a, b) => firestoreTime(b.createdAt) - firestoreTime(a.createdAt));
+      const approvals = isExtensionApprover() ? Object.values(pendingApprovalData) : [];
+      const count = unread.length + approvals.length;
+      badgeCount.textContent = count;
+      badge.style.display = count ? 'inline-flex' : 'none';
+
+      if (!count) {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+        return;
+      }
+
+      panel.style.display = 'block';
+      let html = '<div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;padding:12px"><div style="font-weight:700;margin-bottom:10px">🔔 Task Notifications</div>';
+      unread.forEach(item => {
+        html += `<div style="background:#fff;border-radius:6px;padding:10px;margin-bottom:8px;border-left:3px solid #D32F2F">
+          <div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>
+          ${item.dueDate ? `<div style="font-size:10px;color:var(--t2);margin-top:4px">Due: ${formatDate(item.dueDate)}</div>` : ''}
+          <button class="btn sm" style="margin-top:7px" onclick="markNotificationRead('${item.id}')">Mark read</button>
+        </div>`;
+      });
+      approvals.forEach(activity => {
+        const deal = dealData[activity.dealId];
+        html += `<div style="background:#fff;border-radius:6px;padding:10px;margin-bottom:8px;border-left:3px solid #F57C00">
+          <div style="font-size:12px;font-weight:600">Extension approval: ${escapeHtml(deal?.title || 'CRM activity')}</div>
+          <div style="font-size:11px;margin-top:4px">${escapeHtml(activity.responsibleName || activity.responsibleUsername)} requested ${formatDate(activity.requestedExtensionDate)}${activity.extensionReason ? ` — ${escapeHtml(activity.extensionReason)}` : ''}</div>
+          <div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm primary" onclick="reviewExtension('${activity.id}','approved')">Approve</button><button class="btn sm" onclick="reviewExtension('${activity.id}','rejected')">Reject</button></div>
+        </div>`;
+      });
+      panel.innerHTML = html + '</div>';
+    }
+
+    function renderActivityDeals() {
+      const container = document.getElementById('activityDealsContainer');
+      if (!container) return;
+      const ownDeals = Object.values(dealData).filter(deal => deal.username === currentUser);
+      if (!ownDeals.length) {
+        container.innerHTML = '<div style="font-size:12px;color:var(--t2)">No deals available for activity logging.</div>';
+        return;
+      }
+      let html = '<div style="font-weight:600;margin-bottom:8px">Deals available for activity logging</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px">';
+      ownDeals.forEach(deal => {
+        const contact = customerData[deal.customerId];
+        html += `<div style="border:1px solid var(--bd);border-radius:7px;padding:10px;background:#fff">
+          <div style="font-weight:600">${escapeHtml(deal.title)}</div>
+          <div style="font-size:10.5px;color:var(--t2);margin:4px 0">${escapeHtml(contact?.name || '')} · ${escapeHtml(deal.stage || '')}</div>
+          <button class="btn sm primary" onclick="openAddActivityModal('${deal.id}')">Log Activity</button>
+        </div>`;
+      });
+      container.innerHTML = html + '</div>';
+    }
+
+    async function completeAssignedActivity(id) {
+      const activity = activityData[id];
+      if (!activity || activity.responsibleUsername !== currentUser) return;
+      await db.collection(CRM_ACTIVITIES).doc(id).update({ taskStatus: 'completed', completedDate: new Date() });
+      activity.taskStatus = 'completed';
+      activity.completedDate = new Date();
+      await createCrmNotification({
+        recipientUsername: activity.username,
+        type: 'activity_completed',
+        activityId: id,
+        dealId: activity.dealId,
+        dueDate: activity.nextActivityDate,
+        message: `${activity.responsibleName || currentUser} completed the assigned CRM task.`
+      });
+      renderActivities();
+      renderTaskCenter();
+      showToast('Task marked complete', 'success');
+    }
+
+    function openExtensionRequest(id) {
+      const activity = activityData[id];
+      if (!activity || activity.responsibleUsername !== currentUser) return;
+      document.getElementById('extensionActivityId').value = id;
+      document.getElementById('extensionRevisedDate').value = activity.nextActivityDate || '';
+      document.getElementById('extensionReason').value = '';
+      openModal('extensionRequestModal');
+    }
+
+    async function submitExtensionRequest() {
+      const id = document.getElementById('extensionActivityId').value;
+      const revisedDate = document.getElementById('extensionRevisedDate').value;
+      const reason = document.getElementById('extensionReason').value.trim();
+      const activity = activityData[id];
+      if (!activity || activity.responsibleUsername !== currentUser || !revisedDate) {
+        showToast('Please select a valid revised date', 'error');
+        return;
+      }
+      if (activity.nextActivityDate && revisedDate <= activity.nextActivityDate) {
+        showToast('Revised date must be later than the current due date', 'error');
+        return;
+      }
+
+      if (isExtensionApprover()) {
+        const update = {
+          nextActivityDate: revisedDate,
+          extensionStatus: 'self-revised',
+          requestedExtensionDate: revisedDate,
+          extensionReason: reason,
+          extensionReviewedBy: currentUser,
+          extensionReviewedAt: new Date()
+        };
+        await db.collection(CRM_ACTIVITIES).doc(id).update(update);
+        Object.assign(activity, update);
+        await createCrmNotification({
+          recipientUsername: activity.username,
+          type: 'due_date_revised',
+          activityId: id,
+          dealId: activity.dealId,
+          dueDate: revisedDate,
+          message: `${activity.responsibleName || currentUser} revised the task due date to ${formatDate(revisedDate)}.`
+        });
+        showToast('Due date revised', 'success');
+      } else {
+        const update = {
+          extensionStatus: 'pending',
+          requestedExtensionDate: revisedDate,
+          extensionReason: reason,
+          extensionRequestedBy: currentUser,
+          extensionRequestedAt: new Date()
+        };
+        await db.collection(CRM_ACTIVITIES).doc(id).update(update);
+        Object.assign(activity, update);
+        for (const approver of ['updesh', 'pratim']) {
+          await createCrmNotification({
+            recipientUsername: approver,
+            type: 'extension_approval',
+            activityId: id,
+            dealId: activity.dealId,
+            dueDate: revisedDate,
+            message: `${activity.responsibleName || currentUser} requested a task extension to ${formatDate(revisedDate)}.`
+          });
+        }
+        showToast('Extension request sent to Updesh and Pratim', 'success');
+      }
+      closeModal('extensionRequestModal');
+      renderActivities();
+      renderTaskCenter();
+    }
+
+    async function reviewExtension(id, decision) {
+      if (!isExtensionApprover()) return;
+      const freshDoc = await db.collection(CRM_ACTIVITIES).doc(id).get();
+      if (!freshDoc.exists || freshDoc.data().extensionStatus !== 'pending') {
+        delete pendingApprovalData[id];
+        renderTaskCenter();
+        showToast('This extension request has already been reviewed', 'warning');
+        return;
+      }
+      const activity = { id, ...freshDoc.data() };
+      activityData[id] = activity;
+      const remarksInput = prompt(`Optional remarks for ${decision === 'approved' ? 'approval' : 'rejection'}:`, '');
+      if (remarksInput === null) return;
+      const remarks = remarksInput;
+      const update = {
+        extensionStatus: decision,
+        extensionReviewedBy: currentUser,
+        extensionReviewedAt: new Date(),
+        extensionReviewRemarks: remarks.trim()
+      };
+      if (decision === 'approved') update.nextActivityDate = activity.requestedExtensionDate;
+      await db.collection(CRM_ACTIVITIES).doc(id).update(update);
+      Object.assign(activity, update);
+      delete pendingApprovalData[id];
+
+      const recipients = [...new Set([activity.responsibleUsername, activity.username].filter(Boolean))];
+      for (const recipient of recipients) {
+        await createCrmNotification({
+          recipientUsername: recipient,
+          type: `extension_${decision}`,
+          activityId: id,
+          dealId: activity.dealId,
+          dueDate: decision === 'approved' ? activity.requestedExtensionDate : activity.nextActivityDate,
+          message: `Extension request ${decision} by ${currentUser}${remarks.trim() ? `: ${remarks.trim()}` : '.'}`
+        });
+      }
+      renderActivities();
+      renderTaskCenter();
+      showToast(`Extension ${decision}`, decision === 'approved' ? 'success' : 'warning');
+    }
+
     function renderActivities() {
       const container = document.getElementById('activitiesContainer');
-      const activities = Object.values(activityData).sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate));
+      const activities = Object.values(activityData).sort((a, b) => {
+        const aDate = a.nextActivityDate || a.activityDate;
+        const bDate = b.nextActivityDate || b.activityDate;
+        return new Date(aDate) - new Date(bDate);
+      });
       
       if (activities.length === 0) {
         container.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No activities logged yet.</p></div>';
@@ -1824,17 +2480,28 @@
       
       let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">';
       
-      activities.slice(0, 20).forEach(a => {
+      activities.slice(0, 50).forEach(a => {
         const deal = dealData[a.dealId];
-        html += `<div style="background: var(--card); border: 0.5px solid var(--bd); border-radius: 8px; padding: 12px;">
+        const assignedToMe = a.responsibleUsername === currentUser;
+        const completed = a.taskStatus === 'completed' || !!a.completedDate;
+        const overdue = !completed && a.nextActivityDate && a.nextActivityDate < new Date().toISOString().split('T')[0];
+        const borderColor = completed ? '#2E7D32' : overdue ? '#D32F2F' : assignedToMe ? '#F57C00' : 'var(--bd)';
+        html += `<div style="background: var(--card); border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-            <strong>${a.activityType}</strong>
+            <strong>${escapeHtml(a.activityType || 'Activity')}</strong>
             <span style="font-size: 11px; color: var(--t2);">${formatDate(a.activityDate)}</span>
           </div>
           ${a.activityTime ? `<div style="font-size: 11px; color: var(--t2); margin-bottom: 6px;">⏰ ${a.activityTime}</div>` : ''}
-          ${deal ? `<div style="font-size: 11px; font-weight: 500; color: var(--p); margin-bottom: 6px;">${deal.title}</div>` : ''}
-          ${a.description ? `<div style="font-size: 12px; margin-bottom: 6px;">${a.description}</div>` : ''}
-          ${a.nextActivityDate ? `<div style="font-size: 10px; color: var(--success); padding-top: 6px; border-top: 0.5px solid var(--bd);">📌 Follow-up: ${formatDate(a.nextActivityDate)}</div>` : ''}
+          ${deal ? `<div style="font-size: 11px; font-weight: 600; color: var(--p); margin-bottom: 6px;">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:11px;color:var(--danger)">Deal unavailable</div>'}
+          ${a.description ? `<div style="font-size: 12px; margin-bottom: 6px;">${escapeHtml(a.description)}</div>` : ''}
+          <div style="font-size:10.5px;color:var(--t2);margin-bottom:4px">Created by: ${escapeHtml(a.creatorName || a.username || '')}</div>
+          <div style="font-size:10.5px;color:var(--t2);margin-bottom:6px">Responsible: ${escapeHtml(a.responsibleName || a.responsibleUsername || 'Unassigned')}</div>
+          ${a.nextActivityDate ? `<div style="font-size: 10px; color:${overdue ? '#D32F2F' : '#2E7D32'}; padding-top: 6px; border-top: 0.5px solid var(--bd);">📌 Due: ${formatDate(a.nextActivityDate)}${overdue ? ' · OVERDUE' : ''}</div>` : ''}
+          ${a.extensionStatus === 'pending' ? `<div style="font-size:10px;color:#F57C00;margin-top:5px">Extension requested: ${formatDate(a.requestedExtensionDate)}</div>` : ''}
+          ${a.extensionStatus === 'approved' ? `<div style="font-size:10px;color:#2E7D32;margin-top:5px">Extension approved by ${escapeHtml(a.extensionReviewedBy || '')}</div>` : ''}
+          ${a.extensionStatus === 'rejected' ? `<div style="font-size:10px;color:#D32F2F;margin-top:5px">Extension rejected${a.extensionReviewRemarks ? `: ${escapeHtml(a.extensionReviewRemarks)}` : ''}</div>` : ''}
+          ${completed ? '<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:7px">✓ COMPLETED</div>' : ''}
+          ${assignedToMe && !completed ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px"><button class="btn sm primary" onclick="completeAssignedActivity('${a.id}')">Complete Task</button><button class="btn sm" onclick="openExtensionRequest('${a.id}')" ${a.extensionStatus === 'pending' ? 'disabled' : ''}>Request Extension</button></div>` : ''}
         </div>`;
       });
       
@@ -2022,6 +2689,11 @@
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('tab-' + tabName).classList.add('active');
       document.querySelector(`[onclick*="'${tabName}'"]`).classList.add('active');
+      if (tabName === 'activities') {
+        renderTaskCenter();
+        renderActivityDeals();
+        renderActivities();
+      }
     }
     
     function openModal(id) {
@@ -2053,6 +2725,19 @@
       toast.textContent = msg;
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
+    }
+
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
     
     function formatCurrency(val) {
