@@ -759,9 +759,10 @@
   <div id="addCustomerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>Add Contact</span>
+        <span id="customerModalTitle">Add Contact</span>
         <button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button>
       </div>
+      <input type="hidden" id="customerEditId">
       <div class="form-group">
         <label>Company Name</label>
         <input type="text" id="customerName" placeholder="Enter company name">
@@ -788,7 +789,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('addCustomerModal')">Cancel</button>
-        <button class="btn primary" onclick="saveCustomer()">Save</button>
+        <button class="btn primary" id="customerSaveButton" onclick="saveCustomer()">Save Contact</button>
       </div>
     </div>
   </div>
@@ -1091,7 +1092,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.7';
+    const CRM_BUILD = '20260622.8';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1321,19 +1322,18 @@
         }).filter(user => user.username && user.active)
           .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-        // Load customers filtered by username
-        const customersSnap = await db.collection(CRM_CUSTOMERS).where('username', '==', currentUser).get();
+        // Contacts and deals are shared read data for every authenticated Wiki user.
+        const customersSnap = await db.collection(CRM_CUSTOMERS).get();
         customersSnap.forEach(doc => {
           customerData[doc.id] = { id: doc.id, ...doc.data() };
         });
-        console.log(`Loaded ${customersSnap.size} customers for ${currentUser}`);
+        console.log(`Loaded ${customersSnap.size} shared contacts`);
         
-        // Load deals filtered by username
-        const dealsSnap = await db.collection(CRM_DEALS).where('username', '==', currentUser).get();
+        const dealsSnap = await db.collection(CRM_DEALS).get();
         dealsSnap.forEach(doc => {
           dealData[doc.id] = { id: doc.id, ...doc.data() };
         });
-        console.log(`Loaded ${dealsSnap.size} deals for ${currentUser}`);
+        console.log(`Loaded ${dealsSnap.size} shared deals`);
         
         // Load activities filtered by username
         const activitiesSnap = await db.collection(CRM_ACTIVITIES).where('username', '==', currentUser).get();
@@ -1599,13 +1599,47 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // CUSTOMERS
     // ═══════════════════════════════════════════════════════════════════════════
+    function isCrmDataSupervisor() {
+      return ['updesh', 'pratim'].includes(String(currentUser || '').toLowerCase());
+    }
+
+    function canEditCrmRecord(record) {
+      return !!record && (isCrmDataSupervisor() || String(record.username || '').toLowerCase() === String(currentUser || '').toLowerCase());
+    }
+
+    function crmOwnerName(username) {
+      const user = wikiUsers.find(item => String(item.username).toLowerCase() === String(username || '').toLowerCase());
+      return user?.fullName || username || 'Unassigned';
+    }
+
     function openAddCustomerModal() {
+      document.getElementById('customerEditId').value = '';
+      document.getElementById('customerModalTitle').textContent = 'Add Contact';
+      document.getElementById('customerSaveButton').textContent = 'Save Contact';
       document.getElementById('customerName').value = '';
       document.getElementById('customerContact').value = '';
       document.getElementById('customerEmail').value = '';
       document.getElementById('customerPhone').value = '';
       document.getElementById('customerIndustry').value = '';
       document.getElementById('customerNotes').value = '';
+      openModal('addCustomerModal');
+    }
+
+    function openEditCustomerModal(id) {
+      const customer = customerData[id];
+      if (!canEditCrmRecord(customer)) {
+        showToast('You can only edit your own contacts', 'error');
+        return;
+      }
+      document.getElementById('customerEditId').value = id;
+      document.getElementById('customerModalTitle').textContent = 'Edit Contact';
+      document.getElementById('customerSaveButton').textContent = 'Update Contact';
+      document.getElementById('customerName').value = customer.name || '';
+      document.getElementById('customerContact').value = customer.contact || '';
+      document.getElementById('customerEmail').value = customer.email || '';
+      document.getElementById('customerPhone').value = customer.phone || '';
+      document.getElementById('customerIndustry').value = customer.industry || '';
+      document.getElementById('customerNotes').value = customer.notes || '';
       openModal('addCustomerModal');
     }
     
@@ -1615,6 +1649,12 @@
         return;
       }
 
+      const editId = document.getElementById('customerEditId').value;
+      const existingCustomer = editId ? customerData[editId] : null;
+      if (editId && !canEditCrmRecord(existingCustomer)) {
+        showToast('You are not permitted to edit this contact', 'error');
+        return;
+      }
       const name = document.getElementById('customerName').value.trim();
       const contact = document.getElementById('customerContact').value.trim();
       const email = document.getElementById('customerEmail').value.trim();
@@ -1638,22 +1678,25 @@
       }
       
       try {
-        const custRef = db.collection(CRM_CUSTOMERS).doc();
-        await custRef.set({
+        const record = {
           name, contact, email, phone, industry, notes,
-          username: currentUser,  // Use username instead of salesPersonId
-          createdAt: new Date(),
+          username: existingCustomer?.username || currentUser,
           updatedAt: new Date()
-        });
-        
-        customerData[custRef.id] = {
-          id: custRef.id, name, contact, email, phone, industry, notes, username: currentUser
         };
+        if (editId) {
+          await db.collection(CRM_CUSTOMERS).doc(editId).update(record);
+          customerData[editId] = { ...existingCustomer, ...record, id: editId };
+        } else {
+          const custRef = db.collection(CRM_CUSTOMERS).doc();
+          record.createdAt = new Date();
+          await custRef.set(record);
+          customerData[custRef.id] = { id: custRef.id, ...record };
+        }
         
         populateCustomerDropdowns();
         closeModal('addCustomerModal');
         renderCustomers();
-        showToast('Contact added!', 'success');
+        showToast(editId ? 'Contact updated!' : 'Contact added!', 'success');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -1661,11 +1704,11 @@
     
     function populateCustomerDropdowns() {
       const opts = Object.values(customerData)
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .map(c => `<option value="${c.id}">${escapeHtml(c.name)} — ${escapeHtml(crmOwnerName(c.username))}</option>`)
         .join('');
       document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
       document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
-        Object.values(dealData).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
+        Object.values(dealData).filter(d => canEditCrmRecord(d)).map(d => `<option value="${d.id}">${escapeHtml(d.title)} — ${escapeHtml(crmOwnerName(d.username))}</option>`).join('');
     }
     
     function renderCustomers() {
@@ -1678,15 +1721,17 @@
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align: left; padding: 12px; font-weight: 600;">Company</th><th style="text-align: left; padding: 12px;">Contact</th><th style="text-align: left; padding: 12px;">Email</th><th style="text-align: left; padding: 12px;">Phone</th><th style="text-align: left; padding: 12px;">Industry</th></tr>';
+      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Email</th><th style="text-align:left;padding:12px">Phone</th><th style="text-align:left;padding:12px">Industry</th><th style="text-align:left;padding:12px">Owner</th><th style="padding:12px">Action</th></tr>';
       
       custs.forEach(c => {
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
-          <td style="padding: 12px; font-weight: 500;">${c.name}</td>
-          <td style="padding: 12px;">${c.contact || '—'}</td>
-          <td style="padding: 12px;">${c.email || '—'}</td>
-          <td style="padding: 12px;">${c.phone || '—'}</td>
-          <td style="padding: 12px;">${c.industry || '—'}</td>
+          <td style="padding:12px;font-weight:500">${escapeHtml(c.name)}</td>
+          <td style="padding:12px">${escapeHtml(c.contact || '—')}</td>
+          <td style="padding:12px">${escapeHtml(c.email || '—')}</td>
+          <td style="padding:12px">${escapeHtml(c.phone || '—')}</td>
+          <td style="padding:12px">${escapeHtml(c.industry || '—')}</td>
+          <td style="padding:12px"><span style="font-size:10.5px;background:var(--pl);color:var(--p);padding:3px 7px;border-radius:10px">${escapeHtml(crmOwnerName(c.username))}</span></td>
+          <td style="padding:12px;text-align:center">${canEditCrmRecord(c) ? `<button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button>` : '—'}</td>
         </tr>`;
       });
       
@@ -1722,8 +1767,8 @@
 
     function openEditDealModal(id) {
       const deal = dealData[id];
-      if (!deal || deal.username !== currentUser) {
-        showToast('You can only edit your own deals', 'error');
+      if (!canEditCrmRecord(deal)) {
+        showToast('You are not permitted to edit this deal', 'error');
         return;
       }
 
@@ -1799,8 +1844,8 @@
 
       const editId = document.getElementById('dealEditId').value;
       const existingDeal = editId ? dealData[editId] : null;
-      if (editId && (!existingDeal || existingDeal.username !== currentUser)) {
-        showToast('You can only edit your own deals', 'error');
+      if (editId && !canEditCrmRecord(existingDeal)) {
+        showToast('You are not permitted to edit this deal', 'error');
         return;
       }
 
@@ -1839,7 +1884,7 @@
           stage, probability, closeDate, notes,
           orderDate: orderDate || existingDeal?.orderDate || null,
           billingDate: billingDate || existingDeal?.billingDate || null,
-          username: currentUser,  // Use username instead of salesPersonId
+          username: existingDeal?.username || currentUser,
           updatedAt: new Date()
         };
         
@@ -1889,7 +1934,7 @@
     
     function renderDeals() {
       const container = document.getElementById('dealsContainer');
-      const deals = Object.values(dealData).filter(deal => deal.username === currentUser);
+      const deals = Object.values(dealData);
       
       if (deals.length === 0) {
         container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No deals yet.</p></div>';
@@ -1926,11 +1971,12 @@
           }
           
           html += `<div style="font-size: 11px; color: var(--t2);">Probability: ${d.probability}%</div>
+            <div style="font-size:10.5px;color:var(--p);margin-top:4px">Owner: ${escapeHtml(crmOwnerName(d.username))}</div>
             ${d.closeDate ? `<div style="font-size: 11px; color: var(--t2);">Close: ${formatDate(d.closeDate)}</div>` : ''}
             ${d.orderDate ? `<div style="font-size:11px;color:#1565C0;font-weight:600">Order: ${formatDate(d.orderDate)}</div>` : ''}
             ${d.billingDate ? `<div style="font-size:11px;color:#2E7D32;font-weight:600">Billed: ${formatDate(d.billingDate)}</div>` : ''}
             <div style="font-size:11px;color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'};font-weight:600">Gross Margin: ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
-            <button class="btn sm" style="margin-top:9px" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>
+            ${canEditCrmRecord(d) ? `<button class="btn sm" style="margin-top:9px" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>` : ''}
           </div>`;
         });
         
@@ -2655,7 +2701,7 @@
     function renderActivityDeals() {
       const container = document.getElementById('activityDealsContainer');
       if (!container) return;
-      const ownDeals = Object.values(dealData).filter(deal => deal.username === currentUser);
+      const ownDeals = Object.values(dealData).filter(deal => canEditCrmRecord(deal));
       if (!ownDeals.length) {
         container.innerHTML = '<div style="font-size:12px;color:var(--t2)">No deals available for activity logging.</div>';
         return;
