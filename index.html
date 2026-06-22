@@ -338,6 +338,21 @@
     .modal-close:hover {
       color: var(--t1);
     }
+
+    #forcedActionModal {
+      background: rgba(7, 18, 38, 0.86);
+      z-index: 9000;
+      backdrop-filter: blur(5px);
+    }
+
+    #forcedActionModal .modal-content {
+      max-width: 650px;
+      border: 3px solid #1565C0;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5), 0 0 0 5px rgba(255,255,255,.16);
+      border-radius: 14px;
+      padding: 0;
+      overflow: hidden;
+    }
     
     .modal-footer {
       display: flex;
@@ -817,6 +832,18 @@
           <option value="Billed">Billed (Won)</option>
         </select>
       </div>
+      <div id="orderDateGroup" class="hidden-group">
+        <div class="form-group">
+          <label>Order Date *</label>
+          <input type="date" id="dealOrderDate">
+        </div>
+      </div>
+      <div id="billingDateGroup" class="hidden-group">
+        <div class="form-group">
+          <label>Billing Date *</label>
+          <input type="date" id="dealBillingDate">
+        </div>
+      </div>
       <div id="lossReasonGroup" class="hidden-group">
         <div class="form-group">
           <label>Reason for Loss</label>
@@ -861,25 +888,14 @@
         <button class="modal-close" onclick="closeModal('setTargetModal')">✕</button>
       </div>
       
-      <div style="background: var(--pl); padding: 12px; border-radius: 6px; margin-bottom: 16px; border-left: 3px solid var(--p);">
-        <strong style="color: var(--p);">Current Quarter:</strong> <span id="targetQuarterDisplay">Q1</span> 2025 | <strong style="color: var(--p);">Year:</strong> 2025
-      </div>
-      
-      <div class="form-group">
-        <label>Quarterly Revenue Target (₹)</label>
-        <input type="number" id="targetRevenue" placeholder="500000" min="0">
-      </div>
-      <div class="form-group">
-        <label>Quarterly Billing Target (₹)</label>
-        <input type="number" id="targetBilling" placeholder="475000" min="0">
-      </div>
-      <div class="form-group">
-        <label>Annual Revenue Target (₹)</label>
-        <input type="number" id="targetAnnualRevenue" placeholder="2000000" min="0">
-      </div>
-      <div class="form-group">
-        <label>Annual Billing Target (₹)</label>
-        <input type="number" id="targetAnnualBilling" placeholder="1900000" min="0">
+      <div style="background:var(--pl);padding:12px;border-radius:6px;margin-bottom:14px;border-left:3px solid var(--p)"><strong style="color:var(--p)">Target Year: <span id="targetYearDisplay"></span></strong></div>
+      <div style="display:grid;grid-template-columns:55px 1fr 1fr;gap:8px;align-items:center;margin-bottom:12px">
+        <b>Quarter</b><b>Booking Target (₹)</b><b>Billing Target (₹)</b>
+        <b>Q1</b><input type="number" id="targetQ1Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ1Billing" min="0" oninput="updateTargetTotals()">
+        <b>Q2</b><input type="number" id="targetQ2Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ2Billing" min="0" oninput="updateTargetTotals()">
+        <b>Q3</b><input type="number" id="targetQ3Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ3Billing" min="0" oninput="updateTargetTotals()">
+        <b>Q4</b><input type="number" id="targetQ4Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ4Billing" min="0" oninput="updateTargetTotals()">
+        <b>Total</b><div id="targetBookingTotal" style="font-weight:800;color:#1565C0">₹0</div><div id="targetBillingTotal" style="font-weight:800;color:#2E7D32">₹0</div>
       </div>
       <div class="form-group">
         <label>Target Margin (%)</label>
@@ -994,6 +1010,22 @@
       </div>
     </div>
   </div>
+
+  <!-- Mandatory Next Activity workflow gate -->
+  <div id="forcedActionModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="forcedActionTitle">
+    <div class="modal-content">
+      <div id="forcedActionHeader" style="padding:16px 20px;background:#1565C0;color:#fff">
+        <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;opacity:.88">MANDATORY CRM ACTION</div>
+        <div id="forcedActionTitle" style="font-size:18px;font-weight:800;margin-top:4px">Next Activity Plan</div>
+        <div id="forcedActionSubtitle" style="font-size:11px;margin-top:4px;opacity:.92">Complete this action to continue using CRM.</div>
+      </div>
+      <div style="padding:18px 20px">
+        <div id="forcedActionDetails"></div>
+        <div id="forcedActionInputs" style="margin-top:14px"></div>
+        <div id="forcedActionButtons" style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px"></div>
+      </div>
+    </div>
+  </div>
   
   <script>
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1054,7 +1086,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.4';
+    const CRM_BUILD = '20260622.5';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1668,6 +1700,8 @@
       document.getElementById('dealCustomer').value = '';
       document.getElementById('dealValue').value = '';
       document.getElementById('dealStage').value = 'Lead';
+      document.getElementById('dealOrderDate').value = '';
+      document.getElementById('dealBillingDate').value = '';
       document.getElementById('dealProbability').value = '50';
       document.getElementById('dealCloseDate').value = '';
       document.getElementById('dealNotes').value = '';
@@ -1675,6 +1709,7 @@
       document.getElementById('customLossReasonText').value = '';
       document.getElementById('lossReasonGroup').classList.remove('visible');
       document.getElementById('customLossReasonGroup').classList.remove('visible');
+      toggleDealStageDateFields('Lead');
       openModal('addDealModal');
     }
 
@@ -1693,6 +1728,8 @@
       document.getElementById('dealCustomer').value = deal.customerId || '';
       document.getElementById('dealValue').value = deal.value || '';
       document.getElementById('dealStage').value = deal.stage || 'Lead';
+      document.getElementById('dealOrderDate').value = deal.orderDate || '';
+      document.getElementById('dealBillingDate').value = deal.billingDate || '';
       document.getElementById('dealProbability').value = deal.probability ?? 0;
       document.getElementById('dealCloseDate').value = deal.closeDate || '';
       document.getElementById('dealNotes').value = deal.notes || '';
@@ -1700,13 +1737,20 @@
       document.getElementById('customLossReasonText').value = deal.customLossReason || '';
       document.getElementById('lossReasonGroup').classList.toggle('visible', deal.stage === 'Lost');
       document.getElementById('customLossReasonGroup').classList.toggle('visible', deal.stage === 'Lost' && deal.lossReason === 'Other');
+      toggleDealStageDateFields(deal.stage || 'Lead');
       openModal('addDealModal');
+    }
+
+    function toggleDealStageDateFields(stage) {
+      document.getElementById('orderDateGroup')?.classList.toggle('visible', stage === 'Order' || stage === 'Billed');
+      document.getElementById('billingDateGroup')?.classList.toggle('visible', stage === 'Billed');
     }
     
     // Handle loss reason visibility
     document.addEventListener('change', function(e) {
       if (e.target.id === 'dealStage') {
         const lossGroup = document.getElementById('lossReasonGroup');
+        toggleDealStageDateFields(e.target.value);
         if (e.target.value === 'Lost') {
           lossGroup.classList.add('visible');
         } else {
@@ -1744,6 +1788,8 @@
       const customerId = document.getElementById('dealCustomer').value;
       const value = parseInt(document.getElementById('dealValue').value) || 0;
       const stage = document.getElementById('dealStage').value;
+      const orderDate = document.getElementById('dealOrderDate').value;
+      const billingDate = document.getElementById('dealBillingDate').value;
       const probability = parseInt(document.getElementById('dealProbability').value) || 0;
       const closeDate = document.getElementById('dealCloseDate').value;
       const notes = document.getElementById('dealNotes').value.trim();
@@ -1752,10 +1798,20 @@
         showToast('Please fill required fields', 'error');
         return;
       }
+      if ((stage === 'Order' || stage === 'Billed') && !orderDate) {
+        showToast('Order Date is required for Order and Billed stages', 'error');
+        return;
+      }
+      if (stage === 'Billed' && !billingDate) {
+        showToast('Billing Date is required for Billed stage', 'error');
+        return;
+      }
       
       try {
         const dealObj = {
           title, customerId, value, stage, probability, closeDate, notes,
+          orderDate: orderDate || existingDeal?.orderDate || null,
+          billingDate: billingDate || existingDeal?.billingDate || null,
           username: currentUser,  // Use username instead of salesPersonId
           updatedAt: new Date()
         };
@@ -1844,6 +1900,8 @@
           
           html += `<div style="font-size: 11px; color: var(--t2);">Probability: ${d.probability}%</div>
             ${d.closeDate ? `<div style="font-size: 11px; color: var(--t2);">Close: ${formatDate(d.closeDate)}</div>` : ''}
+            ${d.orderDate ? `<div style="font-size:11px;color:#1565C0;font-weight:600">Order: ${formatDate(d.orderDate)}</div>` : ''}
+            ${d.billingDate ? `<div style="font-size:11px;color:#2E7D32;font-weight:600">Billed: ${formatDate(d.billingDate)}</div>` : ''}
             <button class="btn sm" style="margin-top:9px" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>
           </div>`;
         });
@@ -1968,181 +2026,98 @@
       return Math.ceil(month / 3);
     }
     
-    async function saveTargets() {
-      if (!currentUser) {
-        showToast('Not authenticated', 'error');
-        return;
-      }
-
-      const revenue = parseInt(document.getElementById('targetRevenue').value) || 0;
-      const billing = parseInt(document.getElementById('targetBilling').value) || 0;
-      const annualRevenue = parseInt(document.getElementById('targetAnnualRevenue').value) || 0;
-      const annualBilling = parseInt(document.getElementById('targetAnnualBilling').value) || 0;
-      const margin = parseInt(document.getElementById('targetMargin').value) || 0;
-      const quarter = getQuarter();
-      
-      if (!revenue || !billing || !annualRevenue || !annualBilling) {
-        showToast('Please fill all target fields', 'error');
-        return;
-      }
-      
-      try {
-        const year = new Date().getFullYear();
-        const existingTarget = Object.values(targetData).find(t => t.quarter === quarter && t.year === year && t.username === currentUser);
-        
-        if (existingTarget) {
-          await db.collection(CRM_TARGETS).doc(existingTarget.id).update({
-            revenueTarget: revenue,
-            billingTarget: billing,
-            annualRevenueTarget: annualRevenue,
-            annualBillingTarget: annualBilling,
-            marginTarget: margin,
-            updatedAt: new Date()
-          });
-          targetData[existingTarget.id] = { ...existingTarget, revenueTarget: revenue, billingTarget: billing, annualRevenueTarget: annualRevenue, annualBillingTarget: annualBilling, marginTarget: margin };
-        } else {
-          const tgtRef = db.collection(CRM_TARGETS).doc();
-          await tgtRef.set({
-            quarter: quarter,
-            year: year,
-            revenueTarget: revenue,
-            billingTarget: billing,
-            annualRevenueTarget: annualRevenue,
-            annualBillingTarget: annualBilling,
-            marginTarget: margin,
-            revenueActual: 0,
-            billingActual: 0,
-            annualRevenueActual: 0,
-            annualBillingActual: 0,
-            username: currentUser,  // Use username instead of salesPersonId
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          targetData[tgtRef.id] = {
-            id: tgtRef.id,
-            quarter, year, revenueTarget: revenue, billingTarget: billing, annualRevenueTarget: annualRevenue, annualBillingTarget: annualBilling, marginTarget: margin,
-            revenueActual: 0, billingActual: 0, annualRevenueActual: 0, annualBillingActual: 0, username: currentUser
-          };
-        }
-        
-        closeModal('setTargetModal');
-        renderTargets();
-        renderDashboard();
-        showToast('Targets saved!', 'success');
-      } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-      }
+    function annualTargetFor(year = new Date().getFullYear()) {
+      return Object.values(targetData).find(t => t.year === year && t.username === currentUser && t.targetType === 'annual-plan') || null;
     }
-    
+
+    function readQuarterTargets() {
+      const quarters = {};
+      for (let q = 1; q <= 4; q++) {
+        quarters[`q${q}`] = {
+          booking: parseInt(document.getElementById(`targetQ${q}Booking`).value) || 0,
+          billing: parseInt(document.getElementById(`targetQ${q}Billing`).value) || 0
+        };
+      }
+      return quarters;
+    }
+
+    function updateTargetTotals() {
+      const quarters = readQuarterTargets();
+      const booking = Object.values(quarters).reduce((sum, q) => sum + q.booking, 0);
+      const billing = Object.values(quarters).reduce((sum, q) => sum + q.billing, 0);
+      document.getElementById('targetBookingTotal').textContent = `₹${booking.toLocaleString('en-IN')}`;
+      document.getElementById('targetBillingTotal').textContent = `₹${billing.toLocaleString('en-IN')}`;
+    }
+
+    async function saveTargets() {
+      if (!currentUser) return showToast('Not authenticated', 'error');
+      const year = new Date().getFullYear();
+      const quarterTargets = readQuarterTargets();
+      const marginTarget = parseInt(document.getElementById('targetMargin').value) || 0;
+      if (Object.values(quarterTargets).some(q => !q.booking || !q.billing)) return showToast('Enter Booking and Billing targets for all four quarters', 'error');
+      const annualBookingTarget = Object.values(quarterTargets).reduce((sum, q) => sum + q.booking, 0);
+      const annualBillingTarget = Object.values(quarterTargets).reduce((sum, q) => sum + q.billing, 0);
+      const record = { targetType: 'annual-plan', year, quarterTargets, annualBookingTarget, annualBillingTarget, marginTarget, username: currentUser, updatedAt: new Date() };
+      try {
+        const existing = annualTargetFor(year);
+        if (existing) {
+          await db.collection(CRM_TARGETS).doc(existing.id).update(record);
+          targetData[existing.id] = { ...existing, ...record };
+        } else {
+          const ref = db.collection(CRM_TARGETS).doc();
+          record.createdAt = new Date();
+          await ref.set(record);
+          targetData[ref.id] = { id: ref.id, ...record };
+        }
+        closeModal('setTargetModal'); renderTargets(); renderDashboard(); showToast('Quarterly targets saved!', 'success');
+      } catch (error) { showToast('Error: ' + error.message, 'error'); }
+    }
+
+    function targetActualsByQuarter(year) {
+      const actuals = { q1:{booking:0,billing:0}, q2:{booking:0,billing:0}, q3:{booking:0,billing:0}, q4:{booking:0,billing:0} };
+      Object.values(dealData).filter(deal => deal.username === currentUser).forEach(deal => {
+        const orderDate = toDateObject(deal.orderDate);
+        if (orderDate && orderDate.getFullYear() === year && ['Order','Billed'].includes(deal.stage)) actuals[`q${getQuarter(orderDate)}`].booking += Number(deal.value || 0);
+        const billingDate = toDateObject(deal.billingDate);
+        if (billingDate && billingDate.getFullYear() === year && deal.stage === 'Billed') actuals[`q${getQuarter(billingDate)}`].billing += Number(deal.value || 0);
+      });
+      return actuals;
+    }
+
+    function targetPct(actual, target) { return target ? Math.round(actual / target * 100) : 0; }
+
     function renderTargets() {
       const container = document.getElementById('targetsContainer');
-      const quarter = getQuarter();
       const year = new Date().getFullYear();
-      
-      const target = Object.values(targetData).find(t => t.quarter === quarter && t.year === year && t.salesPersonId === currentUser);
-      
+      const target = annualTargetFor(year);
       if (!target) {
-        container.innerHTML = `
-          <div class="empty" style="padding: 40px;">
-            <div class="empty-icon">🎯</div>
-            <p>No targets set yet. Set your quarterly & annual targets to track progress!</p>
-            <button class="btn primary" onclick="openSetTargetModal()" style="margin-top: 12px;"><i class="ti ti-plus"></i> Set Targets Now</button>
-          </div>
-        `;
+        container.innerHTML = `<div class="empty" style="padding:40px"><div class="empty-icon">🎯</div><p>No quarterly Booking and Billing targets set for ${year}.</p><button class="btn primary" onclick="openSetTargetModal()" style="margin-top:12px">Set Targets Now</button></div>`;
         return;
       }
-      
-      // Calculate actuals from Won deals
-      let qtrRevenue = 0, qtrBilling = 0, annualRevenue = 0, annualBilling = 0;
-      Object.values(dealData).forEach(deal => {
-        if (deal.stage === 'Billed' && deal.createdAt) {
-          const dealCreatedDate = toDateObject(deal.createdAt);
-          if (!dealCreatedDate) return;
-          const dealYear = dealCreatedDate.getFullYear();
-          const dealQuarter = getQuarter(dealCreatedDate);
-          
-          if (dealYear === year && dealQuarter === quarter) {
-            qtrRevenue += deal.value;
-            qtrBilling += deal.value * 0.95;
-          }
-          
-          if (dealYear === year) {
-            annualRevenue += deal.value;
-            annualBilling += deal.value * 0.95;
-          }
-        }
-      });
-      
-      const qtrRevenuePct = Math.round(qtrRevenue / target.revenueTarget * 100);
-      const qtrBillingPct = Math.round(qtrBilling / target.billingTarget * 100);
-      const annualRevenuePct = Math.round(annualRevenue / target.annualRevenueTarget * 100);
-      const annualBillingPct = Math.round(annualBilling / target.annualBillingTarget * 100);
-      
-      let html = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-          <div style="background: var(--pl); border-left: 3px solid var(--p); padding: 16px; border-radius: 6px;">
-            <div style="font-weight: 600; color: var(--p); margin-bottom: 12px;">📅 Quarterly (Q${quarter} ${year})</div>
-            <div class="target-row">
-              <span class="target-name">Revenue</span>
-              <div class="progress-bar" style="flex: 1;">
-                <div class="progress-fill" style="width: ${Math.min(qtrRevenuePct, 100)}%"></div>
-              </div>
-              <div style="text-align: right; font-weight: 500;">₹${formatCurrency(qtrRevenue)}</div>
-              <div class="target-status ${qtrRevenuePct >= 100 ? 'status-good' : qtrRevenuePct >= 70 ? 'status-warning' : 'status-danger'}">${qtrRevenuePct}%</div>
-            </div>
-            <div class="target-row">
-              <span class="target-name">Billing</span>
-              <div class="progress-bar" style="flex: 1;">
-                <div class="progress-fill" style="width: ${Math.min(qtrBillingPct, 100)}%"></div>
-              </div>
-              <div style="text-align: right; font-weight: 500;">₹${formatCurrency(qtrBilling)}</div>
-              <div class="target-status ${qtrBillingPct >= 100 ? 'status-good' : qtrBillingPct >= 70 ? 'status-warning' : 'status-danger'}">${qtrBillingPct}%</div>
-            </div>
-          </div>
-          
-          <div style="background: rgba(63, 112, 77, 0.05); border-left: 3px solid var(--success); padding: 16px; border-radius: 6px;">
-            <div style="font-weight: 600; color: var(--success); margin-bottom: 12px;">📊 Annual (${year})</div>
-            <div class="target-row">
-              <span class="target-name">Revenue</span>
-              <div class="progress-bar" style="flex: 1;">
-                <div class="progress-fill" style="background: var(--success); width: ${Math.min(annualRevenuePct, 100)}%"></div>
-              </div>
-              <div style="text-align: right; font-weight: 500;">₹${formatCurrency(annualRevenue)}</div>
-              <div class="target-status ${annualRevenuePct >= 100 ? 'status-good' : annualRevenuePct >= 70 ? 'status-warning' : 'status-danger'}">${annualRevenuePct}%</div>
-            </div>
-            <div class="target-row">
-              <span class="target-name">Billing</span>
-              <div class="progress-bar" style="flex: 1;">
-                <div class="progress-fill" style="background: var(--success); width: ${Math.min(annualBillingPct, 100)}%"></div>
-              </div>
-              <div style="text-align: right; font-weight: 500;">₹${formatCurrency(annualBilling)}</div>
-              <div class="target-status ${annualBillingPct >= 100 ? 'status-good' : annualBillingPct >= 70 ? 'status-warning' : 'status-danger'}">${annualBillingPct}%</div>
-            </div>
-          </div>
-        </div>
-        
-        <div style="background: var(--bg); padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 11px; color: var(--t2);">
-          <strong>Target Margin:</strong> ${target.marginTarget}%
-        </div>
-        
-        <button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>
-      `;
-      
-      container.innerHTML = html;
+      const actuals = targetActualsByQuarter(year);
+      let totalBookingTarget=0,totalBillingTarget=0,totalBookingActual=0,totalBillingActual=0;
+      let rows = '';
+      for (let q=1;q<=4;q++) {
+        const plan = target.quarterTargets?.[`q${q}`] || {booking:0,billing:0};
+        const actual = actuals[`q${q}`];
+        totalBookingTarget += plan.booking; totalBillingTarget += plan.billing; totalBookingActual += actual.booking; totalBillingActual += actual.billing;
+        rows += `<tr><td style="padding:10px;font-weight:700">Q${q}</td><td>₹${Number(plan.booking).toLocaleString('en-IN')}</td><td style="color:#1565C0;font-weight:600">₹${actual.booking.toLocaleString('en-IN')}</td><td>${targetPct(actual.booking,plan.booking)}%</td><td>₹${Number(plan.billing).toLocaleString('en-IN')}</td><td style="color:#2E7D32;font-weight:600">₹${actual.billing.toLocaleString('en-IN')}</td><td>${targetPct(actual.billing,plan.billing)}%</td></tr>`;
+      }
+      rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>₹${totalBookingTarget.toLocaleString('en-IN')}</td><td>₹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>₹${totalBillingTarget.toLocaleString('en-IN')}</td><td>₹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td></tr>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Target Margin:</b> ${target.marginTarget || 0}% · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
-    
+
     function openSetTargetModal() {
-      const quarter = getQuarter();
       const year = new Date().getFullYear();
-      const target = Object.values(targetData).find(t => t.quarter === quarter && t.year === year && t.salesPersonId === currentUser);
-      
-      document.getElementById('targetRevenue').value = target?.revenueTarget || '';
-      document.getElementById('targetBilling').value = target?.billingTarget || '';
-      document.getElementById('targetAnnualRevenue').value = target?.annualRevenueTarget || '';
-      document.getElementById('targetAnnualBilling').value = target?.annualBillingTarget || '';
+      const target = annualTargetFor(year);
+      for (let q=1;q<=4;q++) {
+        const plan = target?.quarterTargets?.[`q${q}`] || {};
+        document.getElementById(`targetQ${q}Booking`).value = plan.booking || '';
+        document.getElementById(`targetQ${q}Billing`).value = plan.billing || '';
+      }
       document.getElementById('targetMargin').value = target?.marginTarget || '';
-      document.getElementById('targetQuarterDisplay').textContent = `Q${quarter}`;
-      openModal('setTargetModal');
+      document.getElementById('targetYearDisplay').textContent = year;
+      updateTargetTotals(); openModal('setTargetModal');
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2401,7 +2376,10 @@
 
     async function markActivityNotificationsRead(activityId) {
       const matches = Object.values(notificationData)
-        .filter(notification => notification.activityId === activityId && !notification.read && notification.type === 'next_activity_plan');
+        .filter(notification => notification.activityId === activityId && !notification.read && [
+          'next_activity_plan', 'next_activity_date_proposed', 'proposal_escalated',
+          'proposal_final_decision', 'salesperson_approved_proposal'
+        ].includes(notification.type));
       if (!matches.length) return;
       const batch = db.batch();
       const readAt = new Date();
@@ -2410,6 +2388,162 @@
         notification.read = true;
       });
       await batch.commit();
+    }
+
+    function getMandatoryCrmAction() {
+      return Object.values(activityData)
+        .sort((a, b) => firestoreTime(a.createdAt) - firestoreTime(b.createdAt))
+        .map(activity => {
+          const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
+          const status = activity.planResponseStatus || 'pending';
+          if (supportingUsername === currentUser && status === 'pending') return { activity, action: 'support-response' };
+          if (activity.username === currentUser && ['date-proposed', 'sales-review'].includes(status)) return { activity, action: 'sales-review' };
+          if (currentUser === 'updesh' && status === 'updesh-review') return { activity, action: 'updesh-review' };
+          if (status === 'final-decision') {
+            if (activity.username === currentUser && !activity.salesAcknowledgedAt) return { activity, action: 'final-ack' };
+            if (supportingUsername === currentUser && !activity.supportAcknowledgedAt) return { activity, action: 'final-ack' };
+          }
+          if (status === 'sales-approved-final' && supportingUsername === currentUser && !activity.supportAcknowledgedAt) {
+            return { activity, action: 'final-ack' };
+          }
+          return null;
+        }).find(Boolean) || null;
+    }
+
+    function forcedActionDealDetails(activity) {
+      const deal = dealData[activity.dealId] || {};
+      const customer = customerData[deal.customerId] || {};
+      return `<div style="border:1px solid #90CAF9;border-radius:8px;overflow:hidden;background:#F8FBFF">
+        <div style="padding:10px 12px;background:#E3F2FD;color:#0D47A1;font-size:13px;font-weight:800">${escapeHtml(deal.title || 'CRM Deal')}</div>
+        <div style="padding:11px 12px;font-size:11px;line-height:1.7;color:#37474F">
+          Contact: <b>${escapeHtml(customer.name || '—')}</b> · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b><br>
+          Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(activity.supportingName || activity.responsibleName || '—')}</b><br>
+          Logged activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
+        </div>
+        <div style="margin:0 12px 12px;padding:10px;background:#1565C0;color:#fff;border-radius:6px">
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.8px">NEXT ACTIVITY PLAN · ${formatDate(activity.nextActivityDate)}</div>
+          <div style="font-size:12px;margin-top:5px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
+        </div>
+        ${activity.proposedNextActivityDate ? `<div style="margin:0 12px 12px;padding:10px;background:#FFF3E0;border:1px solid #FFB74D;color:#E65100;border-radius:6px"><b>Proposed date: ${formatDate(activity.proposedNextActivityDate)}</b><br><span style="font-size:11px">Reason: ${escapeHtml(activity.dateProposalReason || '—')}</span></div>` : ''}
+      </div>`;
+    }
+
+    function renderForcedActionModal() {
+      const modal = document.getElementById('forcedActionModal');
+      if (!modal || !currentUser) return;
+      const pending = getMandatoryCrmAction();
+      if (!pending) {
+        modal.classList.remove('active');
+        return;
+      }
+      const { activity, action } = pending;
+      const header = document.getElementById('forcedActionHeader');
+      const title = document.getElementById('forcedActionTitle');
+      const subtitle = document.getElementById('forcedActionSubtitle');
+      const details = document.getElementById('forcedActionDetails');
+      const inputs = document.getElementById('forcedActionInputs');
+      const buttons = document.getElementById('forcedActionButtons');
+      const palette = action === 'support-response' ? ['#1565C0', 'Supporting Hand Response Required']
+        : action === 'sales-review' ? ['#EF6C00', 'Salesperson Decision Required']
+        : action === 'updesh-review' ? ['#6A1B9A', 'Escalation — Final Decision Required']
+        : ['#2E7D32', 'Final Decision Acknowledgement'];
+      header.style.background = palette[0];
+      title.textContent = palette[1];
+      subtitle.textContent = 'This mandatory action must be completed before CRM can be used further.';
+      details.innerHTML = forcedActionDealDetails(activity);
+      inputs.innerHTML = '';
+      if (action === 'support-response') {
+        buttons.innerHTML = `<button class="btn primary" onclick="acceptNextActivityPlan('${activity.id}')">Accept Plan</button><button class="btn" onclick="showForcedProposalInputs('${activity.id}')">Propose New Date</button>`;
+      } else if (action === 'sales-review') {
+        buttons.innerHTML = `<button class="btn primary" onclick="salesReviewProposal('${activity.id}','approve')">Approve Revised Date</button><button class="btn" onclick="showForcedEscalationInputs('${activity.id}')">Escalate to Updesh</button>`;
+      } else if (action === 'updesh-review') {
+        inputs.innerHTML = '<div class="form-group"><label>Final decision remarks *</label><textarea id="forcedDecisionRemarks" placeholder="Enter final decision remarks"></textarea></div>';
+        buttons.innerHTML = `<button class="btn primary" onclick="updeshReviewProposal('${activity.id}','approved')">Approve Proposed Date</button><button class="btn" style="border-color:#B71C1C;color:#B71C1C" onclick="updeshReviewProposal('${activity.id}','rejected')">Reject Proposed Date</button>`;
+      } else {
+        const approved = activity.finalDecision === 'approved' || activity.planResponseStatus === 'sales-approved-final';
+        inputs.innerHTML = `<div style="padding:10px;border-radius:6px;background:${approved ? '#E8F5E9' : '#FFEBEE'};color:${approved ? '#1B5E20' : '#B71C1C'}"><b>Final decision: ${approved ? 'APPROVED' : 'REJECTED'}</b><br>${escapeHtml(activity.finalDecisionRemarks || activity.salesDecisionRemarks || '')}${approved ? `<br>Final date: ${formatDate(activity.nextActivityDate)}` : ''}</div>`;
+        buttons.innerHTML = `<button class="btn primary" onclick="acknowledgeFinalDecision('${activity.id}')">Accept Final Decision</button>`;
+      }
+      modal.classList.add('active');
+    }
+
+    function showForcedProposalInputs(id) {
+      document.getElementById('forcedActionInputs').innerHTML = `<div class="form-group"><label>Proposed Date *</label><input type="date" id="forcedProposedDate"></div><div class="form-group"><label>Reason *</label><textarea id="forcedProposalReason" placeholder="Explain the proposed change"></textarea></div>`;
+      document.getElementById('forcedActionButtons').innerHTML = `<button class="btn primary" onclick="submitForcedProposal('${id}')">Send Proposal</button>`;
+    }
+
+    function showForcedEscalationInputs(id) {
+      document.getElementById('forcedActionInputs').innerHTML = `<div class="form-group"><label>Reason for escalation *</label><textarea id="forcedEscalationReason" placeholder="Explain why Updesh's final decision is required"></textarea></div>`;
+      document.getElementById('forcedActionButtons').innerHTML = `<button class="btn primary" onclick="salesReviewProposal('${id}','escalate')">Send to Updesh</button>`;
+    }
+
+    async function notifyActivityUsers(activity, recipients, type, message, dueDate) {
+      for (const recipientUsername of [...new Set(recipients.filter(Boolean))]) {
+        await createCrmNotification({ recipientUsername, type, activityId: activity.id, dealId: activity.dealId, dueDate, message });
+      }
+    }
+
+    async function submitForcedProposal(id) {
+      const activity = activityData[id];
+      const proposedDate = document.getElementById('forcedProposedDate')?.value;
+      const reason = document.getElementById('forcedProposalReason')?.value.trim();
+      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
+      if (!activity || supportingUsername !== currentUser || !proposedDate || !reason) { showToast('Proposed date and reason are mandatory', 'error'); return; }
+      if (proposedDate === activity.nextActivityDate) { showToast('Proposed date must be different', 'error'); return; }
+      const update = { planResponseStatus: 'sales-review', proposedNextActivityDate: proposedDate, dateProposalReason: reason, planRespondedBy: currentUser, planRespondedAt: new Date() };
+      await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+      await markActivityNotificationsRead(id);
+      const deal = dealData[activity.dealId] || {};
+      await notifyActivityUsers(activity, [activity.username, 'updesh'], 'next_activity_date_proposed', `${activity.supportingName || currentUser} proposed ${formatDate(proposedDate)} for ${deal.title || 'the CRM deal'}. Reason: ${reason}.`, proposedDate);
+      renderActivities(); renderTaskCenter(); renderForcedActionModal();
+    }
+
+    async function salesReviewProposal(id, decision) {
+      const activity = activityData[id];
+      if (!activity || activity.username !== currentUser || !['sales-review', 'date-proposed'].includes(activity.planResponseStatus)) return;
+      const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
+      if (decision === 'approve') {
+        const update = { nextActivityDate: activity.proposedNextActivityDate, planResponseStatus: 'sales-approved-final', salesDecision: 'approved', salesDecisionBy: currentUser, salesDecisionAt: new Date(), salesAcknowledgedAt: new Date() };
+        await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+        await notifyActivityUsers(activity, [supportingUsername, 'updesh'], 'salesperson_approved_proposal', `Salesperson approved the revised date ${formatDate(activity.proposedNextActivityDate)}. Supporting Hand acknowledgement is mandatory.`, activity.proposedNextActivityDate);
+      } else {
+        const reason = document.getElementById('forcedEscalationReason')?.value.trim();
+        if (!reason) { showToast('Escalation reason is mandatory', 'error'); return; }
+        const update = { planResponseStatus: 'updesh-review', escalationReason: reason, escalatedBy: currentUser, escalatedAt: new Date() };
+        await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+        await notifyActivityUsers(activity, ['updesh', supportingUsername], 'proposal_escalated', `Revised date ${formatDate(activity.proposedNextActivityDate)} escalated to Updesh. Reason: ${reason}.`, activity.proposedNextActivityDate);
+      }
+      await markActivityNotificationsRead(id); renderActivities(); renderTaskCenter(); renderForcedActionModal();
+    }
+
+    async function updeshReviewProposal(id, decision) {
+      const activity = activityData[id];
+      const remarks = document.getElementById('forcedDecisionRemarks')?.value.trim();
+      if (currentUser !== 'updesh' || !activity || activity.planResponseStatus !== 'updesh-review' || !remarks) { showToast('Final decision remarks are mandatory', 'error'); return; }
+      const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
+      const update = { planResponseStatus: 'final-decision', finalDecision: decision, finalDecisionRemarks: remarks, finalDecisionBy: currentUser, finalDecisionAt: new Date(), salesAcknowledgedAt: null, supportAcknowledgedAt: null };
+      if (decision === 'approved') update.nextActivityDate = activity.proposedNextActivityDate;
+      await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+      await markActivityNotificationsRead(id);
+      await notifyActivityUsers(activity, [activity.username, supportingUsername], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. Both parties must acknowledge this final decision.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
+      renderActivities(); renderTaskCenter(); renderForcedActionModal();
+    }
+
+    async function acknowledgeFinalDecision(id) {
+      const activity = activityData[id];
+      if (!activity) return;
+      const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
+      const update = {};
+      if (activity.username === currentUser) update.salesAcknowledgedAt = new Date();
+      else if (supportingUsername === currentUser) update.supportAcknowledgedAt = new Date();
+      else return;
+      const salesAck = !!(update.salesAcknowledgedAt || activity.salesAcknowledgedAt || activity.planResponseStatus === 'sales-approved-final');
+      const supportAck = !!(update.supportAcknowledgedAt || activity.supportAcknowledgedAt);
+      if (salesAck && supportAck) update.planResponseStatus = 'final-acknowledged';
+      await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+      await markActivityNotificationsRead(id);
+      if (salesAck && supportAck) await notifyActivityUsers(activity, ['updesh'], 'final_decision_acknowledged', 'Salesperson and Supporting Hand accepted the final Next Activity decision.', activity.nextActivityDate);
+      renderActivities(); renderTaskCenter(); renderForcedActionModal();
     }
 
     function renderTaskCenter() {
@@ -2429,6 +2563,7 @@
       if (!count) {
         panel.style.display = 'none';
         panel.innerHTML = '';
+        renderForcedActionModal();
         return;
       }
 
@@ -2442,7 +2577,14 @@
         const supportingName = activity?.supportingName || activity?.responsibleName;
         const requiresAction = item.type === 'next_activity_plan' && supportingUsername === currentUser && (activity?.planResponseStatus || 'pending') === 'pending';
         const isPlanNotification = item.type === 'next_activity_plan' && !!activity;
-        html += `<div style="background:#fff;border-radius:7px;padding:12px;margin-bottom:8px;border-left:4px solid ${requiresAction ? '#1565C0' : '#D32F2F'}">
+        const notificationPalette = {
+          next_activity_plan: ['#1565C0','#EAF3FF'], next_activity_date_proposed: ['#EF6C00','#FFF3E0'],
+          proposal_escalated: ['#6A1B9A','#F3E5F5'], proposal_final_decision: ['#2E7D32','#E8F5E9'],
+          salesperson_approved_proposal: ['#00838F','#E0F7FA'], next_activity_accepted: ['#2E7D32','#E8F5E9'],
+          activity_completed: ['#2E7D32','#E8F5E9']
+        };
+        const palette = notificationPalette[item.type] || ['#B71C1C','#FFF8F8'];
+        html += `<div style="background:${palette[1]};border:1px solid ${palette[0]}55;border-radius:7px;padding:12px;margin-bottom:8px;border-left:5px solid ${palette[0]}">
           ${requiresAction ? '<div style="font-size:11px;font-weight:800;color:#B71C1C;margin-bottom:8px">ACTION REQUIRED — Accept the plan or propose a new date</div>' : ''}
           ${isPlanNotification ? `
             <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || 'CRM Deal')}</div>
@@ -2455,7 +2597,7 @@
               <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN · ${formatDate(activity.nextActivityDate)}</div>
               <div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
             </div>` : `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>`}
-          ${requiresAction ? `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px"><button class="btn sm primary" onclick="acceptNextActivityPlan('${activity.id}')">Accept Plan</button><button class="btn sm" onclick="openExtensionRequest('${activity.id}')">Propose New Date</button></div>` : `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>`}
+          ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>`}
         </div>`;
       });
       approvals.forEach(activity => {
@@ -2467,6 +2609,7 @@
         </div>`;
       });
       panel.innerHTML = html + '</div>';
+      renderForcedActionModal();
     }
 
     function renderActivityDeals() {
@@ -2535,6 +2678,7 @@
       })));
       renderActivities();
       renderTaskCenter();
+      renderForcedActionModal();
       showToast('Next Activity Plan accepted', 'success');
     }
 
@@ -2670,12 +2814,15 @@
             ${a.nextActivityDescription ? `<div style="font-size:11px;margin-top:4px">${escapeHtml(a.nextActivityDescription)}</div>` : ''}
           </div>
           ${planStatus === 'accepted' ? `<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:6px">✓ PLAN ACCEPTED by ${escapeHtml(a.planRespondedBy || supportingName || '')}</div>` : ''}
-          ${planStatus === 'date-proposed' ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">New date proposed: ${formatDate(a.proposedNextActivityDate)} — ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
+          ${['date-proposed','sales-review'].includes(planStatus) ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">Awaiting salesperson decision · Proposed: ${formatDate(a.proposedNextActivityDate)} — ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
+          ${planStatus === 'updesh-review' ? `<div style="font-size:10px;color:#6A1B9A;margin-top:6px;font-weight:700">Escalated to Updesh for final decision</div>` : ''}
+          ${planStatus === 'sales-approved-final' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">Revised date approved by salesperson · Supporting Hand acknowledgement pending</div>` : ''}
+          ${planStatus === 'final-decision' ? `<div style="font-size:10px;color:${a.finalDecision === 'approved' ? '#2E7D32' : '#B71C1C'};margin-top:6px;font-weight:700">Updesh final decision: ${escapeHtml(String(a.finalDecision || '').toUpperCase())} · acknowledgement pending</div>` : ''}
+          ${planStatus === 'final-acknowledged' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">✓ Final decision accepted by salesperson and Supporting Hand</div>` : ''}
           ${a.extensionStatus === 'pending' ? `<div style="font-size:10px;color:#F57C00;margin-top:5px">Extension requested: ${formatDate(a.requestedExtensionDate)}</div>` : ''}
           ${a.extensionStatus === 'approved' ? `<div style="font-size:10px;color:#2E7D32;margin-top:5px">Extension approved by ${escapeHtml(a.extensionReviewedBy || '')}</div>` : ''}
           ${a.extensionStatus === 'rejected' ? `<div style="font-size:10px;color:#D32F2F;margin-top:5px">Extension rejected${a.extensionReviewRemarks ? `: ${escapeHtml(a.extensionReviewRemarks)}` : ''}</div>` : ''}
           ${completed ? '<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:7px">✓ COMPLETED</div>' : ''}
-          ${assignedToMe && !completed && planStatus === 'pending' ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px"><button class="btn sm primary" onclick="acceptNextActivityPlan('${a.id}')">Accept Plan</button><button class="btn sm" onclick="openExtensionRequest('${a.id}')">Propose New Date</button></div>` : ''}
           ${assignedToMe && !completed && planStatus === 'accepted' ? `<div style="margin-top:9px"><button class="btn sm primary" onclick="completeAssignedActivity('${a.id}')">Complete Task</button></div>` : ''}
         </div>`;
       });
@@ -2882,6 +3029,7 @@
     }
     
     function closeModal(id) {
+      if (id === 'forcedActionModal' && getMandatoryCrmAction()) return;
       document.getElementById(id).classList.remove('active');
     }
     
@@ -2890,7 +3038,7 @@
       if (e.key === 'Escape') {
         const activeModals = document.querySelectorAll('.modal.active');
         activeModals.forEach(modal => {
-          modal.classList.remove('active');
+          if (modal.id !== 'forcedActionModal') modal.classList.remove('active');
         });
       }
     });
