@@ -921,22 +921,25 @@
         <input type="date" id="activityDate">
       </div>
       <div class="form-group">
-        <label>Responsible Person *</label>
-        <select id="activityResponsible">
-          <option value="">-- Select Wiki User --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Activity Time</label>
-        <input type="time" id="activityTime">
-      </div>
-      <div class="form-group">
         <label>Description</label>
         <textarea id="activityDescription" placeholder="What did you discuss?"></textarea>
       </div>
-      <div class="form-group">
-        <label>Next Activity Date</label>
-        <input type="date" id="activityNextDate">
+      <div style="border-top:2px solid #1565C0;margin:18px 0 12px;padding-top:12px;color:#1565C0;font-weight:700">Next Activity Plan</div>
+      <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:7px;padding:12px;color:#1565C0">
+        <div class="form-group">
+          <label>Next Activity Date *</label>
+          <input type="date" id="activityNextDate">
+        </div>
+        <div class="form-group">
+          <label>Next Activity Description *</label>
+          <textarea id="nextActivityDescription" placeholder="Describe the next action required"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Supporting Hand *</label>
+          <select id="activitySupportingHand">
+            <option value="">-- Select Wiki User --</option>
+          </select>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('addActivityModal')">Cancel</button>
@@ -969,25 +972,25 @@
     </div>
   </div>
 
-  <!-- Extension Request Modal -->
+  <!-- Supporting Hand Date Proposal Modal -->
   <div id="extensionRequestModal" class="modal">
     <div class="modal-content" style="max-width:480px">
       <div class="modal-header">
-        <span>Revise Task Due Date</span>
+        <span>Propose New Activity Date</span>
         <button class="modal-close" onclick="closeModal('extensionRequestModal')">✕</button>
       </div>
       <input type="hidden" id="extensionActivityId">
       <div class="form-group">
-        <label>Revised Date *</label>
+        <label>Proposed Date *</label>
         <input type="date" id="extensionRevisedDate">
       </div>
       <div class="form-group">
-        <label>Reason / Remarks</label>
-        <textarea id="extensionReason" placeholder="Optional reason for extension"></textarea>
+        <label>Reason *</label>
+        <textarea id="extensionReason" placeholder="Explain why a different date is proposed"></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('extensionRequestModal')">Cancel</button>
-        <button class="btn primary" onclick="submitExtensionRequest()">Submit</button>
+        <button class="btn primary" onclick="submitExtensionRequest()">Send Proposal</button>
       </div>
     </div>
   </div>
@@ -1016,6 +1019,7 @@
     let pendingApprovalData = {};
     let currentImportType = null;
     let taskRefreshTimer = null;
+    let taskUnsubscribers = [];
     let pipelineChart = null;
     let currentCalendarDate = new Date();
     let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
@@ -1050,7 +1054,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.2';
+    const CRM_BUILD = '20260622.3';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1924,9 +1928,9 @@
           html += `<div class="meeting-detail">
             <div style="display: flex; justify-content: space-between; align-items: start;">
               <div>
-                <strong>${a.activityType}</strong> <span style="color: var(--t2);">${a.activityTime || 'Time TBD'}</span>${dealInfo}
+                <strong>${a.activityType}</strong>${dealInfo}
                 <div style="margin-top: 6px; color: var(--t1);">${a.description || 'No details'}</div>
-                ${a.nextActivityDate ? `<div style="margin-top: 6px; font-size: 11px; color: var(--t2);">📌 Next: ${formatDate(a.nextActivityDate)}</div>` : ''}
+                ${a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">📌 Next: ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` — ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hand: ${escapeHtml(a.supportingName || a.responsibleName || 'Unassigned')}</div>` : ''}
               </div>
             </div>
           </div>`;
@@ -2137,7 +2141,7 @@
     // ACTIVITIES
     // ═══════════════════════════════════════════════════════════════════════════
     function populateResponsibleUsers() {
-      const select = document.getElementById('activityResponsible');
+      const select = document.getElementById('activitySupportingHand');
       if (!select) return;
       select.innerHTML = '<option value="">-- Select Wiki User --</option>';
       wikiUsers.forEach(user => {
@@ -2156,10 +2160,10 @@
       document.getElementById('activityType').value = 'Call';
       document.getElementById('activityDeal').value = dealId;
       document.getElementById('activityDate').value = today;
-      document.getElementById('activityResponsible').value = currentUser || '';
-      document.getElementById('activityTime').value = '';
       document.getElementById('activityDescription').value = '';
       document.getElementById('activityNextDate').value = '';
+      document.getElementById('nextActivityDescription').value = '';
+      document.getElementById('activitySupportingHand').value = '';
       openModal('addActivityModal');
     }
     
@@ -2172,15 +2176,15 @@
       const type = document.getElementById('activityType').value;
       const dealId = document.getElementById('activityDeal').value;
       const date = document.getElementById('activityDate').value;
-      const responsibleSelect = document.getElementById('activityResponsible');
-      const responsibleUsername = responsibleSelect.value;
-      const responsibleName = responsibleSelect.options[responsibleSelect.selectedIndex]?.dataset.name || responsibleUsername;
-      const time = document.getElementById('activityTime').value;
+      const supportingSelect = document.getElementById('activitySupportingHand');
+      const supportingUsername = supportingSelect.value;
+      const supportingName = supportingSelect.options[supportingSelect.selectedIndex]?.dataset.name || supportingUsername;
       const desc = document.getElementById('activityDescription').value.trim();
       const nextDate = document.getElementById('activityNextDate').value;
+      const nextDescription = document.getElementById('nextActivityDescription').value.trim();
       
-      if (!dealId || !date || !responsibleUsername || !nextDate) {
-        showToast('Please select a deal, activity date, responsible person and next activity date', 'error');
+      if (!dealId || !date || !supportingUsername || !nextDate || !nextDescription) {
+        showToast('Please complete the deal, activity date and all Next Activity Plan fields', 'error');
         return;
       }
       
@@ -2190,13 +2194,17 @@
           activityType: type,
           dealId,
           activityDate: date,
-          activityTime: time,
           description: desc,
           nextActivityDate: nextDate,
+          nextActivityDescription: nextDescription,
           username: currentUser,
           creatorName: currentUserData?.fullName || currentUserData?.displayName || currentUser,
-          responsibleUsername,
-          responsibleName,
+          supportingUsername,
+          supportingName,
+          // Legacy aliases keep existing task queries and earlier data compatible.
+          responsibleUsername: supportingUsername,
+          responsibleName: supportingName,
+          planResponseStatus: 'pending',
           taskStatus: 'open',
           extensionStatus: null,
           createdAt: new Date(),
@@ -2209,20 +2217,21 @@
           ...activityRecord
         };
 
-        let notificationSent = true;
-        try {
-          await createCrmNotification({
-            recipientUsername: responsibleUsername,
-            type: 'activity_assigned',
-            activityId: actRef.id,
-            dealId,
-            dueDate: nextDate,
-            message: `${activityRecord.creatorName} assigned ${type} for ${dealData[dealId]?.title || 'a CRM deal'} due ${formatDate(nextDate)}.`
-          });
-        } catch (notificationError) {
-          notificationSent = false;
-          console.error('Activity saved but notification failed:', notificationError);
-        }
+        const deal = dealData[dealId] || {};
+        const customer = customerData[deal.customerId] || {};
+        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. Deal: ${deal.title || 'Untitled'}; Contact: ${customer.name || '—'}; Stage: ${deal.stage || '—'}; Value: ₹${Number(deal.value || 0).toLocaleString('en-IN')}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextDescription}; Date: ${formatDate(nextDate)}.`;
+        const notificationRecipients = [...new Set([supportingUsername, 'updesh'].filter(Boolean))];
+        const notificationResults = await Promise.allSettled(notificationRecipients.map(recipientUsername => createCrmNotification({
+          recipientUsername,
+          type: 'next_activity_plan',
+          activityId: actRef.id,
+          dealId,
+          dueDate: nextDate,
+          message: detailMessage
+        })));
+        const notificationSent = notificationResults.every(result => result.status === 'fulfilled');
+        notificationResults.filter(result => result.status === 'rejected')
+          .forEach(result => console.error('Activity saved but notification failed:', result.reason));
         
         closeModal('addActivityModal');
         renderCalendar();
@@ -2230,7 +2239,7 @@
         renderActivityDeals();
         renderTaskCenter();
         renderDashboard();
-        showToast(notificationSent ? 'Activity logged and responsible person notified!' : 'Activity logged, but notification could not be sent', notificationSent ? 'success' : 'warning');
+        showToast(notificationSent ? 'Activity logged; Supporting Hand and Updesh notified!' : 'Activity logged, but one or more notifications failed', notificationSent ? 'success' : 'warning');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -2326,7 +2335,26 @@
 
     function startTaskRefresh() {
       if (taskRefreshTimer) clearInterval(taskRefreshTimer);
-      taskRefreshTimer = setInterval(refreshTaskCenter, 60000);
+      taskUnsubscribers.forEach(unsubscribe => unsubscribe());
+      taskUnsubscribers = [];
+
+      const handleLiveChange = () => refreshTaskCenter();
+      const handleLiveError = error => console.warn('CRM live task updates unavailable; fallback refresh remains active:', error);
+      taskUnsubscribers.push(
+        db.collection(CRM_ACTIVITIES).where('responsibleUsername', '==', currentUser)
+          .onSnapshot(handleLiveChange, handleLiveError),
+        db.collection(CRM_NOTIFICATIONS).where('recipientUsername', '==', currentUser)
+          .onSnapshot(handleLiveChange, handleLiveError)
+      );
+      if (isExtensionApprover()) {
+        taskUnsubscribers.push(
+          db.collection(CRM_ACTIVITIES).where('extensionStatus', '==', 'pending')
+            .onSnapshot(handleLiveChange, handleLiveError)
+        );
+      }
+
+      // Safety refresh in case a live connection is temporarily interrupted.
+      taskRefreshTimer = setInterval(refreshTaskCenter, 300000);
     }
 
     function openTaskCenter() {
@@ -2405,7 +2433,8 @@
 
     async function completeAssignedActivity(id) {
       const activity = activityData[id];
-      if (!activity || activity.responsibleUsername !== currentUser) return;
+      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
+      if (!activity || supportingUsername !== currentUser) return;
       await db.collection(CRM_ACTIVITIES).doc(id).update({ taskStatus: 'completed', completedDate: new Date() });
       activity.taskStatus = 'completed';
       activity.completedDate = new Date();
@@ -2415,16 +2444,45 @@
         activityId: id,
         dealId: activity.dealId,
         dueDate: activity.nextActivityDate,
-        message: `${activity.responsibleName || currentUser} completed the assigned CRM task.`
+        message: `${activity.supportingName || activity.responsibleName || currentUser} completed the Next Activity Plan.`
       });
       renderActivities();
       renderTaskCenter();
       showToast('Task marked complete', 'success');
     }
 
+    async function acceptNextActivityPlan(id) {
+      const activity = activityData[id];
+      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
+      if (!activity || supportingUsername !== currentUser) return;
+      const update = {
+        planResponseStatus: 'accepted',
+        planRespondedBy: currentUser,
+        planRespondedAt: new Date(),
+        taskStatus: 'accepted'
+      };
+      await db.collection(CRM_ACTIVITIES).doc(id).update(update);
+      Object.assign(activity, update);
+      const deal = dealData[activity.dealId] || {};
+      const message = `${activity.supportingName || activity.responsibleName || currentUser} accepted the Next Activity Plan for ${deal.title || 'the CRM deal'} scheduled on ${formatDate(activity.nextActivityDate)}: ${activity.nextActivityDescription || 'No description'}.`;
+      const recipients = [...new Set([activity.username, 'updesh'].filter(Boolean))];
+      await Promise.all(recipients.map(recipientUsername => createCrmNotification({
+        recipientUsername,
+        type: 'next_activity_accepted',
+        activityId: id,
+        dealId: activity.dealId,
+        dueDate: activity.nextActivityDate,
+        message
+      })));
+      renderActivities();
+      renderTaskCenter();
+      showToast('Next Activity Plan accepted', 'success');
+    }
+
     function openExtensionRequest(id) {
       const activity = activityData[id];
-      if (!activity || activity.responsibleUsername !== currentUser) return;
+      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
+      if (!activity || supportingUsername !== currentUser) return;
       document.getElementById('extensionActivityId').value = id;
       document.getElementById('extensionRevisedDate').value = activity.nextActivityDate || '';
       document.getElementById('extensionReason').value = '';
@@ -2436,57 +2494,37 @@
       const revisedDate = document.getElementById('extensionRevisedDate').value;
       const reason = document.getElementById('extensionReason').value.trim();
       const activity = activityData[id];
-      if (!activity || activity.responsibleUsername !== currentUser || !revisedDate) {
-        showToast('Please select a valid revised date', 'error');
+      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
+      if (!activity || supportingUsername !== currentUser || !revisedDate || !reason) {
+        showToast('Please select a proposed date and enter the reason', 'error');
         return;
       }
-      if (activity.nextActivityDate && revisedDate <= activity.nextActivityDate) {
-        showToast('Revised date must be later than the current due date', 'error');
+      if (activity.nextActivityDate === revisedDate) {
+        showToast('Proposed date must be different from the current date', 'error');
         return;
       }
 
-      if (isExtensionApprover()) {
-        const update = {
-          nextActivityDate: revisedDate,
-          extensionStatus: 'self-revised',
-          requestedExtensionDate: revisedDate,
-          extensionReason: reason,
-          extensionReviewedBy: currentUser,
-          extensionReviewedAt: new Date()
-        };
-        await db.collection(CRM_ACTIVITIES).doc(id).update(update);
-        Object.assign(activity, update);
-        await createCrmNotification({
-          recipientUsername: activity.username,
-          type: 'due_date_revised',
-          activityId: id,
-          dealId: activity.dealId,
-          dueDate: revisedDate,
-          message: `${activity.responsibleName || currentUser} revised the task due date to ${formatDate(revisedDate)}.`
-        });
-        showToast('Due date revised', 'success');
-      } else {
-        const update = {
-          extensionStatus: 'pending',
-          requestedExtensionDate: revisedDate,
-          extensionReason: reason,
-          extensionRequestedBy: currentUser,
-          extensionRequestedAt: new Date()
-        };
-        await db.collection(CRM_ACTIVITIES).doc(id).update(update);
-        Object.assign(activity, update);
-        for (const approver of ['updesh', 'pratim']) {
-          await createCrmNotification({
-            recipientUsername: approver,
-            type: 'extension_approval',
-            activityId: id,
-            dealId: activity.dealId,
-            dueDate: revisedDate,
-            message: `${activity.responsibleName || currentUser} requested a task extension to ${formatDate(revisedDate)}.`
-          });
-        }
-        showToast('Extension request sent to Updesh and Pratim', 'success');
-      }
+      const update = {
+        planResponseStatus: 'date-proposed',
+        proposedNextActivityDate: revisedDate,
+        dateProposalReason: reason,
+        planRespondedBy: currentUser,
+        planRespondedAt: new Date()
+      };
+      await db.collection(CRM_ACTIVITIES).doc(id).update(update);
+      Object.assign(activity, update);
+      const deal = dealData[activity.dealId] || {};
+      const message = `${activity.supportingName || activity.responsibleName || currentUser} proposed ${formatDate(revisedDate)} instead of ${formatDate(activity.nextActivityDate)} for ${deal.title || 'the CRM deal'}. Reason: ${reason}. Next activity: ${activity.nextActivityDescription || 'No description'}.`;
+      const recipients = [...new Set([activity.username, 'updesh'].filter(Boolean))];
+      await Promise.all(recipients.map(recipientUsername => createCrmNotification({
+        recipientUsername,
+        type: 'next_activity_date_proposed',
+        activityId: id,
+        dealId: activity.dealId,
+        dueDate: revisedDate,
+        message
+      })));
+      showToast('New date proposed; salesperson and Updesh notified', 'success');
       closeModal('extensionRequestModal');
       renderActivities();
       renderTaskCenter();
@@ -2550,7 +2588,10 @@
       
       activities.slice(0, 50).forEach(a => {
         const deal = dealData[a.dealId];
-        const assignedToMe = a.responsibleUsername === currentUser;
+        const supportingUsername = a.supportingUsername || a.responsibleUsername;
+        const supportingName = a.supportingName || a.responsibleName;
+        const assignedToMe = supportingUsername === currentUser;
+        const planStatus = a.planResponseStatus || 'pending';
         const completed = a.taskStatus === 'completed' || !!a.completedDate;
         const overdue = !completed && a.nextActivityDate && a.nextActivityDate < new Date().toISOString().split('T')[0];
         const borderColor = completed ? '#2E7D32' : overdue ? '#D32F2F' : assignedToMe ? '#F57C00' : 'var(--bd)';
@@ -2559,17 +2600,23 @@
             <strong>${escapeHtml(a.activityType || 'Activity')}</strong>
             <span style="font-size: 11px; color: var(--t2);">${formatDate(a.activityDate)}</span>
           </div>
-          ${a.activityTime ? `<div style="font-size: 11px; color: var(--t2); margin-bottom: 6px;">⏰ ${a.activityTime}</div>` : ''}
           ${deal ? `<div style="font-size: 11px; font-weight: 600; color: var(--p); margin-bottom: 6px;">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:11px;color:var(--danger)">Deal unavailable</div>'}
           ${a.description ? `<div style="font-size: 12px; margin-bottom: 6px;">${escapeHtml(a.description)}</div>` : ''}
           <div style="font-size:10.5px;color:var(--t2);margin-bottom:4px">Created by: ${escapeHtml(a.creatorName || a.username || '')}</div>
-          <div style="font-size:10.5px;color:var(--t2);margin-bottom:6px">Responsible: ${escapeHtml(a.responsibleName || a.responsibleUsername || 'Unassigned')}</div>
-          ${a.nextActivityDate ? `<div style="font-size: 10px; color:${overdue ? '#D32F2F' : '#2E7D32'}; padding-top: 6px; border-top: 0.5px solid var(--bd);">📌 Due: ${formatDate(a.nextActivityDate)}${overdue ? ' · OVERDUE' : ''}</div>` : ''}
+          <div style="font-size:10.5px;color:var(--t2);margin-bottom:6px">Supporting Hand: ${escapeHtml(supportingName || supportingUsername || 'Unassigned')}</div>
+          <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
+            <div style="font-size:10px;font-weight:700">NEXT ACTIVITY PLAN</div>
+            ${a.nextActivityDate ? `<div style="font-size:10.5px;margin-top:4px">📌 ${formatDate(a.nextActivityDate)}${overdue ? ' · OVERDUE' : ''}</div>` : ''}
+            ${a.nextActivityDescription ? `<div style="font-size:11px;margin-top:4px">${escapeHtml(a.nextActivityDescription)}</div>` : ''}
+          </div>
+          ${planStatus === 'accepted' ? `<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:6px">✓ PLAN ACCEPTED by ${escapeHtml(a.planRespondedBy || supportingName || '')}</div>` : ''}
+          ${planStatus === 'date-proposed' ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">New date proposed: ${formatDate(a.proposedNextActivityDate)} — ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
           ${a.extensionStatus === 'pending' ? `<div style="font-size:10px;color:#F57C00;margin-top:5px">Extension requested: ${formatDate(a.requestedExtensionDate)}</div>` : ''}
           ${a.extensionStatus === 'approved' ? `<div style="font-size:10px;color:#2E7D32;margin-top:5px">Extension approved by ${escapeHtml(a.extensionReviewedBy || '')}</div>` : ''}
           ${a.extensionStatus === 'rejected' ? `<div style="font-size:10px;color:#D32F2F;margin-top:5px">Extension rejected${a.extensionReviewRemarks ? `: ${escapeHtml(a.extensionReviewRemarks)}` : ''}</div>` : ''}
           ${completed ? '<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:7px">✓ COMPLETED</div>' : ''}
-          ${assignedToMe && !completed ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px"><button class="btn sm primary" onclick="completeAssignedActivity('${a.id}')">Complete Task</button><button class="btn sm" onclick="openExtensionRequest('${a.id}')" ${a.extensionStatus === 'pending' ? 'disabled' : ''}>Request Extension</button></div>` : ''}
+          ${assignedToMe && !completed && planStatus === 'pending' ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px"><button class="btn sm primary" onclick="acceptNextActivityPlan('${a.id}')">Accept Plan</button><button class="btn sm" onclick="openExtensionRequest('${a.id}')">Propose New Date</button></div>` : ''}
+          ${assignedToMe && !completed && planStatus === 'accepted' ? `<div style="margin-top:9px"><button class="btn sm primary" onclick="completeAssignedActivity('${a.id}')">Complete Task</button></div>` : ''}
         </div>`;
       });
       
