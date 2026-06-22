@@ -813,7 +813,12 @@
       </div>
       <div class="form-group">
         <label>Deal Value (₹)</label>
-        <input type="number" id="dealValue" placeholder="100000" min="0">
+        <input type="number" id="dealValue" placeholder="100000" min="0" oninput="updateDealGrossMarginPercent()">
+      </div>
+      <div class="form-group">
+        <label>Gross Margin Amount (₹)</label>
+        <input type="number" id="dealGrossMargin" placeholder="20000" min="0" oninput="updateDealGrossMarginPercent()">
+        <div id="dealGrossMarginPercent" style="font-size:10.5px;color:var(--t2);margin-top:4px">Gross Margin: 0.00% of PO value · minimum target 20%</div>
       </div>
       <div class="form-group">
         <label>Stage</label>
@@ -898,8 +903,8 @@
         <b>Total</b><div id="targetBookingTotal" style="font-weight:800;color:#1565C0">₹0</div><div id="targetBillingTotal" style="font-weight:800;color:#2E7D32">₹0</div>
       </div>
       <div class="form-group">
-        <label>Target Margin (%)</label>
-        <input type="number" id="targetMargin" placeholder="20" min="0" max="100">
+        <label>Gross Margin Target (%) — minimum 20%</label>
+        <input type="number" id="targetMargin" placeholder="20" min="20" max="100" value="20">
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('setTargetModal')">Cancel</button>
@@ -1086,7 +1091,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.5';
+    const CRM_BUILD = '20260622.6';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1699,6 +1704,7 @@
       document.getElementById('dealTitle').value = '';
       document.getElementById('dealCustomer').value = '';
       document.getElementById('dealValue').value = '';
+      document.getElementById('dealGrossMargin').value = '';
       document.getElementById('dealStage').value = 'Lead';
       document.getElementById('dealOrderDate').value = '';
       document.getElementById('dealBillingDate').value = '';
@@ -1710,6 +1716,7 @@
       document.getElementById('lossReasonGroup').classList.remove('visible');
       document.getElementById('customLossReasonGroup').classList.remove('visible');
       toggleDealStageDateFields('Lead');
+      updateDealGrossMarginPercent();
       openModal('addDealModal');
     }
 
@@ -1727,6 +1734,7 @@
       document.getElementById('dealTitle').value = deal.title || '';
       document.getElementById('dealCustomer').value = deal.customerId || '';
       document.getElementById('dealValue').value = deal.value || '';
+      document.getElementById('dealGrossMargin').value = deal.grossMarginAmount || '';
       document.getElementById('dealStage').value = deal.stage || 'Lead';
       document.getElementById('dealOrderDate').value = deal.orderDate || '';
       document.getElementById('dealBillingDate').value = deal.billingDate || '';
@@ -1738,7 +1746,19 @@
       document.getElementById('lossReasonGroup').classList.toggle('visible', deal.stage === 'Lost');
       document.getElementById('customLossReasonGroup').classList.toggle('visible', deal.stage === 'Lost' && deal.lossReason === 'Other');
       toggleDealStageDateFields(deal.stage || 'Lead');
+      updateDealGrossMarginPercent();
       openModal('addDealModal');
+    }
+
+    function updateDealGrossMarginPercent() {
+      const value = Number(document.getElementById('dealValue')?.value || 0);
+      const margin = Number(document.getElementById('dealGrossMargin')?.value || 0);
+      const percent = value > 0 ? margin / value * 100 : 0;
+      const output = document.getElementById('dealGrossMarginPercent');
+      if (output) {
+        output.textContent = `Gross Margin: ${percent.toFixed(2)}% of PO value · minimum target 20%`;
+        output.style.color = percent >= 20 ? '#2E7D32' : '#B71C1C';
+      }
     }
 
     function toggleDealStageDateFields(stage) {
@@ -1787,6 +1807,7 @@
       const title = document.getElementById('dealTitle').value.trim();
       const customerId = document.getElementById('dealCustomer').value;
       const value = parseInt(document.getElementById('dealValue').value) || 0;
+      const grossMarginAmount = parseFloat(document.getElementById('dealGrossMargin').value) || 0;
       const stage = document.getElementById('dealStage').value;
       const orderDate = document.getElementById('dealOrderDate').value;
       const billingDate = document.getElementById('dealBillingDate').value;
@@ -1796,6 +1817,10 @@
       
       if (!title || !customerId || !value) {
         showToast('Please fill required fields', 'error');
+        return;
+      }
+      if (grossMarginAmount < 0 || grossMarginAmount > value) {
+        showToast('Gross Margin amount must be between zero and the Deal Value', 'error');
         return;
       }
       if ((stage === 'Order' || stage === 'Billed') && !orderDate) {
@@ -1809,7 +1834,9 @@
       
       try {
         const dealObj = {
-          title, customerId, value, stage, probability, closeDate, notes,
+          title, customerId, value, grossMarginAmount,
+          grossMarginPercent: value ? Number((grossMarginAmount / value * 100).toFixed(2)) : 0,
+          stage, probability, closeDate, notes,
           orderDate: orderDate || existingDeal?.orderDate || null,
           billingDate: billingDate || existingDeal?.billingDate || null,
           username: currentUser,  // Use username instead of salesPersonId
@@ -1902,6 +1929,7 @@
             ${d.closeDate ? `<div style="font-size: 11px; color: var(--t2);">Close: ${formatDate(d.closeDate)}</div>` : ''}
             ${d.orderDate ? `<div style="font-size:11px;color:#1565C0;font-weight:600">Order: ${formatDate(d.orderDate)}</div>` : ''}
             ${d.billingDate ? `<div style="font-size:11px;color:#2E7D32;font-weight:600">Billed: ${formatDate(d.billingDate)}</div>` : ''}
+            <div style="font-size:11px;color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'};font-weight:600">Gross Margin: ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
             <button class="btn sm" style="margin-top:9px" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>
           </div>`;
         });
@@ -2054,6 +2082,7 @@
       const year = new Date().getFullYear();
       const quarterTargets = readQuarterTargets();
       const marginTarget = parseInt(document.getElementById('targetMargin').value) || 0;
+      if (marginTarget < 20 || marginTarget > 100) return showToast('Gross Margin target must be between 20% and 100%', 'error');
       if (Object.values(quarterTargets).some(q => !q.booking || !q.billing)) return showToast('Enter Booking and Billing targets for all four quarters', 'error');
       const annualBookingTarget = Object.values(quarterTargets).reduce((sum, q) => sum + q.booking, 0);
       const annualBillingTarget = Object.values(quarterTargets).reduce((sum, q) => sum + q.billing, 0);
@@ -2074,10 +2103,14 @@
     }
 
     function targetActualsByQuarter(year) {
-      const actuals = { q1:{booking:0,billing:0}, q2:{booking:0,billing:0}, q3:{booking:0,billing:0}, q4:{booking:0,billing:0} };
+      const actuals = { q1:{booking:0,billing:0,grossMargin:0}, q2:{booking:0,billing:0,grossMargin:0}, q3:{booking:0,billing:0,grossMargin:0}, q4:{booking:0,billing:0,grossMargin:0} };
       Object.values(dealData).filter(deal => deal.username === currentUser).forEach(deal => {
         const orderDate = toDateObject(deal.orderDate);
-        if (orderDate && orderDate.getFullYear() === year && ['Order','Billed'].includes(deal.stage)) actuals[`q${getQuarter(orderDate)}`].booking += Number(deal.value || 0);
+        if (orderDate && orderDate.getFullYear() === year && ['Order','Billed'].includes(deal.stage)) {
+          const quarter = actuals[`q${getQuarter(orderDate)}`];
+          quarter.booking += Number(deal.value || 0);
+          quarter.grossMargin += Number(deal.grossMarginAmount || 0);
+        }
         const billingDate = toDateObject(deal.billingDate);
         if (billingDate && billingDate.getFullYear() === year && deal.stage === 'Billed') actuals[`q${getQuarter(billingDate)}`].billing += Number(deal.value || 0);
       });
@@ -2095,16 +2128,19 @@
         return;
       }
       const actuals = targetActualsByQuarter(year);
-      let totalBookingTarget=0,totalBillingTarget=0,totalBookingActual=0,totalBillingActual=0;
+      let totalBookingTarget=0,totalBillingTarget=0,totalBookingActual=0,totalBillingActual=0,totalGrossMarginTarget=0,totalGrossMarginActual=0;
       let rows = '';
       for (let q=1;q<=4;q++) {
         const plan = target.quarterTargets?.[`q${q}`] || {booking:0,billing:0};
         const actual = actuals[`q${q}`];
-        totalBookingTarget += plan.booking; totalBillingTarget += plan.billing; totalBookingActual += actual.booking; totalBillingActual += actual.billing;
-        rows += `<tr><td style="padding:10px;font-weight:700">Q${q}</td><td>₹${Number(plan.booking).toLocaleString('en-IN')}</td><td style="color:#1565C0;font-weight:600">₹${actual.booking.toLocaleString('en-IN')}</td><td>${targetPct(actual.booking,plan.booking)}%</td><td>₹${Number(plan.billing).toLocaleString('en-IN')}</td><td style="color:#2E7D32;font-weight:600">₹${actual.billing.toLocaleString('en-IN')}</td><td>${targetPct(actual.billing,plan.billing)}%</td></tr>`;
+        const grossMarginTarget = plan.booking * Math.max(20, Number(target.marginTarget || 20)) / 100;
+        const grossMarginPercent = actual.booking ? actual.grossMargin / actual.booking * 100 : 0;
+        totalBookingTarget += plan.booking; totalBillingTarget += plan.billing; totalBookingActual += actual.booking; totalBillingActual += actual.billing; totalGrossMarginTarget += grossMarginTarget; totalGrossMarginActual += actual.grossMargin;
+        rows += `<tr><td style="padding:10px;font-weight:700">Q${q}</td><td>₹${Number(plan.booking).toLocaleString('en-IN')}</td><td style="color:#1565C0;font-weight:600">₹${actual.booking.toLocaleString('en-IN')}</td><td>${targetPct(actual.booking,plan.booking)}%</td><td>₹${Number(plan.billing).toLocaleString('en-IN')}</td><td style="color:#2E7D32;font-weight:600">₹${actual.billing.toLocaleString('en-IN')}</td><td>${targetPct(actual.billing,plan.billing)}%</td><td>₹${grossMarginTarget.toLocaleString('en-IN')}</td><td style="color:${grossMarginPercent >= Math.max(20, Number(target.marginTarget || 20)) ? '#2E7D32' : '#B71C1C'};font-weight:600">₹${actual.grossMargin.toLocaleString('en-IN')}</td><td>${grossMarginPercent.toFixed(2)}%</td></tr>`;
       }
-      rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>₹${totalBookingTarget.toLocaleString('en-IN')}</td><td>₹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>₹${totalBillingTarget.toLocaleString('en-IN')}</td><td>₹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td></tr>`;
-      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Target Margin:</b> ${target.marginTarget || 0}% · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
+      const totalMarginPercent = totalBookingActual ? totalGrossMarginActual / totalBookingActual * 100 : 0;
+      rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>₹${totalBookingTarget.toLocaleString('en-IN')}</td><td>₹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>₹${totalBillingTarget.toLocaleString('en-IN')}</td><td>₹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td><td>₹${totalGrossMarginTarget.toLocaleString('en-IN')}</td><td>₹${totalGrossMarginActual.toLocaleString('en-IN')}</td><td>${totalMarginPercent.toFixed(2)}%</td></tr>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
 
     function openSetTargetModal() {
@@ -2115,7 +2151,7 @@
         document.getElementById(`targetQ${q}Booking`).value = plan.booking || '';
         document.getElementById(`targetQ${q}Billing`).value = plan.billing || '';
       }
-      document.getElementById('targetMargin').value = target?.marginTarget || '';
+      document.getElementById('targetMargin').value = Math.max(20, Number(target?.marginTarget || 20));
       document.getElementById('targetYearDisplay').textContent = year;
       updateTargetTotals(); openModal('setTargetModal');
     }
@@ -2399,10 +2435,6 @@
           if (supportingUsername === currentUser && status === 'pending') return { activity, action: 'support-response' };
           if (activity.username === currentUser && ['date-proposed', 'sales-review'].includes(status)) return { activity, action: 'sales-review' };
           if (currentUser === 'updesh' && status === 'updesh-review') return { activity, action: 'updesh-review' };
-          if (status === 'final-decision') {
-            if (activity.username === currentUser && !activity.salesAcknowledgedAt) return { activity, action: 'final-ack' };
-            if (supportingUsername === currentUser && !activity.supportAcknowledgedAt) return { activity, action: 'final-ack' };
-          }
           if (status === 'sales-approved-final' && supportingUsername === currentUser && !activity.supportAcknowledgedAt) {
             return { activity, action: 'final-ack' };
           }
@@ -2521,11 +2553,11 @@
       const remarks = document.getElementById('forcedDecisionRemarks')?.value.trim();
       if (currentUser !== 'updesh' || !activity || activity.planResponseStatus !== 'updesh-review' || !remarks) { showToast('Final decision remarks are mandatory', 'error'); return; }
       const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
-      const update = { planResponseStatus: 'final-decision', finalDecision: decision, finalDecisionRemarks: remarks, finalDecisionBy: currentUser, finalDecisionAt: new Date(), salesAcknowledgedAt: null, supportAcknowledgedAt: null };
+      const update = { planResponseStatus: 'final-acknowledged', finalDecision: decision, finalDecisionRemarks: remarks, finalDecisionBy: currentUser, finalDecisionAt: new Date() };
       if (decision === 'approved') update.nextActivityDate = activity.proposedNextActivityDate;
       await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
       await markActivityNotificationsRead(id);
-      await notifyActivityUsers(activity, [activity.username, supportingUsername], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. Both parties must acknowledge this final decision.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
+      await notifyActivityUsers(activity, [activity.username, supportingUsername], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. This is the final decision; no acknowledgement is required.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
       renderActivities(); renderTaskCenter(); renderForcedActionModal();
     }
 
@@ -2817,8 +2849,7 @@
           ${['date-proposed','sales-review'].includes(planStatus) ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">Awaiting salesperson decision · Proposed: ${formatDate(a.proposedNextActivityDate)} — ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
           ${planStatus === 'updesh-review' ? `<div style="font-size:10px;color:#6A1B9A;margin-top:6px;font-weight:700">Escalated to Updesh for final decision</div>` : ''}
           ${planStatus === 'sales-approved-final' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">Revised date approved by salesperson · Supporting Hand acknowledgement pending</div>` : ''}
-          ${planStatus === 'final-decision' ? `<div style="font-size:10px;color:${a.finalDecision === 'approved' ? '#2E7D32' : '#B71C1C'};margin-top:6px;font-weight:700">Updesh final decision: ${escapeHtml(String(a.finalDecision || '').toUpperCase())} · acknowledgement pending</div>` : ''}
-          ${planStatus === 'final-acknowledged' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">✓ Final decision accepted by salesperson and Supporting Hand</div>` : ''}
+          ${planStatus === 'final-decision' || planStatus === 'final-acknowledged' ? `<div style="font-size:10px;color:${a.finalDecision === 'rejected' ? '#B71C1C' : '#2E7D32'};margin-top:6px;font-weight:700">Updesh final decision: ${escapeHtml(String(a.finalDecision || 'approved').toUpperCase())} · informational only</div>` : ''}
           ${a.extensionStatus === 'pending' ? `<div style="font-size:10px;color:#F57C00;margin-top:5px">Extension requested: ${formatDate(a.requestedExtensionDate)}</div>` : ''}
           ${a.extensionStatus === 'approved' ? `<div style="font-size:10px;color:#2E7D32;margin-top:5px">Extension approved by ${escapeHtml(a.extensionReviewedBy || '')}</div>` : ''}
           ${a.extensionStatus === 'rejected' ? `<div style="font-size:10px;color:#D32F2F;margin-top:5px">Extension rejected${a.extensionReviewRemarks ? `: ${escapeHtml(a.extensionReviewRemarks)}` : ''}</div>` : ''}
