@@ -1091,7 +1091,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.6';
+    const CRM_BUILD = '20260622.7';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -2566,16 +2566,24 @@
       if (!activity) return;
       const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
       const update = {};
-      if (activity.username === currentUser) update.salesAcknowledgedAt = new Date();
-      else if (supportingUsername === currentUser) update.supportAcknowledgedAt = new Date();
-      else return;
+      let roleMatched = false;
+      // One person may hold both roles. Record both acknowledgements in one write.
+      if (activity.username === currentUser) { update.salesAcknowledgedAt = new Date(); roleMatched = true; }
+      if (supportingUsername === currentUser) { update.supportAcknowledgedAt = new Date(); roleMatched = true; }
+      if (!roleMatched) return;
       const salesAck = !!(update.salesAcknowledgedAt || activity.salesAcknowledgedAt || activity.planResponseStatus === 'sales-approved-final');
       const supportAck = !!(update.supportAcknowledgedAt || activity.supportAcknowledgedAt);
       if (salesAck && supportAck) update.planResponseStatus = 'final-acknowledged';
-      await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
-      await markActivityNotificationsRead(id);
-      if (salesAck && supportAck) await notifyActivityUsers(activity, ['updesh'], 'final_decision_acknowledged', 'Salesperson and Supporting Hand accepted the final Next Activity decision.', activity.nextActivityDate);
-      renderActivities(); renderTaskCenter(); renderForcedActionModal();
+      try {
+        await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+        await markActivityNotificationsRead(id);
+        if (salesAck && supportAck && currentUser !== 'updesh') await notifyActivityUsers(activity, ['updesh'], 'final_decision_acknowledged', 'Salesperson and Supporting Hand accepted the final Next Activity decision.', activity.nextActivityDate);
+        renderActivities(); renderTaskCenter(); renderForcedActionModal();
+        showToast('Final decision accepted', 'success');
+      } catch (error) {
+        console.error('Final decision acknowledgement failed:', error);
+        showToast('Could not save acknowledgement: ' + error.message, 'error');
+      }
     }
 
     function renderTaskCenter() {
