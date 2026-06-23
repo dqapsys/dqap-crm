@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -619,10 +620,11 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-home"></i> Dashboard</button>
-      <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-building"></i> Key Accounts</button>
+      <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Contacts</button>
       <button class="tab-btn" onclick="switchTab('deals')"><i class="ti ti-briefcase"></i> Deals</button>
       <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
       <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-target"></i> Targets</button>
+      <button class="tab-btn" onclick="switchTab('kam')"><i class="ti ti-building"></i> KAM</button>
     </div>
     
     <!-- DASHBOARD TAB -->
@@ -635,7 +637,7 @@
           <div class="stat-icon">👥</div>
           <div class="stat-content">
             <div class="stat-value" id="statCustomers">0</div>
-            <div class="stat-label">Key Accounts</div>
+            <div class="stat-label">Contacts</div>
           </div>
         </div>
         <div class="stat">
@@ -690,10 +692,10 @@
     <div id="tab-leads" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <span>Key Account Management</span>
+          <span>Contacts</span>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
-            <button class="btn" onclick="openImportModal('contacts')"><i class="ti ti-upload"></i> Import Key Accounts CSV</button>
-            <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Key Account</button>
+            <button class="btn" onclick="openImportModal('contacts')"><i class="ti ti-upload"></i> Import Contacts CSV</button>
+            <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Contact</button>
           </div>
         </div>
         <div id="customersContainer"></div>
@@ -739,6 +741,14 @@
         <div id="targetsContainer"></div>
       </div>
     </div>
+
+    <!-- KEY ACCOUNT MANAGEMENT TAB -->
+    <div id="tab-kam" class="tab-content">
+      <div class="card">
+        <div class="card-header"><span>Key Account Management — 30-Day Contact Monitoring</span></div>
+        <div id="kamContainer"></div>
+      </div>
+    </div>
     
   </div>
   
@@ -748,7 +758,7 @@
   <div id="addCustomerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>Add Key Account</span>
+        <span>Add Contact</span>
         <button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button>
       </div>
       <div class="form-group">
@@ -770,13 +780,6 @@
       <div class="form-group">
         <label>Industry</label>
         <input type="text" id="customerIndustry" placeholder="Oil & Gas, Mining, etc.">
-      </div>
-      <div class="form-group">
-        <label>Key Account Meeting Cadence</label>
-        <select id="customerMeetingCadence">
-          <option value="Monthly">Monthly</option>
-          <option value="Quarterly" selected>Quarterly</option>
-        </select>
       </div>
       <div class="form-group">
         <label>Notes</label>
@@ -913,14 +916,13 @@
   <div id="addActivityModal" class="modal">
     <div class="modal-content" style="max-width:760px">
       <div class="modal-header">
-        <span id="activityModalTitle">Activity Logs</span>
+        <span id="activityModalTitle">Log / Plan Activity</span>
         <button class="modal-close" onclick="closeModal('addActivityModal')">✕</button>
       </div>
       <input type="hidden" id="activityContextType">
       <input type="hidden" id="activityContextId">
       <div id="activityContextSummary" style="background:var(--pl);border-left:3px solid var(--p);padding:10px 12px;border-radius:6px;margin-bottom:14px"></div>
-      <div id="activityHistoryContainer" style="max-height:220px;overflow:auto;margin-bottom:16px"></div>
-      <div style="font-weight:700;margin:14px 0 10px">Log a new activity</div>
+      <div id="activityHistoryContainer" style="display:none"></div>
       <div class="form-group">
         <label>Activity Type</label>
         <select id="activityType">
@@ -939,9 +941,9 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Key Account</label>
+        <label>Contact / Company</label>
         <select id="activityKeyAccount">
-          <option value="">-- Select Key Account --</option>
+          <option value="">-- Select Contact --</option>
         </select>
       </div>
       <div class="form-group">
@@ -973,6 +975,29 @@
         <button class="btn" onclick="closeModal('addActivityModal')">Cancel</button>
         <button class="btn primary" onclick="saveActivity()">Log Activity</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Read-only Activity History Modal -->
+  <div id="activityHistoryModal" class="modal">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <span id="activityHistoryTitle">Activity Logs</span>
+        <button class="modal-close" onclick="closeModal('activityHistoryModal')">✕</button>
+      </div>
+      <div id="activityHistorySummary" style="background:var(--pl);border-left:3px solid var(--p);padding:10px 12px;border-radius:6px;margin-bottom:12px"></div>
+      <div id="activityHistoryOnlyContainer" style="max-height:60vh;overflow:auto"></div>
+      <div class="modal-footer"><button class="btn" onclick="closeModal('activityHistoryModal')">Close</button></div>
+    </div>
+  </div>
+
+  <!-- Due Next Activity Acknowledgement -->
+  <div id="dueActivityModal" class="modal" style="z-index:9200;background:rgba(7,18,38,.86);backdrop-filter:blur(5px)">
+    <div class="modal-content" style="max-width:620px;border:3px solid #D32F2F;box-shadow:0 24px 80px rgba(0,0,0,.45)">
+      <div class="modal-header"><span><i class="ti ti-bell-ringing"></i> Planned Activity Due</span></div>
+      <input type="hidden" id="dueActivityId">
+      <div id="dueActivityDetails"></div>
+      <div class="modal-footer"><button class="btn primary" onclick="acknowledgeDueActivity()"><i class="ti ti-check"></i> Acknowledge</button></div>
     </div>
   </div>
 
@@ -1254,9 +1279,11 @@
             renderDeals();
             renderCalendar();
             renderTargets();
+            renderKAM();
             renderActivities();
             renderActivityDeals();
             renderTaskCenter();
+            renderDueActivityModal();
             startTaskRefresh();
             showToast(`✅ Welcome, ${resolvedDisplayName}!`, 'success');
             console.log('✅ Auto-logged in from Wiki:', username);
@@ -1414,8 +1441,8 @@
 
     const IMPORT_SAMPLES = {
       contacts: {
-        title: 'Import Key Accounts CSV',
-        csv: 'Company Name,Contact Person,Email,Phone,Industry,Meeting Cadence,Notes\nABC Industries,Rahul Sharma,rahul@abc.com,919876543210,Manufacturing,Quarterly,Strategic account'
+        title: 'Import Contacts CSV',
+        csv: 'Company Name,Contact Person,Email,Phone,Industry,Notes\nABC Industries,Rahul Sharma,rahul@abc.com,919876543210,Manufacturing,Key account prospect'
       },
       deals: {
         title: 'Import Deals CSV',
@@ -1518,7 +1545,7 @@
         const headers = rows[0];
         const normalizedHeaders = new Set(headers.map(header => header.toLowerCase().replace(/[^a-z0-9]/g, '')));
         if (currentImportType === 'contacts' && !normalizedHeaders.has('companyname')) {
-          throw new Error('Key Accounts CSV must contain the “Company Name” column shown in the sample.');
+          throw new Error('Contacts CSV must contain the “Company Name” column shown in the sample.');
         }
         if (currentImportType === 'deals') {
           const requiredDealHeaders = ['dealtitle', 'contactcompany', 'dealvalue', 'stage'];
@@ -1544,7 +1571,7 @@
             const data = {
               name, contact, email, phone,
               industry: record.industry || '',
-              meetingCadence: /monthly/i.test(record.meetingcadence || '') ? 'Monthly' : 'Quarterly',
+              isKeyAccount: false,
               notes: record.notes || '',
               username: currentUser,
               createdAt: new Date(),
@@ -1615,7 +1642,6 @@
       document.getElementById('customerEmail').value = '';
       document.getElementById('customerPhone').value = '';
       document.getElementById('customerIndustry').value = '';
-      document.getElementById('customerMeetingCadence').value = 'Quarterly';
       document.getElementById('customerNotes').value = '';
       openModal('addCustomerModal');
     }
@@ -1631,7 +1657,6 @@
       const email = document.getElementById('customerEmail').value.trim();
       const phone = document.getElementById('customerPhone').value.trim();
       const industry = document.getElementById('customerIndustry').value.trim();
-      const meetingCadence = document.getElementById('customerMeetingCadence').value;
       const notes = document.getElementById('customerNotes').value.trim();
       
       if (!name) {
@@ -1652,20 +1677,20 @@
       try {
         const custRef = db.collection(CRM_CUSTOMERS).doc();
         await custRef.set({
-          name, contact, email, phone, industry, meetingCadence, notes,
+          name, contact, email, phone, industry, notes, isKeyAccount: false,
           username: currentUser,  // Use username instead of salesPersonId
           createdAt: new Date(),
           updatedAt: new Date()
         });
         
         customerData[custRef.id] = {
-          id: custRef.id, name, contact, email, phone, industry, meetingCadence, notes, username: currentUser, createdAt: new Date()
+          id: custRef.id, name, contact, email, phone, industry, notes, isKeyAccount: false, username: currentUser, createdAt: new Date()
         };
         
         populateCustomerDropdowns();
         closeModal('addCustomerModal');
         renderCustomers();
-        showToast('Key account added!', 'success');
+        showToast('Contact added!', 'success');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -1678,39 +1703,41 @@
       document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
       document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
         Object.values(dealData).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
-      document.getElementById('activityKeyAccount').innerHTML = '<option value="">-- Select Key Account --</option>' + opts;
+      document.getElementById('activityKeyAccount').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
     }
 
     function getActivityAccountId(activity) {
       return activity.keyAccountId || dealData[activity.dealId]?.customerId || '';
     }
 
-    function keyAccountMeetingStatus(account) {
-      const meetings = Object.values(activityData)
-        .filter(activity => activity.activityType === 'Meeting' && getActivityAccountId(activity) === account.id)
+    function keyAccountContactStatus(account) {
+      const addressed = Object.values(activityData)
+        .filter(activity => ['Meeting','Call'].includes(activity.activityType) && getActivityAccountId(activity) === account.id)
         .map(activity => dateKey(activity.activityDate)).filter(Boolean).sort();
-      const lastMeeting = meetings.at(-1) || '';
-      const cadence = account.meetingCadence || 'Quarterly';
-      const months = cadence === 'Monthly' ? 1 : 3;
-      const base = lastMeeting ? new Date(`${lastMeeting}T00:00:00`) : toDateObject(account.createdAt);
-      if (!base) return { cadence, lastMeeting, nextDue: '', state: 'not-scheduled', label: 'Meeting not scheduled' };
-      const due = new Date(base); due.setMonth(due.getMonth() + months);
-      const nextDue = dateKey(due);
-      const today = dateKey(new Date());
-      const soon = new Date(); soon.setDate(soon.getDate() + 14);
-      const state = nextDue < today ? 'overdue' : nextDue <= dateKey(soon) ? 'due-soon' : 'on-track';
-      return { cadence, lastMeeting, nextDue, state, label: state === 'overdue' ? 'Overdue' : state === 'due-soon' ? 'Due soon' : 'On track' };
+      const lastAddressed = addressed.at(-1) || '';
+      const base = lastAddressed ? new Date(`${lastAddressed}T00:00:00`) :
+        (toDateObject(account.keyAccountMarkedAt) || toDateObject(account.createdAt));
+      if (!base) return { lastAddressed, daysSince: null, state: 'overdue', label: 'Never addressed' };
+      const today = new Date(); today.setHours(0,0,0,0); base.setHours(0,0,0,0);
+      const daysSince = Math.max(0, Math.floor((today - base) / 86400000));
+      const state = daysSince > 30 ? 'overdue' : 'on-track';
+      return { lastAddressed, daysSince, state, label: state === 'overdue' ? `${daysSince} days — UNADDRESSED` : `${daysSince} days ago` };
     }
 
-    async function updateKeyAccountCadence(id, meetingCadence) {
+    async function toggleKeyAccount(id, checked) {
       const account = customerData[id];
-      if (!account || account.username !== currentUser || !['Monthly','Quarterly'].includes(meetingCadence)) return;
+      if (!account || account.username !== currentUser) return;
+      const update = { isKeyAccount: checked, updatedAt: new Date() };
+      if (checked) update.keyAccountMarkedAt = new Date();
       try {
-        await db.collection(CRM_CUSTOMERS).doc(id).update({ meetingCadence, updatedAt: new Date() });
-        account.meetingCadence = meetingCadence;
-        renderCustomers(); renderDashboard();
-        showToast('Meeting cadence updated', 'success');
-      } catch (error) { showToast('Could not update cadence: ' + error.message, 'error'); }
+        await db.collection(CRM_CUSTOMERS).doc(id).update(update);
+        Object.assign(account, update);
+        renderCustomers(); renderKAM(); renderDashboard();
+        showToast(checked ? 'Contact added to KAM' : 'Contact removed from KAM', 'success');
+      } catch (error) {
+        renderCustomers();
+        showToast('Could not update Key Account: ' + error.message, 'error');
+      }
     }
     
     function renderCustomers() {
@@ -1723,24 +1750,45 @@
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align:left;padding:12px">Key Account</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Cadence</th><th style="text-align:left;padding:12px">Last Meeting</th><th style="text-align:left;padding:12px">Next Due</th><th style="text-align:left;padding:12px">Status</th><th style="text-align:left;padding:12px">Actions</th></tr>';
+      html += '<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Email</th><th style="text-align:left;padding:12px">Phone</th><th style="text-align:left;padding:12px">Industry</th><th style="text-align:center;padding:12px">Key Account</th><th style="text-align:left;padding:12px">Activities</th></tr>';
       
       custs.forEach(c => {
-        const monitor = keyAccountMeetingStatus(c);
-        const statusColor = monitor.state === 'overdue' ? 'var(--danger)' : monitor.state === 'due-soon' ? 'var(--warning)' : 'var(--success)';
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
           <td style="padding: 12px; font-weight: 500;">${c.name}</td>
           <td style="padding: 12px;">${c.contact || '—'}</td>
-          <td style="padding:12px"><select aria-label="Meeting cadence for ${escapeHtml(c.name)}" onchange="updateKeyAccountCadence('${c.id}',this.value)" style="min-width:105px"><option value="Monthly" ${monitor.cadence === 'Monthly' ? 'selected' : ''}>Monthly</option><option value="Quarterly" ${monitor.cadence === 'Quarterly' ? 'selected' : ''}>Quarterly</option></select></td>
-          <td style="padding:12px">${monitor.lastMeeting ? formatDate(monitor.lastMeeting) : '—'}</td>
-          <td style="padding:12px">${monitor.nextDue ? formatDate(monitor.nextDue) : '—'}</td>
-          <td style="padding:12px;color:${statusColor};font-weight:700">${monitor.label}</td>
-          <td style="padding:12px"><button class="btn sm primary" onclick="openActivityLogs('account','${c.id}')"><i class="ti ti-notes"></i> Activity Logs</button></td>
+          <td style="padding:12px">${c.email || '—'}</td>
+          <td style="padding:12px">${c.phone || '—'}</td>
+          <td style="padding:12px">${c.industry || '—'}</td>
+          <td style="padding:12px;text-align:center"><input type="checkbox" aria-label="Mark ${escapeHtml(c.name)} as Key Account" ${c.isKeyAccount ? 'checked' : ''} onchange="toggleKeyAccount('${c.id}',this.checked)"></td>
+          <td style="padding:12px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${c.id}')"><i class="ti ti-plus"></i> Log / Plan Activity</button><button class="btn sm" onclick="openActivityHistoryModal('account','${c.id}')"><i class="ti ti-history"></i> View Activity Logs</button></div></td>
         </tr>`;
       });
       
       html += '</table></div>';
       container.innerHTML = html;
+    }
+
+    function renderKAM() {
+      const container = document.getElementById('kamContainer');
+      if (!container) return;
+      const accounts = Object.values(customerData).filter(account => account.isKeyAccount === true && account.username === currentUser);
+      if (!accounts.length) {
+        container.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>No Key Accounts selected. Mark contacts using the Key Account checkbox on Contacts.</p></div>';
+        return;
+      }
+      let rows = '';
+      accounts.forEach(account => {
+        const status = keyAccountContactStatus(account);
+        const overdue = status.state === 'overdue';
+        rows += `<tr style="border-bottom:.5px solid var(--bd);${overdue ? 'background:#FFEBEE' : ''}">
+          <td style="padding:12px;font-weight:700">${escapeHtml(account.name)}</td>
+          <td style="padding:12px">${escapeHtml(account.contact || '—')}</td>
+          <td style="padding:12px">${status.lastAddressed ? formatDate(status.lastAddressed) : 'Never'}</td>
+          <td style="padding:12px;color:${overdue ? 'var(--danger)' : 'var(--success)'};font-weight:800">${escapeHtml(status.label)}</td>
+          <td style="padding:12px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${account.id}')">Log / Plan Activity</button><button class="btn sm" onclick="openActivityHistoryModal('account','${account.id}')">View Activity Logs</button></div></td>
+        </tr>`;
+      });
+      container.innerHTML = `<div style="margin-bottom:12px;font-size:12px;color:var(--t2)">A Key Account is flagged red when no Meeting or Call has been recorded for more than 30 days.</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Last Meeting / Call</th><th style="text-align:left;padding:12px">30-Day Status</th><th style="text-align:left;padding:12px">Activities</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1981,7 +2029,8 @@
             <div style="font-size:11px;color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'};font-weight:600">Gross Margin: ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
               <button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>
-              <button class="btn sm primary" onclick="openActivityLogs('deal','${d.id}')"><i class="ti ti-notes"></i> Activity Logs</button>
+              <button class="btn sm primary" onclick="openLogActivityModal('deal','${d.id}')"><i class="ti ti-plus"></i> Log / Plan Activity</button>
+              <button class="btn sm" onclick="openActivityHistoryModal('deal','${d.id}')"><i class="ti ti-history"></i> View Activity Logs</button>
             </div>
           </div>`;
         });
@@ -2070,7 +2119,7 @@
         html += '<div class="empty" style="padding: 20px;"><p>No meetings scheduled for this day.</p></div>';
       } else {
         dayActivities.forEach(a => {
-          const dealInfo = dealData[a.dealId] ? ` – ${dealData[a.dealId].title}` : ` – ${customerData[getActivityAccountId(a)]?.name || 'Key Account'}`;
+          const dealInfo = dealData[a.dealId] ? ` – ${dealData[a.dealId].title}` : ` – ${customerData[getActivityAccountId(a)]?.name || 'Contact'}`;
           html += `<div class="meeting-detail">
             <div style="display: flex; justify-content: space-between; align-items: start;">
               <div>
@@ -2229,46 +2278,74 @@
       if (dealId && dealData[dealId]) document.getElementById('activityKeyAccount').value = dealData[dealId].customerId || '';
     }
 
-    function renderActivityHistory(contextType, contextId) {
-      const container = document.getElementById('activityHistoryContainer');
+    function renderActivityHistory(contextType, contextId, containerId = 'activityHistoryOnlyContainer') {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const contextDeal = contextType === 'deal' ? dealData[contextId] : null;
+      const accountId = contextDeal?.customerId || contextId;
+      const account = customerData[accountId];
+      const kamStatus = account?.isKeyAccount ? keyAccountContactStatus(account) : null;
+      const kamFlag = kamStatus?.state === 'overdue'
+        ? `<div style="background:#FFEBEE;border:2px solid #D32F2F;color:#B71C1C;padding:10px;border-radius:6px;margin-bottom:10px;font-weight:800"><i class="ti ti-alert-triangle"></i> KAM FLAG: ${escapeHtml(account.name)} has had no recorded Meeting or Call for more than 30 days (${escapeHtml(kamStatus.label)}).</div>`
+        : '';
       const matches = Object.values(activityData).filter(activity => contextType === 'deal'
         ? activity.dealId === contextId
         : getActivityAccountId(activity) === contextId
       ).sort((a, b) => (dateKey(b.activityDate) || '').localeCompare(dateKey(a.activityDate) || ''));
       if (!matches.length) {
-        container.innerHTML = '<div style="font-size:12px;color:var(--t2);padding:10px 0">No activities logged yet.</div>';
+        container.innerHTML = kamFlag + '<div style="font-size:12px;color:var(--t2);padding:10px 0">No activities logged yet.</div>';
         return;
       }
-      container.innerHTML = matches.map(activity => {
+      container.innerHTML = kamFlag + matches.map(activity => {
         const deal = dealData[activity.dealId];
         return `<div style="border-bottom:1px solid var(--bd);padding:9px 3px">
           <div style="display:flex;justify-content:space-between;gap:10px"><b>${escapeHtml(activity.activityType || 'Activity')}</b><span style="font-size:11px;color:var(--t2)">${formatDate(activity.activityDate)}</span></div>
-          ${deal ? `<div style="font-size:10.5px;color:var(--p);margin-top:3px">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:10.5px;color:var(--p);margin-top:3px">Key-account activity</div>'}
+          ${deal ? `<div style="font-size:10.5px;color:var(--p);margin-top:3px">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:10.5px;color:var(--p);margin-top:3px">Contact activity</div>'}
           ${activity.description ? `<div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.description)}</div>` : ''}
           ${activity.nextActivityDate ? `<div style="font-size:10.5px;color:#1565C0;margin-top:4px">Next: ${formatDate(activity.nextActivityDate)}${activity.nextActivityDescription ? ` — ${escapeHtml(activity.nextActivityDescription)}` : ''}</div>` : ''}
         </div>`;
       }).join('');
     }
 
-    function openActivityLogs(contextType, contextId) {
+    function getActivityContext(contextType, contextId) {
       const deal = contextType === 'deal' ? dealData[contextId] : null;
       const accountId = deal?.customerId || contextId;
       const account = customerData[accountId];
-      if (!account || (contextType === 'deal' && !deal)) return showToast('CRM record unavailable', 'error');
+      if (!account || (contextType === 'deal' && !deal)) return null;
+      return { deal, accountId, account };
+    }
+
+    function openLogActivityModal(contextType, contextId) {
+      const context = getActivityContext(contextType, contextId);
+      if (!context) return showToast('CRM record unavailable', 'error');
+      const { deal, accountId, account } = context;
       openAddActivityModal(contextType === 'deal' ? contextId : '', accountId);
       document.getElementById('activityContextType').value = contextType;
       document.getElementById('activityContextId').value = contextId;
-      document.getElementById('activityModalTitle').textContent = `Activity Logs — ${deal?.title || account.name}`;
+      document.getElementById('activityModalTitle').textContent = `Log / Plan Activity — ${deal?.title || account.name}`;
       document.getElementById('activityContextSummary').innerHTML = deal
-        ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br><span style="font-size:11px">Key Account: ${escapeHtml(account.name)} · Stage: ${escapeHtml(deal.stage || '—')}</span>`
-        : `<b>Key Account:</b> ${escapeHtml(account.name)}<br><span style="font-size:11px">${escapeHtml(account.meetingCadence || 'Quarterly')} meeting cadence · activities need not relate to a deal</span>`;
+        ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br><span style="font-size:11px">Contact: ${escapeHtml(account.name)} · Stage: ${escapeHtml(deal.stage || '—')}</span>`
+        : `<b>Contact:</b> ${escapeHtml(account.name)}<br><span style="font-size:11px">Log an existing activity and optionally plan the next activity.</span>`;
       document.getElementById('activityDeal').disabled = contextType === 'deal';
       document.getElementById('activityKeyAccount').disabled = true;
       if (contextType === 'account') {
         const accountDeals = Object.values(dealData).filter(item => item.customerId === accountId && item.username === currentUser);
         document.getElementById('activityDeal').innerHTML = '<option value="">-- No specific deal --</option>' + accountDeals.map(item => `<option value="${item.id}">${escapeHtml(item.title)}</option>`).join('');
       }
+    }
+
+    function openActivityLogs(contextType, contextId) { openLogActivityModal(contextType, contextId); }
+
+    function openActivityHistoryModal(contextType, contextId) {
+      const context = getActivityContext(contextType, contextId);
+      if (!context) return showToast('CRM record unavailable', 'error');
+      const { deal, account } = context;
+      document.getElementById('activityHistoryTitle').textContent = `Activity Logs — ${deal?.title || account.name}`;
+      document.getElementById('activityHistorySummary').innerHTML = deal
+        ? `<b>Deal:</b> ${escapeHtml(deal.title)} · Contact: ${escapeHtml(account.name)}`
+        : `<b>Contact:</b> ${escapeHtml(account.name)}${account.isKeyAccount ? ' · Key Account' : ''}`;
       renderActivityHistory(contextType, contextId);
+      openModal('activityHistoryModal');
     }
 
     function openAddActivityModal(dealId = '', keyAccountId = '') {
@@ -2309,11 +2386,11 @@
       const hasNextPlan = !!(nextDate || nextDescription || supportingUsername);
       
       if (!keyAccountId || !date) {
-        showToast('Please select a key account and activity date', 'error');
+        showToast('Please select a contact and activity date', 'error');
         return;
       }
       if (dealId && dealData[dealId]?.customerId !== keyAccountId) {
-        showToast('The selected deal does not belong to this key account', 'error');
+        showToast('The selected deal does not belong to this contact', 'error');
         return;
       }
       if (hasNextPlan && (!supportingUsername || !nextDate || !nextDescription)) {
@@ -2331,6 +2408,7 @@
           description: desc,
           nextActivityDate: nextDate,
           nextActivityDescription: nextDescription,
+          dueAcknowledgedBy: [],
           username: currentUser,
           creatorName: currentUserData?.fullName || currentUserData?.displayName || currentUser,
           supportingUsername: hasNextPlan ? supportingUsername : null,
@@ -2353,7 +2431,7 @@
 
         const deal = dealData[dealId] || {};
         const customer = customerData[keyAccountId] || {};
-        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Key Account: ${customer.name || '—'}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextDescription}; Date: ${formatDate(nextDate)}.`;
+        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Contact: ${customer.name || '—'}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextDescription}; Date: ${formatDate(nextDate)}.`;
         const notificationRecipients = hasNextPlan ? [...new Set([supportingUsername, 'updesh'].filter(Boolean))] : [];
         const notificationResults = await Promise.allSettled(notificationRecipients.map(recipientUsername => createCrmNotification({
           recipientUsername,
@@ -2370,10 +2448,12 @@
         closeModal('addActivityModal');
         renderCalendar();
         renderCustomers();
+        renderKAM();
         renderActivities();
         renderActivityDeals();
         renderTaskCenter();
         renderDashboard();
+        renderDueActivityModal();
         showToast(!hasNextPlan ? 'Activity logged!' : notificationSent ? 'Activity logged; Supporting Hand and Updesh notified!' : 'Activity logged, but one or more notifications failed', notificationSent ? 'success' : 'warning');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
@@ -2430,6 +2510,59 @@
       }
     }
 
+    function getDueActivityForAcknowledgement() {
+      const today = dateKey(new Date());
+      return Object.values(activityData)
+        .filter(activity => {
+          const responsible = activity.supportingUsername || activity.responsibleUsername;
+          const recipients = [activity.username, responsible].filter(Boolean);
+          const acknowledged = Array.isArray(activity.dueAcknowledgedBy) ? activity.dueAcknowledgedBy : [];
+          return activity.nextActivityDate && dateKey(activity.nextActivityDate) <= today &&
+            recipients.includes(currentUser) && !acknowledged.includes(currentUser) &&
+            activity.taskStatus !== 'completed' && !activity.completedDate;
+        })
+        .sort((a, b) => dateKey(a.nextActivityDate).localeCompare(dateKey(b.nextActivityDate)))[0] || null;
+    }
+
+    function renderDueActivityModal() {
+      const modal = document.getElementById('dueActivityModal');
+      if (!modal || !currentUser) return;
+      const activity = getDueActivityForAcknowledgement();
+      if (!activity) {
+        modal.classList.remove('active');
+        document.getElementById('dueActivityId').value = '';
+        return;
+      }
+      const deal = dealData[activity.dealId];
+      const account = customerData[getActivityAccountId(activity)];
+      const overdue = dateKey(activity.nextActivityDate) < dateKey(new Date());
+      document.getElementById('dueActivityId').value = activity.id;
+      document.getElementById('dueActivityDetails').innerHTML = `
+        <div style="background:#FFEBEE;border-left:4px solid #D32F2F;padding:13px;border-radius:7px;color:#B71C1C;margin-bottom:12px">
+          <div style="font-size:15px;font-weight:800">${overdue ? 'OVERDUE' : 'DUE TODAY'} · ${formatDate(activity.nextActivityDate)}</div>
+          <div style="font-size:12px;margin-top:5px">Please acknowledge this planned activity.</div>
+        </div>
+        <div style="line-height:1.75;font-size:12px"><b>Contact:</b> ${escapeHtml(account?.name || '—')}<br>${deal ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br>` : ''}<b>Planned activity:</b> ${escapeHtml(activity.nextActivityDescription || '—')}<br><b>Planned by:</b> ${escapeHtml(activity.creatorName || activity.username || '—')}</div>`;
+      modal.classList.add('active');
+    }
+
+    async function acknowledgeDueActivity() {
+      const id = document.getElementById('dueActivityId').value;
+      const activity = activityData[id];
+      if (!activity) return renderDueActivityModal();
+      try {
+        await db.collection(CRM_ACTIVITIES).doc(id).update({
+          dueAcknowledgedBy: firebase.firestore.FieldValue.arrayUnion(currentUser),
+          lastDueAcknowledgedAt: new Date()
+        });
+        activity.dueAcknowledgedBy = [...new Set([...(Array.isArray(activity.dueAcknowledgedBy) ? activity.dueAcknowledgedBy : []), currentUser])];
+        activity.lastDueAcknowledgedAt = new Date();
+        document.getElementById('dueActivityModal').classList.remove('active');
+        showToast('Due activity acknowledged', 'success');
+        renderDueActivityModal();
+      } catch (error) { showToast('Could not acknowledge activity: ' + error.message, 'error'); }
+    }
+
     async function refreshTaskCenter() {
       if (!currentUser) return;
       try {
@@ -2479,6 +2612,8 @@
         renderActivities();
         renderActivityDeals();
         renderTaskCenter();
+        renderKAM();
+        renderDueActivityModal();
       } catch (error) {
         console.warn('Could not refresh CRM tasks:', error);
       }
@@ -2566,7 +2701,7 @@
       return `<div style="border:1px solid #90CAF9;border-radius:8px;overflow:hidden;background:#F8FBFF">
         <div style="padding:10px 12px;background:#E3F2FD;color:#0D47A1;font-size:13px;font-weight:800">${escapeHtml(deal.title || customer.name || 'CRM Activity')}</div>
         <div style="padding:11px 12px;font-size:11px;line-height:1.7;color:#37474F">
-          Key Account: <b>${escapeHtml(customer.name || '—')}</b>${activity.dealId ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
+          Contact: <b>${escapeHtml(customer.name || '—')}</b>${activity.dealId ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
           Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(activity.supportingName || activity.responsibleName || '—')}</b><br>
           Logged activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
         </div>
@@ -2653,7 +2788,7 @@
       if (!activity || activity.username !== currentUser || !['sales-review', 'date-proposed'].includes(activity.planResponseStatus)) return;
       const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
       if (decision === 'approve') {
-        const update = { nextActivityDate: activity.proposedNextActivityDate, planResponseStatus: 'sales-approved-final', salesDecision: 'approved', salesDecisionBy: currentUser, salesDecisionAt: new Date(), salesAcknowledgedAt: new Date() };
+        const update = { nextActivityDate: activity.proposedNextActivityDate, dueAcknowledgedBy: [], planResponseStatus: 'sales-approved-final', salesDecision: 'approved', salesDecisionBy: currentUser, salesDecisionAt: new Date(), salesAcknowledgedAt: new Date() };
         await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
         await notifyActivityUsers(activity, [supportingUsername, 'updesh'], 'salesperson_approved_proposal', `Salesperson approved the revised date ${formatDate(activity.proposedNextActivityDate)}. Supporting Hand acknowledgement is mandatory.`, activity.proposedNextActivityDate);
       } else {
@@ -2672,7 +2807,7 @@
       if (currentUser !== 'updesh' || !activity || activity.planResponseStatus !== 'updesh-review' || !remarks) { showToast('Final decision remarks are mandatory', 'error'); return; }
       const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
       const update = { planResponseStatus: 'final-acknowledged', finalDecision: decision, finalDecisionRemarks: remarks, finalDecisionBy: currentUser, finalDecisionAt: new Date() };
-      if (decision === 'approved') update.nextActivityDate = activity.proposedNextActivityDate;
+      if (decision === 'approved') { update.nextActivityDate = activity.proposedNextActivityDate; update.dueAcknowledgedBy = []; }
       await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
       await markActivityNotificationsRead(id);
       await notifyActivityUsers(activity, [activity.username, supportingUsername], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. This is the final decision; no acknowledgement is required.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
@@ -2747,7 +2882,7 @@
           ${isPlanNotification ? `
             <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || customer?.name || 'CRM Activity')}</div>
             <div style="font-size:10.5px;color:var(--t2);line-height:1.6">
-              Key Account: <b>${escapeHtml(customer?.name || '—')}</b>${deal ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
+              Contact: <b>${escapeHtml(customer?.name || '—')}</b>${deal ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
               Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(supportingName || supportingUsername || '—')}</b><br>
               Activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
             </div>
@@ -2913,7 +3048,7 @@
         extensionReviewedAt: new Date(),
         extensionReviewRemarks: remarks.trim()
       };
-      if (decision === 'approved') update.nextActivityDate = activity.requestedExtensionDate;
+      if (decision === 'approved') { update.nextActivityDate = activity.requestedExtensionDate; update.dueAcknowledgedBy = []; }
       await db.collection(CRM_ACTIVITIES).doc(id).update(update);
       Object.assign(activity, update);
       delete pendingApprovalData[id];
@@ -3110,13 +3245,13 @@
       if (overdueActivities.length > 0) {
         alerts += `
           <div class="alert danger">
-            <i class="ti ti-alert-circle"></i> <strong>Overdue Follow-ups:</strong> You have ${overdueActivities.length} overdue follow-up(s). Check Activities tab!
+            <i class="ti ti-alert-circle"></i> <strong>Overdue Follow-ups:</strong> You have ${overdueActivities.length} overdue follow-up(s). Open the relevant Contact, KAM account, or Deal Activity Logs.
           </div>
         `;
       }
-      const keyAccountsDue = Object.values(customerData).filter(account => ['overdue','due-soon'].includes(keyAccountMeetingStatus(account).state));
+      const keyAccountsDue = Object.values(customerData).filter(account => account.isKeyAccount === true && keyAccountContactStatus(account).state === 'overdue');
       if (keyAccountsDue.length) {
-        alerts += `<div class="alert warning"><i class="ti ti-building"></i><strong>Key Account Meetings:</strong> ${keyAccountsDue.length} account(s) are due or overdue for their monthly/quarterly meeting. Open Key Accounts to review.</div>`;
+        alerts += `<div class="alert danger"><i class="ti ti-building"></i><strong>KAM Alert:</strong> ${keyAccountsDue.length} Key Account(s) have had no recorded Meeting or Call for more than 30 days. Open KAM to review.</div>`;
       }
       
       alertsContainer.innerHTML = alerts || '';
@@ -3183,6 +3318,7 @@
         renderActivityDeals();
         renderActivities();
       }
+      if (tabName === 'kam') renderKAM();
     }
     
     function openModal(id) {
@@ -3191,6 +3327,7 @@
     
     function closeModal(id) {
       if (id === 'forcedActionModal' && getMandatoryCrmAction()) return;
+      if (id === 'dueActivityModal' && getDueActivityForAcknowledgement()) return;
       document.getElementById(id).classList.remove('active');
     }
     
@@ -3199,7 +3336,7 @@
       if (e.key === 'Escape') {
         const activeModals = document.querySelectorAll('.modal.active');
         activeModals.forEach(modal => {
-          if (modal.id !== 'forcedActionModal') modal.classList.remove('active');
+          if (!['forcedActionModal','dueActivityModal'].includes(modal.id)) modal.classList.remove('active');
         });
       }
     });
