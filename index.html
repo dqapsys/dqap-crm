@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -618,23 +619,23 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-home"></i> Dashboard</button>
-      <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Contacts</button>
+      <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-building"></i> Key Accounts</button>
       <button class="tab-btn" onclick="switchTab('deals')"><i class="ti ti-briefcase"></i> Deals</button>
       <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
       <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-target"></i> Targets</button>
-      <button class="tab-btn" onclick="switchTab('activities')"><i class="ti ti-notes"></i> Activities</button>
     </div>
     
     <!-- DASHBOARD TAB -->
     <div id="tab-dashboard" class="tab-content active">
       <div id="alertsContainer"></div>
+      <div id="taskCenterPanel" style="display:none;margin-bottom:16px"></div>
       
       <div class="stats">
         <div class="stat">
           <div class="stat-icon">👥</div>
           <div class="stat-content">
             <div class="stat-value" id="statCustomers">0</div>
-            <div class="stat-label">Contacts</div>
+            <div class="stat-label">Key Accounts</div>
           </div>
         </div>
         <div class="stat">
@@ -689,10 +690,10 @@
     <div id="tab-leads" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <span>Contacts</span>
+          <span>Key Account Management</span>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
-            <button class="btn" onclick="openImportModal('contacts')"><i class="ti ti-upload"></i> Import Contacts CSV</button>
-            <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Contact</button>
+            <button class="btn" onclick="openImportModal('contacts')"><i class="ti ti-upload"></i> Import Key Accounts CSV</button>
+            <button class="btn primary" onclick="openAddCustomerModal()"><i class="ti ti-plus"></i> Add Key Account</button>
           </div>
         </div>
         <div id="customersContainer"></div>
@@ -739,18 +740,6 @@
       </div>
     </div>
     
-    <!-- ACTIVITIES TAB -->
-    <div id="tab-activities" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <span>Activities & Follow-ups</span>
-          <button class="btn primary" onclick="openAddActivityModal()"><i class="ti ti-plus"></i> Log Activity</button>
-        </div>
-        <div id="taskCenterPanel" style="display:none;margin-bottom:16px"></div>
-        <div id="activityDealsContainer" style="margin-bottom:16px"></div>
-        <div id="activitiesContainer"></div>
-      </div>
-    </div>
   </div>
   
   <!-- MODALS -->
@@ -759,10 +748,9 @@
   <div id="addCustomerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span id="customerModalTitle">Add Contact</span>
+        <span>Add Key Account</span>
         <button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button>
       </div>
-      <input type="hidden" id="customerEditId">
       <div class="form-group">
         <label>Company Name</label>
         <input type="text" id="customerName" placeholder="Enter company name">
@@ -784,12 +772,19 @@
         <input type="text" id="customerIndustry" placeholder="Oil & Gas, Mining, etc.">
       </div>
       <div class="form-group">
+        <label>Key Account Meeting Cadence</label>
+        <select id="customerMeetingCadence">
+          <option value="Monthly">Monthly</option>
+          <option value="Quarterly" selected>Quarterly</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Notes</label>
         <textarea id="customerNotes" placeholder="Additional notes..."></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('addCustomerModal')">Cancel</button>
-        <button class="btn primary" id="customerSaveButton" onclick="saveCustomer()">Save Contact</button>
+        <button class="btn primary" onclick="saveCustomer()">Save</button>
       </div>
     </div>
   </div>
@@ -916,11 +911,16 @@
   
   <!-- Add Activity Modal -->
   <div id="addActivityModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:760px">
       <div class="modal-header">
-        <span>Log Activity</span>
+        <span id="activityModalTitle">Activity Logs</span>
         <button class="modal-close" onclick="closeModal('addActivityModal')">✕</button>
       </div>
+      <input type="hidden" id="activityContextType">
+      <input type="hidden" id="activityContextId">
+      <div id="activityContextSummary" style="background:var(--pl);border-left:3px solid var(--p);padding:10px 12px;border-radius:6px;margin-bottom:14px"></div>
+      <div id="activityHistoryContainer" style="max-height:220px;overflow:auto;margin-bottom:16px"></div>
+      <div style="font-weight:700;margin:14px 0 10px">Log a new activity</div>
       <div class="form-group">
         <label>Activity Type</label>
         <select id="activityType">
@@ -933,9 +933,15 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Related Deal</label>
-        <select id="activityDeal">
+        <label>Related Deal (optional for key-account activity)</label>
+        <select id="activityDeal" onchange="syncActivityAccountFromDeal()">
           <option value="">-- Select Deal --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Key Account</label>
+        <select id="activityKeyAccount">
+          <option value="">-- Select Key Account --</option>
         </select>
       </div>
       <div class="form-group">
@@ -946,18 +952,18 @@
         <label>Description</label>
         <textarea id="activityDescription" placeholder="What did you discuss?"></textarea>
       </div>
-      <div style="border-top:2px solid #1565C0;margin:18px 0 12px;padding-top:12px;color:#1565C0;font-weight:700">Next Activity Plan</div>
+      <div style="border-top:2px solid #1565C0;margin:18px 0 12px;padding-top:12px;color:#1565C0;font-weight:700">Next Activity Plan <span style="font-weight:500;font-size:11px">(optional)</span></div>
       <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:7px;padding:12px;color:#1565C0">
         <div class="form-group">
-          <label>Next Activity Date *</label>
+          <label>Next Activity Date</label>
           <input type="date" id="activityNextDate">
         </div>
         <div class="form-group">
-          <label>Next Activity Description *</label>
+          <label>Next Activity Description</label>
           <textarea id="nextActivityDescription" placeholder="Describe the next action required"></textarea>
         </div>
         <div class="form-group" style="margin-bottom:0">
-          <label>Supporting Hand *</label>
+          <label>Supporting Hand</label>
           <select id="activitySupportingHand">
             <option value="">-- Select Wiki User --</option>
           </select>
@@ -1092,7 +1098,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.8';
+    const CRM_BUILD = '20260622.7';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1322,18 +1328,19 @@
         }).filter(user => user.username && user.active)
           .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-        // Contacts and deals are shared read data for every authenticated Wiki user.
-        const customersSnap = await db.collection(CRM_CUSTOMERS).get();
+        // Load customers filtered by username
+        const customersSnap = await db.collection(CRM_CUSTOMERS).where('username', '==', currentUser).get();
         customersSnap.forEach(doc => {
           customerData[doc.id] = { id: doc.id, ...doc.data() };
         });
-        console.log(`Loaded ${customersSnap.size} shared contacts`);
+        console.log(`Loaded ${customersSnap.size} customers for ${currentUser}`);
         
-        const dealsSnap = await db.collection(CRM_DEALS).get();
+        // Load deals filtered by username
+        const dealsSnap = await db.collection(CRM_DEALS).where('username', '==', currentUser).get();
         dealsSnap.forEach(doc => {
           dealData[doc.id] = { id: doc.id, ...doc.data() };
         });
-        console.log(`Loaded ${dealsSnap.size} shared deals`);
+        console.log(`Loaded ${dealsSnap.size} deals for ${currentUser}`);
         
         // Load activities filtered by username
         const activitiesSnap = await db.collection(CRM_ACTIVITIES).where('username', '==', currentUser).get();
@@ -1389,7 +1396,9 @@
         }));
 
         const missingCustomerIds = [...new Set(Object.values(dealData)
-          .map(deal => deal.customerId).filter(id => id && !customerData[id]))];
+          .map(deal => deal.customerId)
+          .concat(Object.values(activityData).map(activity => activity.keyAccountId))
+          .filter(id => id && !customerData[id]))];
         await Promise.all(missingCustomerIds.map(async id => {
           const doc = await db.collection(CRM_CUSTOMERS).doc(id).get();
           if (doc.exists) customerData[id] = { id: doc.id, ...doc.data() };
@@ -1405,8 +1414,8 @@
 
     const IMPORT_SAMPLES = {
       contacts: {
-        title: 'Import Contacts CSV',
-        csv: 'Company Name,Contact Person,Email,Phone,Industry,Notes\nABC Industries,Rahul Sharma,rahul@abc.com,919876543210,Manufacturing,Key account'
+        title: 'Import Key Accounts CSV',
+        csv: 'Company Name,Contact Person,Email,Phone,Industry,Meeting Cadence,Notes\nABC Industries,Rahul Sharma,rahul@abc.com,919876543210,Manufacturing,Quarterly,Strategic account'
       },
       deals: {
         title: 'Import Deals CSV',
@@ -1509,7 +1518,7 @@
         const headers = rows[0];
         const normalizedHeaders = new Set(headers.map(header => header.toLowerCase().replace(/[^a-z0-9]/g, '')));
         if (currentImportType === 'contacts' && !normalizedHeaders.has('companyname')) {
-          throw new Error('Contacts CSV must contain the “Company Name” column shown in the sample.');
+          throw new Error('Key Accounts CSV must contain the “Company Name” column shown in the sample.');
         }
         if (currentImportType === 'deals') {
           const requiredDealHeaders = ['dealtitle', 'contactcompany', 'dealvalue', 'stage'];
@@ -1535,6 +1544,7 @@
             const data = {
               name, contact, email, phone,
               industry: record.industry || '',
+              meetingCadence: /monthly/i.test(record.meetingcadence || '') ? 'Monthly' : 'Quarterly',
               notes: record.notes || '',
               username: currentUser,
               createdAt: new Date(),
@@ -1599,47 +1609,14 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // CUSTOMERS
     // ═══════════════════════════════════════════════════════════════════════════
-    function isCrmDataSupervisor() {
-      return ['updesh', 'pratim'].includes(String(currentUser || '').toLowerCase());
-    }
-
-    function canEditCrmRecord(record) {
-      return !!record && (isCrmDataSupervisor() || String(record.username || '').toLowerCase() === String(currentUser || '').toLowerCase());
-    }
-
-    function crmOwnerName(username) {
-      const user = wikiUsers.find(item => String(item.username).toLowerCase() === String(username || '').toLowerCase());
-      return user?.fullName || username || 'Unassigned';
-    }
-
     function openAddCustomerModal() {
-      document.getElementById('customerEditId').value = '';
-      document.getElementById('customerModalTitle').textContent = 'Add Contact';
-      document.getElementById('customerSaveButton').textContent = 'Save Contact';
       document.getElementById('customerName').value = '';
       document.getElementById('customerContact').value = '';
       document.getElementById('customerEmail').value = '';
       document.getElementById('customerPhone').value = '';
       document.getElementById('customerIndustry').value = '';
+      document.getElementById('customerMeetingCadence').value = 'Quarterly';
       document.getElementById('customerNotes').value = '';
-      openModal('addCustomerModal');
-    }
-
-    function openEditCustomerModal(id) {
-      const customer = customerData[id];
-      if (!canEditCrmRecord(customer)) {
-        showToast('You can only edit your own contacts', 'error');
-        return;
-      }
-      document.getElementById('customerEditId').value = id;
-      document.getElementById('customerModalTitle').textContent = 'Edit Contact';
-      document.getElementById('customerSaveButton').textContent = 'Update Contact';
-      document.getElementById('customerName').value = customer.name || '';
-      document.getElementById('customerContact').value = customer.contact || '';
-      document.getElementById('customerEmail').value = customer.email || '';
-      document.getElementById('customerPhone').value = customer.phone || '';
-      document.getElementById('customerIndustry').value = customer.industry || '';
-      document.getElementById('customerNotes').value = customer.notes || '';
       openModal('addCustomerModal');
     }
     
@@ -1649,17 +1626,12 @@
         return;
       }
 
-      const editId = document.getElementById('customerEditId').value;
-      const existingCustomer = editId ? customerData[editId] : null;
-      if (editId && !canEditCrmRecord(existingCustomer)) {
-        showToast('You are not permitted to edit this contact', 'error');
-        return;
-      }
       const name = document.getElementById('customerName').value.trim();
       const contact = document.getElementById('customerContact').value.trim();
       const email = document.getElementById('customerEmail').value.trim();
       const phone = document.getElementById('customerPhone').value.trim();
       const industry = document.getElementById('customerIndustry').value.trim();
+      const meetingCadence = document.getElementById('customerMeetingCadence').value;
       const notes = document.getElementById('customerNotes').value.trim();
       
       if (!name) {
@@ -1678,25 +1650,22 @@
       }
       
       try {
-        const record = {
-          name, contact, email, phone, industry, notes,
-          username: existingCustomer?.username || currentUser,
+        const custRef = db.collection(CRM_CUSTOMERS).doc();
+        await custRef.set({
+          name, contact, email, phone, industry, meetingCadence, notes,
+          username: currentUser,  // Use username instead of salesPersonId
+          createdAt: new Date(),
           updatedAt: new Date()
+        });
+        
+        customerData[custRef.id] = {
+          id: custRef.id, name, contact, email, phone, industry, meetingCadence, notes, username: currentUser, createdAt: new Date()
         };
-        if (editId) {
-          await db.collection(CRM_CUSTOMERS).doc(editId).update(record);
-          customerData[editId] = { ...existingCustomer, ...record, id: editId };
-        } else {
-          const custRef = db.collection(CRM_CUSTOMERS).doc();
-          record.createdAt = new Date();
-          await custRef.set(record);
-          customerData[custRef.id] = { id: custRef.id, ...record };
-        }
         
         populateCustomerDropdowns();
         closeModal('addCustomerModal');
         renderCustomers();
-        showToast(editId ? 'Contact updated!' : 'Contact added!', 'success');
+        showToast('Key account added!', 'success');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -1704,11 +1673,44 @@
     
     function populateCustomerDropdowns() {
       const opts = Object.values(customerData)
-        .map(c => `<option value="${c.id}">${escapeHtml(c.name)} — ${escapeHtml(crmOwnerName(c.username))}</option>`)
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
         .join('');
       document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
       document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
-        Object.values(dealData).filter(d => canEditCrmRecord(d)).map(d => `<option value="${d.id}">${escapeHtml(d.title)} — ${escapeHtml(crmOwnerName(d.username))}</option>`).join('');
+        Object.values(dealData).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
+      document.getElementById('activityKeyAccount').innerHTML = '<option value="">-- Select Key Account --</option>' + opts;
+    }
+
+    function getActivityAccountId(activity) {
+      return activity.keyAccountId || dealData[activity.dealId]?.customerId || '';
+    }
+
+    function keyAccountMeetingStatus(account) {
+      const meetings = Object.values(activityData)
+        .filter(activity => activity.activityType === 'Meeting' && getActivityAccountId(activity) === account.id)
+        .map(activity => dateKey(activity.activityDate)).filter(Boolean).sort();
+      const lastMeeting = meetings.at(-1) || '';
+      const cadence = account.meetingCadence || 'Quarterly';
+      const months = cadence === 'Monthly' ? 1 : 3;
+      const base = lastMeeting ? new Date(`${lastMeeting}T00:00:00`) : toDateObject(account.createdAt);
+      if (!base) return { cadence, lastMeeting, nextDue: '', state: 'not-scheduled', label: 'Meeting not scheduled' };
+      const due = new Date(base); due.setMonth(due.getMonth() + months);
+      const nextDue = dateKey(due);
+      const today = dateKey(new Date());
+      const soon = new Date(); soon.setDate(soon.getDate() + 14);
+      const state = nextDue < today ? 'overdue' : nextDue <= dateKey(soon) ? 'due-soon' : 'on-track';
+      return { cadence, lastMeeting, nextDue, state, label: state === 'overdue' ? 'Overdue' : state === 'due-soon' ? 'Due soon' : 'On track' };
+    }
+
+    async function updateKeyAccountCadence(id, meetingCadence) {
+      const account = customerData[id];
+      if (!account || account.username !== currentUser || !['Monthly','Quarterly'].includes(meetingCadence)) return;
+      try {
+        await db.collection(CRM_CUSTOMERS).doc(id).update({ meetingCadence, updatedAt: new Date() });
+        account.meetingCadence = meetingCadence;
+        renderCustomers(); renderDashboard();
+        showToast('Meeting cadence updated', 'success');
+      } catch (error) { showToast('Could not update cadence: ' + error.message, 'error'); }
     }
     
     function renderCustomers() {
@@ -1721,17 +1723,19 @@
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Email</th><th style="text-align:left;padding:12px">Phone</th><th style="text-align:left;padding:12px">Industry</th><th style="text-align:left;padding:12px">Owner</th><th style="padding:12px">Action</th></tr>';
+      html += '<tr style="background: var(--bg); border-bottom: 0.5px solid var(--bd);"><th style="text-align:left;padding:12px">Key Account</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Cadence</th><th style="text-align:left;padding:12px">Last Meeting</th><th style="text-align:left;padding:12px">Next Due</th><th style="text-align:left;padding:12px">Status</th><th style="text-align:left;padding:12px">Actions</th></tr>';
       
       custs.forEach(c => {
+        const monitor = keyAccountMeetingStatus(c);
+        const statusColor = monitor.state === 'overdue' ? 'var(--danger)' : monitor.state === 'due-soon' ? 'var(--warning)' : 'var(--success)';
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
-          <td style="padding:12px;font-weight:500">${escapeHtml(c.name)}</td>
-          <td style="padding:12px">${escapeHtml(c.contact || '—')}</td>
-          <td style="padding:12px">${escapeHtml(c.email || '—')}</td>
-          <td style="padding:12px">${escapeHtml(c.phone || '—')}</td>
-          <td style="padding:12px">${escapeHtml(c.industry || '—')}</td>
-          <td style="padding:12px"><span style="font-size:10.5px;background:var(--pl);color:var(--p);padding:3px 7px;border-radius:10px">${escapeHtml(crmOwnerName(c.username))}</span></td>
-          <td style="padding:12px;text-align:center">${canEditCrmRecord(c) ? `<button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button>` : '—'}</td>
+          <td style="padding: 12px; font-weight: 500;">${c.name}</td>
+          <td style="padding: 12px;">${c.contact || '—'}</td>
+          <td style="padding:12px"><select aria-label="Meeting cadence for ${escapeHtml(c.name)}" onchange="updateKeyAccountCadence('${c.id}',this.value)" style="min-width:105px"><option value="Monthly" ${monitor.cadence === 'Monthly' ? 'selected' : ''}>Monthly</option><option value="Quarterly" ${monitor.cadence === 'Quarterly' ? 'selected' : ''}>Quarterly</option></select></td>
+          <td style="padding:12px">${monitor.lastMeeting ? formatDate(monitor.lastMeeting) : '—'}</td>
+          <td style="padding:12px">${monitor.nextDue ? formatDate(monitor.nextDue) : '—'}</td>
+          <td style="padding:12px;color:${statusColor};font-weight:700">${monitor.label}</td>
+          <td style="padding:12px"><button class="btn sm primary" onclick="openActivityLogs('account','${c.id}')"><i class="ti ti-notes"></i> Activity Logs</button></td>
         </tr>`;
       });
       
@@ -1767,8 +1771,8 @@
 
     function openEditDealModal(id) {
       const deal = dealData[id];
-      if (!canEditCrmRecord(deal)) {
-        showToast('You are not permitted to edit this deal', 'error');
+      if (!deal || deal.username !== currentUser) {
+        showToast('You can only edit your own deals', 'error');
         return;
       }
 
@@ -1844,8 +1848,8 @@
 
       const editId = document.getElementById('dealEditId').value;
       const existingDeal = editId ? dealData[editId] : null;
-      if (editId && !canEditCrmRecord(existingDeal)) {
-        showToast('You are not permitted to edit this deal', 'error');
+      if (editId && (!existingDeal || existingDeal.username !== currentUser)) {
+        showToast('You can only edit your own deals', 'error');
         return;
       }
 
@@ -1884,7 +1888,7 @@
           stage, probability, closeDate, notes,
           orderDate: orderDate || existingDeal?.orderDate || null,
           billingDate: billingDate || existingDeal?.billingDate || null,
-          username: existingDeal?.username || currentUser,
+          username: currentUser,  // Use username instead of salesPersonId
           updatedAt: new Date()
         };
         
@@ -1934,7 +1938,7 @@
     
     function renderDeals() {
       const container = document.getElementById('dealsContainer');
-      const deals = Object.values(dealData);
+      const deals = Object.values(dealData).filter(deal => deal.username === currentUser);
       
       if (deals.length === 0) {
         container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No deals yet.</p></div>';
@@ -1971,12 +1975,14 @@
           }
           
           html += `<div style="font-size: 11px; color: var(--t2);">Probability: ${d.probability}%</div>
-            <div style="font-size:10.5px;color:var(--p);margin-top:4px">Owner: ${escapeHtml(crmOwnerName(d.username))}</div>
             ${d.closeDate ? `<div style="font-size: 11px; color: var(--t2);">Close: ${formatDate(d.closeDate)}</div>` : ''}
             ${d.orderDate ? `<div style="font-size:11px;color:#1565C0;font-weight:600">Order: ${formatDate(d.orderDate)}</div>` : ''}
             ${d.billingDate ? `<div style="font-size:11px;color:#2E7D32;font-weight:600">Billed: ${formatDate(d.billingDate)}</div>` : ''}
             <div style="font-size:11px;color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'};font-weight:600">Gross Margin: ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
-            ${canEditCrmRecord(d) ? `<button class="btn sm" style="margin-top:9px" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>` : ''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
+              <button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>
+              <button class="btn sm primary" onclick="openActivityLogs('deal','${d.id}')"><i class="ti ti-notes"></i> Activity Logs</button>
+            </div>
           </div>`;
         });
         
@@ -2022,7 +2028,7 @@
         }
         
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayActivities = Object.values(activityData).filter(a => a.activityDate === dateStr);
+        const dayActivities = Object.values(activityData).filter(a => a.activityType === 'Meeting' && dateKey(a.activityDate) === dateStr);
         
         html += `<td onclick="showDayDetails('${dateStr}')">
           <div class="day-num">${day}</div>`;
@@ -2052,7 +2058,7 @@
     }
     
     function showDayDetails(dateStr) {
-      const dayActivities = Object.values(activityData).filter(a => a.activityDate === dateStr);
+      const dayActivities = Object.values(activityData).filter(a => a.activityType === 'Meeting' && dateKey(a.activityDate) === dateStr);
       const date = new Date(dateStr);
       const dayName = date.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       
@@ -2064,7 +2070,7 @@
         html += '<div class="empty" style="padding: 20px;"><p>No meetings scheduled for this day.</p></div>';
       } else {
         dayActivities.forEach(a => {
-          const dealInfo = dealData[a.dealId] ? ` – ${dealData[a.dealId].title}` : '';
+          const dealInfo = dealData[a.dealId] ? ` – ${dealData[a.dealId].title}` : ` – ${customerData[getActivityAccountId(a)]?.name || 'Key Account'}`;
           html += `<div class="meeting-detail">
             <div style="display: flex; justify-content: space-between; align-items: start;">
               <div>
@@ -2218,12 +2224,64 @@
       });
     }
 
-    function openAddActivityModal(dealId = '') {
+    function syncActivityAccountFromDeal() {
+      const dealId = document.getElementById('activityDeal').value;
+      if (dealId && dealData[dealId]) document.getElementById('activityKeyAccount').value = dealData[dealId].customerId || '';
+    }
+
+    function renderActivityHistory(contextType, contextId) {
+      const container = document.getElementById('activityHistoryContainer');
+      const matches = Object.values(activityData).filter(activity => contextType === 'deal'
+        ? activity.dealId === contextId
+        : getActivityAccountId(activity) === contextId
+      ).sort((a, b) => (dateKey(b.activityDate) || '').localeCompare(dateKey(a.activityDate) || ''));
+      if (!matches.length) {
+        container.innerHTML = '<div style="font-size:12px;color:var(--t2);padding:10px 0">No activities logged yet.</div>';
+        return;
+      }
+      container.innerHTML = matches.map(activity => {
+        const deal = dealData[activity.dealId];
+        return `<div style="border-bottom:1px solid var(--bd);padding:9px 3px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><b>${escapeHtml(activity.activityType || 'Activity')}</b><span style="font-size:11px;color:var(--t2)">${formatDate(activity.activityDate)}</span></div>
+          ${deal ? `<div style="font-size:10.5px;color:var(--p);margin-top:3px">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:10.5px;color:var(--p);margin-top:3px">Key-account activity</div>'}
+          ${activity.description ? `<div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.description)}</div>` : ''}
+          ${activity.nextActivityDate ? `<div style="font-size:10.5px;color:#1565C0;margin-top:4px">Next: ${formatDate(activity.nextActivityDate)}${activity.nextActivityDescription ? ` — ${escapeHtml(activity.nextActivityDescription)}` : ''}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function openActivityLogs(contextType, contextId) {
+      const deal = contextType === 'deal' ? dealData[contextId] : null;
+      const accountId = deal?.customerId || contextId;
+      const account = customerData[accountId];
+      if (!account || (contextType === 'deal' && !deal)) return showToast('CRM record unavailable', 'error');
+      openAddActivityModal(contextType === 'deal' ? contextId : '', accountId);
+      document.getElementById('activityContextType').value = contextType;
+      document.getElementById('activityContextId').value = contextId;
+      document.getElementById('activityModalTitle').textContent = `Activity Logs — ${deal?.title || account.name}`;
+      document.getElementById('activityContextSummary').innerHTML = deal
+        ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br><span style="font-size:11px">Key Account: ${escapeHtml(account.name)} · Stage: ${escapeHtml(deal.stage || '—')}</span>`
+        : `<b>Key Account:</b> ${escapeHtml(account.name)}<br><span style="font-size:11px">${escapeHtml(account.meetingCadence || 'Quarterly')} meeting cadence · activities need not relate to a deal</span>`;
+      document.getElementById('activityDeal').disabled = contextType === 'deal';
+      document.getElementById('activityKeyAccount').disabled = true;
+      if (contextType === 'account') {
+        const accountDeals = Object.values(dealData).filter(item => item.customerId === accountId && item.username === currentUser);
+        document.getElementById('activityDeal').innerHTML = '<option value="">-- No specific deal --</option>' + accountDeals.map(item => `<option value="${item.id}">${escapeHtml(item.title)}</option>`).join('');
+      }
+      renderActivityHistory(contextType, contextId);
+    }
+
+    function openAddActivityModal(dealId = '', keyAccountId = '') {
       const today = new Date().toISOString().split('T')[0];
       populateCustomerDropdowns();
       populateResponsibleUsers();
       document.getElementById('activityType').value = 'Call';
       document.getElementById('activityDeal').value = dealId;
+      document.getElementById('activityKeyAccount').value = keyAccountId || dealData[dealId]?.customerId || '';
+      document.getElementById('activityDeal').disabled = false;
+      document.getElementById('activityKeyAccount').disabled = false;
+      document.getElementById('activityContextType').value = dealId ? 'deal' : 'account';
+      document.getElementById('activityContextId').value = dealId || keyAccountId;
       document.getElementById('activityDate').value = today;
       document.getElementById('activityDescription').value = '';
       document.getElementById('activityNextDate').value = '';
@@ -2240,6 +2298,7 @@
 
       const type = document.getElementById('activityType').value;
       const dealId = document.getElementById('activityDeal').value;
+      const keyAccountId = document.getElementById('activityKeyAccount').value || dealData[dealId]?.customerId || '';
       const date = document.getElementById('activityDate').value;
       const supportingSelect = document.getElementById('activitySupportingHand');
       const supportingUsername = supportingSelect.value;
@@ -2247,9 +2306,18 @@
       const desc = document.getElementById('activityDescription').value.trim();
       const nextDate = document.getElementById('activityNextDate').value;
       const nextDescription = document.getElementById('nextActivityDescription').value.trim();
+      const hasNextPlan = !!(nextDate || nextDescription || supportingUsername);
       
-      if (!dealId || !date || !supportingUsername || !nextDate || !nextDescription) {
-        showToast('Please complete the deal, activity date and all Next Activity Plan fields', 'error');
+      if (!keyAccountId || !date) {
+        showToast('Please select a key account and activity date', 'error');
+        return;
+      }
+      if (dealId && dealData[dealId]?.customerId !== keyAccountId) {
+        showToast('The selected deal does not belong to this key account', 'error');
+        return;
+      }
+      if (hasNextPlan && (!supportingUsername || !nextDate || !nextDescription)) {
+        showToast('Complete all Next Activity Plan fields, or leave all three blank', 'error');
         return;
       }
       
@@ -2257,20 +2325,21 @@
         const actRef = db.collection(CRM_ACTIVITIES).doc();
         const activityRecord = {
           activityType: type,
-          dealId,
+          dealId: dealId || null,
+          keyAccountId,
           activityDate: date,
           description: desc,
           nextActivityDate: nextDate,
           nextActivityDescription: nextDescription,
           username: currentUser,
           creatorName: currentUserData?.fullName || currentUserData?.displayName || currentUser,
-          supportingUsername,
-          supportingName,
+          supportingUsername: hasNextPlan ? supportingUsername : null,
+          supportingName: hasNextPlan ? supportingName : null,
           // Legacy aliases keep existing task queries and earlier data compatible.
-          responsibleUsername: supportingUsername,
-          responsibleName: supportingName,
-          planResponseStatus: 'pending',
-          taskStatus: 'open',
+          responsibleUsername: hasNextPlan ? supportingUsername : null,
+          responsibleName: hasNextPlan ? supportingName : null,
+          planResponseStatus: hasNextPlan ? 'pending' : 'not-planned',
+          taskStatus: hasNextPlan ? 'open' : 'none',
           extensionStatus: null,
           createdAt: new Date(),
           completedDate: null
@@ -2283,9 +2352,9 @@
         };
 
         const deal = dealData[dealId] || {};
-        const customer = customerData[deal.customerId] || {};
-        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. Deal: ${deal.title || 'Untitled'}; Contact: ${customer.name || '—'}; Stage: ${deal.stage || '—'}; Value: ₹${Number(deal.value || 0).toLocaleString('en-IN')}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextDescription}; Date: ${formatDate(nextDate)}.`;
-        const notificationRecipients = [...new Set([supportingUsername, 'updesh'].filter(Boolean))];
+        const customer = customerData[keyAccountId] || {};
+        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Key Account: ${customer.name || '—'}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextDescription}; Date: ${formatDate(nextDate)}.`;
+        const notificationRecipients = hasNextPlan ? [...new Set([supportingUsername, 'updesh'].filter(Boolean))] : [];
         const notificationResults = await Promise.allSettled(notificationRecipients.map(recipientUsername => createCrmNotification({
           recipientUsername,
           type: 'next_activity_plan',
@@ -2300,11 +2369,12 @@
         
         closeModal('addActivityModal');
         renderCalendar();
+        renderCustomers();
         renderActivities();
         renderActivityDeals();
         renderTaskCenter();
         renderDashboard();
-        showToast(notificationSent ? 'Activity logged; Supporting Hand and Updesh notified!' : 'Activity logged, but one or more notifications failed', notificationSent ? 'success' : 'warning');
+        showToast(!hasNextPlan ? 'Activity logged!' : notificationSent ? 'Activity logged; Supporting Hand and Updesh notified!' : 'Activity logged, but one or more notifications failed', notificationSent ? 'success' : 'warning');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
       }
@@ -2398,7 +2468,9 @@
         }));
 
         const missingCustomerIds = [...new Set(Object.values(dealData)
-          .map(deal => deal.customerId).filter(id => id && !customerData[id]))];
+          .map(deal => deal.customerId)
+          .concat(Object.values(activityData).map(activity => activity.keyAccountId))
+          .filter(id => id && !customerData[id]))];
         await Promise.all(missingCustomerIds.map(async id => {
           const doc = await db.collection(CRM_CUSTOMERS).doc(id).get();
           if (doc.exists) customerData[id] = { id: doc.id, ...doc.data() };
@@ -2437,7 +2509,7 @@
     }
 
     function openTaskCenter() {
-      switchTab('activities');
+      switchTab('dashboard');
       const panel = document.getElementById('taskCenterPanel');
       if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -2490,11 +2562,11 @@
 
     function forcedActionDealDetails(activity) {
       const deal = dealData[activity.dealId] || {};
-      const customer = customerData[deal.customerId] || {};
+      const customer = customerData[getActivityAccountId(activity)] || {};
       return `<div style="border:1px solid #90CAF9;border-radius:8px;overflow:hidden;background:#F8FBFF">
-        <div style="padding:10px 12px;background:#E3F2FD;color:#0D47A1;font-size:13px;font-weight:800">${escapeHtml(deal.title || 'CRM Deal')}</div>
+        <div style="padding:10px 12px;background:#E3F2FD;color:#0D47A1;font-size:13px;font-weight:800">${escapeHtml(deal.title || customer.name || 'CRM Activity')}</div>
         <div style="padding:11px 12px;font-size:11px;line-height:1.7;color:#37474F">
-          Contact: <b>${escapeHtml(customer.name || '—')}</b> · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b><br>
+          Key Account: <b>${escapeHtml(customer.name || '—')}</b>${activity.dealId ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
           Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(activity.supportingName || activity.responsibleName || '—')}</b><br>
           Logged activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
         </div>
@@ -2658,7 +2730,7 @@
       unread.forEach(item => {
         const activity = activityData[item.activityId];
         const deal = activity ? dealData[activity.dealId] : null;
-        const customer = deal ? customerData[deal.customerId] : null;
+        const customer = activity ? customerData[getActivityAccountId(activity)] : null;
         const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
         const supportingName = activity?.supportingName || activity?.responsibleName;
         const requiresAction = item.type === 'next_activity_plan' && supportingUsername === currentUser && (activity?.planResponseStatus || 'pending') === 'pending';
@@ -2673,9 +2745,9 @@
         html += `<div style="background:${palette[1]};border:1px solid ${palette[0]}55;border-radius:7px;padding:12px;margin-bottom:8px;border-left:5px solid ${palette[0]}">
           ${requiresAction ? '<div style="font-size:11px;font-weight:800;color:#B71C1C;margin-bottom:8px">ACTION REQUIRED — Accept the plan or propose a new date</div>' : ''}
           ${isPlanNotification ? `
-            <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || 'CRM Deal')}</div>
+            <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || customer?.name || 'CRM Activity')}</div>
             <div style="font-size:10.5px;color:var(--t2);line-height:1.6">
-              Contact: <b>${escapeHtml(customer?.name || '—')}</b> · Stage: <b>${escapeHtml(deal?.stage || '—')}</b> · Value: <b>₹${Number(deal?.value || 0).toLocaleString('en-IN')}</b><br>
+              Key Account: <b>${escapeHtml(customer?.name || '—')}</b>${deal ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
               Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(supportingName || supportingUsername || '—')}</b><br>
               Activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
             </div>
@@ -2701,7 +2773,8 @@
     function renderActivityDeals() {
       const container = document.getElementById('activityDealsContainer');
       if (!container) return;
-      const ownDeals = Object.values(dealData).filter(deal => canEditCrmRecord(deal));
+      if (!container) return;
+      const ownDeals = Object.values(dealData).filter(deal => deal.username === currentUser);
       if (!ownDeals.length) {
         container.innerHTML = '<div style="font-size:12px;color:var(--t2)">No deals available for activity logging.</div>';
         return;
@@ -2863,6 +2936,7 @@
 
     function renderActivities() {
       const container = document.getElementById('activitiesContainer');
+      if (!container) return;
       const activities = Object.values(activityData).sort((a, b) => {
         const aDate = a.nextActivityDate || a.activityDate;
         const bDate = b.nextActivityDate || b.activityDate;
@@ -2933,11 +3007,12 @@
       let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
       recent.forEach(a => {
         const deal = dealData[a.dealId];
+        const account = customerData[getActivityAccountId(a)];
         html += `<div style="display: flex; gap: 10px; padding: 10px; background: var(--bg); border-radius: 6px;">
           <div style="width: 8px; background: var(--p); border-radius: 2px;"></div>
           <div style="flex: 1;">
             <div style="font-weight: 500;">${a.activityType}</div>
-            <div style="font-size: 11px; color: var(--t2);">${deal?.title || '—'} · ${formatDate(a.activityDate)}</div>
+            <div style="font-size: 11px; color: var(--t2);">${deal?.title || account?.name || '—'} · ${formatDate(a.activityDate)}</div>
             ${a.description ? `<div style="font-size: 11px; margin-top: 4px;">${a.description}</div>` : ''}
           </div>
         </div>`;
@@ -3039,6 +3114,10 @@
           </div>
         `;
       }
+      const keyAccountsDue = Object.values(customerData).filter(account => ['overdue','due-soon'].includes(keyAccountMeetingStatus(account).state));
+      if (keyAccountsDue.length) {
+        alerts += `<div class="alert warning"><i class="ti ti-building"></i><strong>Key Account Meetings:</strong> ${keyAccountsDue.length} account(s) are due or overdue for their monthly/quarterly meeting. Open Key Accounts to review.</div>`;
+      }
       
       alertsContainer.innerHTML = alerts || '';
     }
@@ -3058,11 +3137,8 @@
       let newCount = 0, existingCount = 0;
       Object.values(activityData).forEach(activity => {
         const activityDate = dateKey(activity.activityDate);
-        if (activity.username === currentUser && activityDate >= weekStart && (activity.activityType === 'Meeting' || activity.activityType === 'Call' || activity.activityType === 'Site Visit')) {
-          const deal = dealData[activity.dealId];
-          if (!deal) return;
-          
-          const customer = customerData[deal.customerId];
+        if (activity.username === currentUser && activityDate >= weekStart && activity.activityType === 'Meeting') {
+          const customer = customerData[getActivityAccountId(activity)];
           if (!customer) return;
           
           // Firestore timestamps and imported date strings are both supported.
