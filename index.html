@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -620,11 +619,13 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-home"></i> Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('referrals')"><i class="ti ti-bulb"></i> Leads & Incentives</button>
       <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Contacts</button>
       <button class="tab-btn" onclick="switchTab('deals')"><i class="ti ti-briefcase"></i> Deals</button>
       <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
       <button class="tab-btn" onclick="switchTab('targets')"><i class="ti ti-target"></i> Targets</button>
       <button class="tab-btn" onclick="switchTab('kam')"><i class="ti ti-building"></i> KAM</button>
+      <button class="tab-btn" id="leadSettingsTabButton" style="display:none" onclick="switchTab('lead-settings')"><i class="ti ti-settings"></i> Incentive Settings</button>
     </div>
     
     <!-- DASHBOARD TAB -->
@@ -742,6 +743,52 @@
       </div>
     </div>
 
+    <!-- LEAD REFERRALS & INCENTIVES TAB -->
+    <div id="tab-referrals" class="tab-content">
+      <div class="stats">
+        <div class="stat"><div class="stat-icon"><i class="ti ti-send"></i></div><div class="stat-content"><div class="stat-value" id="leadStatMy">0</div><div class="stat-label">My Leads</div></div></div>
+        <div class="stat"><div class="stat-icon"><i class="ti ti-user-check"></i></div><div class="stat-content"><div class="stat-value" id="leadStatQualified">0</div><div class="stat-label">Qualified</div></div></div>
+        <div class="stat"><div class="stat-icon"><i class="ti ti-briefcase"></i></div><div class="stat-content"><div class="stat-value" id="leadStatConverted">0</div><div class="stat-label">Converted to Deal</div></div></div>
+        <div class="stat"><div class="stat-icon"><i class="ti ti-currency-rupee"></i></div><div class="stat-content"><div class="stat-value" id="leadStatIncentive">₹0</div><div class="stat-label">My Entitlement</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span>Submit a Company Lead</span><span style="font-size:10px;color:var(--t2);font-weight:500">Available to every authenticated Wiki user</span></div>
+        <div class="form-row">
+          <div class="form-group"><label>Company Name *</label><input id="leadCompany" type="text" placeholder="Company / organisation"></div>
+          <div class="form-group"><label>Contact Person *</label><input id="leadContactPerson" type="text" placeholder="Person contacted"></div>
+          <div class="form-group"><label>Contact Number *</label><input id="leadContactNumber" type="tel" placeholder="Phone number"></div>
+          <div class="form-group"><label>Email</label><input id="leadContactEmail" type="email" placeholder="Email if available"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Requirement Category</label><select id="leadCategory"><option>Fire Detection & Alarm</option><option>Gas Suppression System</option><option>Plant Communication</option><option>IT Hardware</option><option>Other</option></select></div>
+          <div class="form-group"><label>Estimated Value (₹)</label><input id="leadEstimatedValue" type="number" min="0" placeholder="Optional"></div>
+        </div>
+        <div class="form-group"><label>Requirement / Opportunity Details *</label><textarea id="leadRequirement" placeholder="Describe the authenticated requirement, application, location and any useful context"></textarea></div>
+        <button class="btn primary" onclick="submitCrmLead()"><i class="ti ti-send"></i> Submit Lead</button>
+      </div>
+
+      <div class="card"><div class="card-header">My Leads and Incentives</div><div id="leadMyContainer"></div></div>
+      <div class="card" id="leadReviewCard" style="display:none"><div class="card-header">Sales Review Queue</div><div id="leadReviewContainer"></div></div>
+      <div class="card" id="leadApprovalCard" style="display:none"><div class="card-header">Updesh — Incentive Approval and Payment</div><div id="leadApprovalContainer"></div></div>
+      <div class="card"><div class="card-header">Lead Referral Leaderboard</div><div id="leadLeaderboardContainer"></div></div>
+    </div>
+
+    <!-- UPDESH-ONLY INCENTIVE SETTINGS TAB -->
+    <div id="tab-lead-settings" class="tab-content">
+      <div class="card" id="leadSettingsCard" style="display:none">
+        <div class="card-header">Updesh — Lead and Deal Conversion Incentive Settings</div>
+        <div class="alert"><i class="ti ti-info-circle"></i><span>These are total milestone entitlements, not cumulative amounts. Deal Conversion must be at least the Qualified Lead amount.</span></div>
+        <div class="form-row">
+          <div class="form-group"><label>Qualified Lead Incentive (₹)</label><input id="leadQualifiedIncentive" type="number" min="0"></div>
+          <div class="form-group"><label>Converted Deal Incentive (₹)</label><input id="leadConvertedIncentive" type="number" min="0"></div>
+          <div class="form-group"><label>Effective From</label><input id="leadIncentiveEffectiveFrom" type="date"></div>
+        </div>
+        <button class="btn primary" onclick="saveLeadIncentiveSettings()">Save Incentive Plan</button>
+        <div id="leadSettingsHistory" style="margin-top:12px"></div>
+      </div>
+    </div>
+
     <!-- KEY ACCOUNT MANAGEMENT TAB -->
     <div id="tab-kam" class="tab-content">
       <div class="card">
@@ -753,6 +800,35 @@
   </div>
   
   <!-- MODALS -->
+
+  <!-- Convert Qualified Lead to CRM Deal -->
+  <div id="leadConversionModal" class="modal">
+    <div class="modal-content" style="max-width:680px">
+      <div class="modal-header"><span>Convert Qualified Lead to Deal</span><button class="modal-close" onclick="closeModal('leadConversionModal')">✕</button></div>
+      <input type="hidden" id="leadConversionId">
+      <div id="leadConversionSummary" class="alert"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Sales Owner *</label><select id="leadSalesOwner"></select></div>
+        <div class="form-group"><label>Deal Title *</label><input id="leadDealTitle" type="text"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Deal Value (₹) *</label><input id="leadDealValue" type="number" min="1"></div>
+        <div class="form-group"><label>Gross Margin Amount (₹)</label><input id="leadDealGrossMargin" type="number" min="0"></div>
+        <div class="form-group"><label>Expected Close Date</label><input id="leadDealCloseDate" type="date"></div>
+      </div>
+      <div class="modal-footer"><button class="btn" onclick="closeModal('leadConversionModal')">Cancel</button><button class="btn primary" onclick="confirmLeadConversion()">Create CRM Deal</button></div>
+    </div>
+  </div>
+
+  <!-- Mandatory rejection reason -->
+  <div id="leadRejectionModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span id="leadRejectionTitle">Reject Lead — Reason Required</span><button class="modal-close" onclick="closeModal('leadRejectionModal')">✕</button></div>
+      <input type="hidden" id="leadRejectionId"><input type="hidden" id="leadRejectionType">
+      <div class="form-group"><label>Rejection Reason *</label><textarea id="leadRejectionReason" placeholder="State why the data is invalid, duplicate, irrelevant, or not workable"></textarea></div>
+      <div class="modal-footer"><button class="btn" onclick="closeModal('leadRejectionModal')">Cancel</button><button class="btn danger" onclick="confirmLeadRejection()">Reject with Reason</button></div>
+    </div>
+  </div>
   
   <!-- Add Customer Modal -->
   <div id="addCustomerModal" class="modal">
@@ -1083,6 +1159,8 @@
     let dealData = {};
     let activityData = {};
     let targetData = {};
+    let leadData = {};
+    let leadIncentiveConfig = { qualifiedAmount: 500, convertedAmount: 2500, effectiveFrom: '2026-06-23', updatedBy: 'system' };
     let wikiUsers = [];
     let notificationData = {};
     let pendingApprovalData = {};
@@ -1098,6 +1176,10 @@
     const CRM_ACTIVITIES = 'dqap_crm_activities';
     const CRM_TARGETS = 'dqap_crm_targets';
     const CRM_NOTIFICATIONS = 'dqap_crm_notifications';
+    const CRM_LEADS = 'dqap_crm_leads_v2';
+    const CRM_LEAD_CONFIG = 'dqap_crm_lead_incentive_config';
+    const CRM_INCENTIVE_LEDGER = 'dqap_crm_incentive_ledger';
+    const LEAD_REVIEWERS = ['chetan', 'pratim', 'updesh'];
     
     // Safe Firebase initialization
     try {
@@ -1123,7 +1205,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260622.7';
+    const CRM_BUILD = '20260623.3';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1275,6 +1357,7 @@
           try {
             await loadAllData();
             renderDashboard();
+            renderLeadManagement();
             renderCustomers();
             renderDeals();
             renderCalendar();
@@ -1285,6 +1368,8 @@
             renderTaskCenter();
             renderDueActivityModal();
             startTaskRefresh();
+            const requestedTab = new URLSearchParams(window.location.search).get('tab');
+            if (requestedTab && document.getElementById('tab-' + requestedTab)) switchTab(requestedTab);
             showToast(`✅ Welcome, ${resolvedDisplayName}!`, 'success');
             console.log('✅ Auto-logged in from Wiki:', username);
           } catch (err) {
@@ -1340,6 +1425,7 @@
         dealData = {};
         activityData = {};
         targetData = {};
+        leadData = {};
         notificationData = {};
         pendingApprovalData = {};
 
@@ -1354,6 +1440,16 @@
           };
         }).filter(user => user.username && user.active)
           .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+        // Fresh integrated lead workflow. The legacy dqap_leads test collection is intentionally ignored.
+        try {
+          const leadConfigDoc = await db.collection(CRM_LEAD_CONFIG).doc('current').get();
+          if (leadConfigDoc.exists) leadIncentiveConfig = { ...leadIncentiveConfig, ...leadConfigDoc.data() };
+          const leadsSnap = await db.collection(CRM_LEADS).get();
+          leadsSnap.forEach(doc => { leadData[doc.id] = { id: doc.id, ...doc.data() }; });
+        } catch (leadLoadError) {
+          console.warn('Lead collections are unavailable; the rest of CRM will continue:', leadLoadError);
+        }
 
         // Load customers filtered by username
         const customersSnap = await db.collection(CRM_CUSTOMERS).where('username', '==', currentUser).get();
@@ -1434,6 +1530,7 @@
         // Populate dropdowns
         populateCustomerDropdowns();
         populateResponsibleUsers();
+        populateLeadSalesOwners();
       } catch (err) {
         console.error('Load error:', err);
       }
@@ -1633,6 +1730,332 @@
       }
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INTEGRATED LEAD REFERRALS & INCENTIVES
+    // ═══════════════════════════════════════════════════════════════════════════
+    function isLeadReviewer(username = currentUser) {
+      return LEAD_REVIEWERS.includes(String(username || '').toLowerCase());
+    }
+
+    function isLeadIncentiveAuthority(username = currentUser) {
+      return String(username || '').toLowerCase() === 'updesh';
+    }
+
+    function currentUserName() {
+      return currentUserData?.fullName || currentUserData?.displayName || currentUser;
+    }
+
+    function populateLeadSalesOwners() {
+      const select = document.getElementById('leadSalesOwner');
+      if (!select) return;
+      const eligibleOwners = wikiUsers.filter(user => ['sales','admin'].includes(String(user.role || '').toLowerCase()) || LEAD_REVIEWERS.includes(String(user.username || '').toLowerCase()));
+      select.innerHTML = '<option value="">-- Select Sales Owner --</option>' + eligibleOwners
+        .map(user => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.fullName)} (${escapeHtml(user.username)})</option>`).join('');
+    }
+
+    function leadAuditEvent(action, remarks = '') {
+      return { action, remarks, username: currentUser, name: currentUserName(), at: new Date() };
+    }
+
+    async function writeLeadLedger(lead, eventType, totalEntitlement, incrementalAmount, remarks = '') {
+      const ref = db.collection(CRM_INCENTIVE_LEDGER).doc();
+      await ref.set({
+        leadId: lead.id,
+        referrerUsername: lead.referrerUsername,
+        referrerName: lead.referrerName,
+        eventType,
+        totalEntitlement: Number(totalEntitlement || 0),
+        incrementalAmount: Number(incrementalAmount || 0),
+        remarks,
+        actionBy: currentUser,
+        createdAt: new Date()
+      });
+    }
+
+    async function notifyLeadReferrer(lead, type, message) {
+      if (!lead.referrerUsername) return;
+      try {
+        await createCrmNotification({ recipientUsername: lead.referrerUsername, type, leadId: lead.id, message });
+      } catch (error) { console.warn('Lead notification failed:', error); }
+    }
+
+    async function submitCrmLead() {
+      if (!currentUser) return showToast('Not authenticated', 'error');
+      const company = document.getElementById('leadCompany').value.trim();
+      const contactPerson = document.getElementById('leadContactPerson').value.trim();
+      const contactNumberRaw = document.getElementById('leadContactNumber').value.trim();
+      const contactNumber = contactNumberRaw.replace(/\D/g, '');
+      const contactEmail = document.getElementById('leadContactEmail').value.trim();
+      const requirement = document.getElementById('leadRequirement').value.trim();
+      const category = document.getElementById('leadCategory').value;
+      const estimatedValue = Number(document.getElementById('leadEstimatedValue').value) || 0;
+      if (!company || !contactPerson || contactNumber.length < 7 || !requirement) {
+        return showToast('Company, contact person, valid contact number and requirement are mandatory', 'error');
+      }
+      if (contactEmail && !isValidEmail(contactEmail)) return showToast('Enter a valid email address', 'error');
+      const duplicate = Object.values(leadData).find(lead =>
+        ['Submitted','Qualified','Converted to Deal'].includes(lead.status) &&
+        String(lead.company || '').trim().toLowerCase() === company.toLowerCase() &&
+        String(lead.contactNumber || '').replace(/\D/g, '') === contactNumber
+      );
+      if (duplicate) return showToast('A current lead already exists for this company and contact number', 'warning');
+      try {
+        const ref = db.collection(CRM_LEADS).doc();
+        const record = {
+          company, contactPerson, contactNumber, contactEmail, requirement, category, estimatedValue,
+          referrerUsername: currentUser,
+          referrerName: currentUserName(),
+          status: 'Submitted',
+          entitlementAmount: 0,
+          approvedAmount: 0,
+          paidAmount: 0,
+          incentiveApprovalStatus: 'Not Earned',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          auditTrail: [leadAuditEvent('Submitted')]
+        };
+        await ref.set(record);
+        leadData[ref.id] = { id: ref.id, ...record };
+        ['leadCompany','leadContactPerson','leadContactNumber','leadContactEmail','leadRequirement','leadEstimatedValue'].forEach(id => document.getElementById(id).value = '');
+        renderLeadManagement();
+        showToast('Lead submitted for sales authentication', 'success');
+      } catch (error) { showToast('Could not submit lead: ' + error.message, 'error'); }
+    }
+
+    async function qualifyCrmLead(id) {
+      if (!isLeadReviewer()) return showToast('Only Chetan, Pratim or Updesh can qualify leads', 'error');
+      const lead = leadData[id];
+      if (!lead || lead.status !== 'Submitted') return showToast('Lead is no longer awaiting qualification', 'warning');
+      if (!lead.contactPerson || String(lead.contactNumber || '').replace(/\D/g, '').length < 7 || !lead.requirement) {
+        return showToast('Contact person, number and requirement must be authenticated before qualification', 'error');
+      }
+      const qualifiedAmount = Number(leadIncentiveConfig.qualifiedAmount || 0);
+      const convertedAmount = Number(leadIncentiveConfig.convertedAmount || 0);
+      const update = {
+        status: 'Qualified',
+        qualifiedBy: currentUser,
+        qualifiedByName: currentUserName(),
+        qualifiedAt: new Date(),
+        qualifiedIncentiveSnapshot: qualifiedAmount,
+        convertedIncentiveSnapshot: convertedAmount,
+        incentivePlanEffectiveFrom: leadIncentiveConfig.effectiveFrom || '',
+        entitlementAmount: qualifiedAmount,
+        incentiveApprovalStatus: qualifiedAmount > Number(lead.approvedAmount || 0) ? 'Pending Approval' : lead.incentiveApprovalStatus,
+        updatedAt: new Date(),
+        auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Qualified', 'Contact person, number and requirement authenticated')]
+      };
+      try {
+        await db.collection(CRM_LEADS).doc(id).update(update);
+        Object.assign(lead, update);
+        await writeLeadLedger(lead, 'Qualified', qualifiedAmount, Math.max(qualifiedAmount - Number(lead.approvedAmount || 0), 0), 'Qualified lead entitlement');
+        await notifyLeadReferrer(lead, 'lead_qualified', `${lead.company} was authenticated and qualified. Incentive entitlement: ₹${qualifiedAmount.toLocaleString('en-IN')} pending Updesh approval.`);
+        renderLeadManagement();
+        showToast('Lead qualified; incentive sent for Updesh approval', 'success');
+      } catch (error) { showToast('Could not qualify lead: ' + error.message, 'error'); }
+    }
+
+    function openLeadRejection(id, type = 'lead') {
+      if (type === 'lead' && !isLeadReviewer()) return;
+      if (type === 'incentive' && !isLeadIncentiveAuthority()) return;
+      document.getElementById('leadRejectionId').value = id;
+      document.getElementById('leadRejectionType').value = type;
+      document.getElementById('leadRejectionTitle').textContent = type === 'incentive' ? 'Reject Incentive — Reason Required' : 'Reject Lead — Reason Required';
+      document.getElementById('leadRejectionReason').value = '';
+      openModal('leadRejectionModal');
+    }
+
+    async function confirmLeadRejection() {
+      const id = document.getElementById('leadRejectionId').value;
+      const type = document.getElementById('leadRejectionType').value;
+      const reason = document.getElementById('leadRejectionReason').value.trim();
+      const lead = leadData[id];
+      if (!lead || !reason) return showToast('A rejection reason is mandatory', 'error');
+      if (type === 'incentive') {
+        if (!isLeadIncentiveAuthority()) return;
+        const update = { incentiveApprovalStatus: 'Rejected', incentiveRejectionReason: reason, incentiveRejectedBy: currentUser, incentiveRejectedAt: new Date(), updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Rejected', reason)] };
+        await db.collection(CRM_LEADS).doc(id).update(update); Object.assign(lead, update);
+        await writeLeadLedger(lead, 'Approval Rejected', lead.entitlementAmount, 0, reason);
+        await notifyLeadReferrer(lead, 'lead_incentive_rejected', `Incentive approval for ${lead.company} was rejected by Updesh. Reason: ${reason}`);
+      } else {
+        if (!isLeadReviewer() || !['Submitted','Qualified'].includes(lead.status)) return;
+        const update = { status: 'Rejected', rejectionReason: reason, rejectedBy: currentUser, rejectedByName: currentUserName(), rejectedAt: new Date(), updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Lead Rejected', reason)] };
+        await db.collection(CRM_LEADS).doc(id).update(update); Object.assign(lead, update);
+        await notifyLeadReferrer(lead, 'lead_rejected', `${lead.company} was rejected. Reason: ${reason}`);
+      }
+      closeModal('leadRejectionModal'); renderLeadManagement(); showToast('Rejection recorded with reason', 'warning');
+    }
+
+    function openLeadConversionModal(id) {
+      if (!isLeadReviewer()) return;
+      const lead = leadData[id];
+      if (!lead || lead.status !== 'Qualified') return showToast('Only qualified leads can be converted', 'warning');
+      populateLeadSalesOwners();
+      document.getElementById('leadConversionId').value = id;
+      document.getElementById('leadConversionSummary').innerHTML = `<span><b>${escapeHtml(lead.company)}</b><br>${escapeHtml(lead.contactPerson)} · ${escapeHtml(lead.contactNumber)}<br>${escapeHtml(lead.requirement)}</span>`;
+      document.getElementById('leadDealTitle').value = `${lead.company} — ${lead.category || 'Opportunity'}`;
+      document.getElementById('leadDealValue').value = Number(lead.estimatedValue || 0) || '';
+      document.getElementById('leadDealGrossMargin').value = '';
+      document.getElementById('leadDealCloseDate').value = '';
+      openModal('leadConversionModal');
+    }
+
+    async function confirmLeadConversion() {
+      if (!isLeadReviewer()) return;
+      const id = document.getElementById('leadConversionId').value;
+      const lead = leadData[id];
+      const salesOwner = document.getElementById('leadSalesOwner').value;
+      const title = document.getElementById('leadDealTitle').value.trim();
+      const value = Number(document.getElementById('leadDealValue').value) || 0;
+      const grossMarginAmount = Number(document.getElementById('leadDealGrossMargin').value) || 0;
+      const closeDate = document.getElementById('leadDealCloseDate').value;
+      if (!lead || lead.status !== 'Qualified' || !salesOwner || !title || value <= 0) return showToast('Sales owner, deal title and positive deal value are mandatory', 'error');
+      if (grossMarginAmount < 0 || grossMarginAmount > value) return showToast('Gross Margin must be between zero and deal value', 'error');
+      try {
+        const ownerContacts = await db.collection(CRM_CUSTOMERS).where('username', '==', salesOwner).get();
+        let customer = ownerContacts.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+          .find(item => String(item.name || '').trim().toLowerCase() === String(lead.company || '').trim().toLowerCase());
+        const batch = db.batch();
+        if (!customer) {
+          const customerRef = db.collection(CRM_CUSTOMERS).doc();
+          customer = { id: customerRef.id, name: lead.company, contact: lead.contactPerson, email: lead.contactEmail || '', phone: lead.contactNumber, industry: '', notes: `Converted from CRM lead ${id}`, isKeyAccount: false, username: salesOwner, sourceLeadId: id, createdAt: new Date(), updatedAt: new Date() };
+          batch.set(customerRef, { ...customer });
+          delete customer.id;
+          customer.id = customerRef.id;
+        }
+        const dealRef = db.collection(CRM_DEALS).doc();
+        const grossMarginPercent = value ? grossMarginAmount / value * 100 : 0;
+        const dealRecord = { title, customerId: customer.id, value, grossMarginAmount, grossMarginPercent, stage: 'Lead', probability: 20, closeDate, notes: `Converted from referred lead. Requirement: ${lead.requirement}`, username: salesOwner, sourceLeadId: id, leadReferrerUsername: lead.referrerUsername, createdAt: new Date(), updatedAt: new Date() };
+        batch.set(dealRef, dealRecord);
+        const convertedAmount = Number(lead.convertedIncentiveSnapshot ?? leadIncentiveConfig.convertedAmount ?? 0);
+        const previousEntitlement = Number(lead.entitlementAmount || 0);
+        const approvedAmount = Number(lead.approvedAmount || 0);
+        const update = {
+          status: 'Converted to Deal', convertedBy: currentUser, convertedByName: currentUserName(), convertedAt: new Date(),
+          salesOwnerUsername: salesOwner, crmCustomerId: customer.id, crmDealId: dealRef.id,
+          entitlementAmount: convertedAmount,
+          incentiveApprovalStatus: convertedAmount > approvedAmount ? 'Pending Approval' : lead.incentiveApprovalStatus,
+          updatedAt: new Date(),
+          auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Converted to Deal', `Sales owner: ${salesOwner}; CRM deal: ${dealRef.id}`)]
+        };
+        batch.update(db.collection(CRM_LEADS).doc(id), update);
+        const ledgerRef = db.collection(CRM_INCENTIVE_LEDGER).doc();
+        batch.set(ledgerRef, { leadId: id, referrerUsername: lead.referrerUsername, referrerName: lead.referrerName, eventType: 'Converted to Deal', totalEntitlement: convertedAmount, incrementalAmount: Math.max(convertedAmount - previousEntitlement, 0), remarks: `CRM Deal ${dealRef.id}`, actionBy: currentUser, createdAt: new Date() });
+        await batch.commit();
+        Object.assign(lead, update);
+        if (salesOwner === currentUser) {
+          customerData[customer.id] = customer;
+          dealData[dealRef.id] = { id: dealRef.id, ...dealRecord };
+          populateCustomerDropdowns(); renderCustomers(); renderDeals();
+        }
+        await notifyLeadReferrer(lead, 'lead_converted', `${lead.company} was converted to a CRM Deal. Total referral entitlement is now ₹${convertedAmount.toLocaleString('en-IN')} (not cumulative), pending Updesh approval.`);
+        closeModal('leadConversionModal'); renderLeadManagement(); renderDashboard();
+        showToast(`Lead converted. Total incentive entitlement: ₹${convertedAmount.toLocaleString('en-IN')}`, 'success');
+      } catch (error) { showToast('Could not convert lead: ' + error.message, 'error'); }
+    }
+
+    async function approveLeadIncentive(id) {
+      if (!isLeadIncentiveAuthority()) return;
+      const lead = leadData[id];
+      if (!lead) return;
+      const entitlement = Number(lead.entitlementAmount || 0);
+      const previousApproved = Number(lead.approvedAmount || 0);
+      if (entitlement <= previousApproved) return showToast('Current entitlement is already approved', 'warning');
+      const update = { approvedAmount: entitlement, incentiveApprovalStatus: Number(lead.paidAmount || 0) >= entitlement ? 'Paid' : 'Approved', incentiveApprovedBy: currentUser, incentiveApprovedAt: new Date(), incentiveRejectionReason: null, updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Approved', `Approved total ₹${entitlement}`)] };
+      await db.collection(CRM_LEADS).doc(id).update(update); Object.assign(lead, update);
+      await writeLeadLedger(lead, 'Approved', entitlement, entitlement - previousApproved, 'Final payment authority: Updesh');
+      await notifyLeadReferrer(lead, 'lead_incentive_approved', `Updesh approved total incentive of ₹${entitlement.toLocaleString('en-IN')} for ${lead.company}.`);
+      renderLeadManagement(); showToast('Incentive approved', 'success');
+    }
+
+    async function markLeadIncentivePaid(id) {
+      if (!isLeadIncentiveAuthority()) return;
+      const lead = leadData[id];
+      if (!lead) return;
+      const approved = Number(lead.approvedAmount || 0);
+      const previousPaid = Number(lead.paidAmount || 0);
+      if (approved <= previousPaid) return showToast('No approved unpaid balance', 'warning');
+      const update = { paidAmount: approved, incentiveApprovalStatus: approved >= Number(lead.entitlementAmount || 0) ? 'Paid' : 'Partially Paid', incentivePaidBy: currentUser, incentivePaidAt: new Date(), updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Paid', `Paid total ₹${approved}`)] };
+      await db.collection(CRM_LEADS).doc(id).update(update); Object.assign(lead, update);
+      await writeLeadLedger(lead, 'Paid', lead.entitlementAmount, approved - previousPaid, 'Payment recorded by Updesh');
+      await notifyLeadReferrer(lead, 'lead_incentive_paid', `Incentive payment of ₹${(approved - previousPaid).toLocaleString('en-IN')} was recorded for ${lead.company}. Total paid: ₹${approved.toLocaleString('en-IN')}.`);
+      renderLeadManagement(); showToast('Payment recorded', 'success');
+    }
+
+    async function saveLeadIncentiveSettings() {
+      if (!isLeadIncentiveAuthority()) return;
+      const qualifiedAmount = Number(document.getElementById('leadQualifiedIncentive').value);
+      const convertedAmount = Number(document.getElementById('leadConvertedIncentive').value);
+      const effectiveFrom = document.getElementById('leadIncentiveEffectiveFrom').value;
+      if (qualifiedAmount < 0 || convertedAmount < qualifiedAmount || !effectiveFrom) return showToast('Converted Deal incentive must be at least the Qualified Lead incentive, with an effective date', 'error');
+      if (effectiveFrom > dateKey(new Date())) return showToast('Future-dated plans are not supported; select today or an earlier date', 'error');
+      const prior = { qualifiedAmount: Number(leadIncentiveConfig.qualifiedAmount || 0), convertedAmount: Number(leadIncentiveConfig.convertedAmount || 0), effectiveFrom: leadIncentiveConfig.effectiveFrom || '', replacedAt: new Date(), replacedBy: currentUser };
+      const history = [...(leadIncentiveConfig.history || []), prior].slice(-20);
+      const record = { qualifiedAmount, convertedAmount, effectiveFrom, updatedBy: currentUser, updatedAt: new Date(), history };
+      await db.collection(CRM_LEAD_CONFIG).doc('current').set(record);
+      leadIncentiveConfig = record; renderLeadManagement(); showToast('Lead incentive plan updated', 'success');
+    }
+
+    function leadStatusBadge(status) {
+      const colors = { Submitted: ['#E3F2FD','#1565C0'], Qualified: ['#FFF3E0','#E65100'], 'Converted to Deal': ['#E8F5E9','#2E7D32'], Rejected: ['#FFEBEE','#B71C1C'] };
+      const [background, color] = colors[status] || ['var(--bg)','var(--t2)'];
+      return `<span style="display:inline-block;padding:3px 7px;border-radius:10px;background:${background};color:${color};font-size:10px;font-weight:800">${escapeHtml(status || 'Submitted')}</span>`;
+    }
+
+    function leadTable(leads, mode) {
+      if (!leads.length) return '<div class="empty" style="padding:22px"><p>No leads in this view.</p></div>';
+      const rows = leads.map(lead => {
+        const entitlement = Number(lead.entitlementAmount || 0), approved = Number(lead.approvedAmount || 0), paid = Number(lead.paidAmount || 0);
+        let actions = '';
+        if (mode === 'review' && lead.status === 'Submitted') actions = `<button class="btn sm primary" onclick="qualifyCrmLead('${lead.id}')">Qualify</button> <button class="btn sm danger" onclick="openLeadRejection('${lead.id}','lead')">Reject</button>`;
+        if (mode === 'review' && lead.status === 'Qualified') actions = `<button class="btn sm primary" onclick="openLeadConversionModal('${lead.id}')">Convert to Deal</button> <button class="btn sm danger" onclick="openLeadRejection('${lead.id}','lead')">Reject</button>`;
+        if (mode === 'approval') {
+          if (entitlement > approved) actions += `<button class="btn sm primary" onclick="approveLeadIncentive('${lead.id}')">Approve ₹${entitlement.toLocaleString('en-IN')}</button> `;
+          if (approved > paid) actions += `<button class="btn sm" onclick="markLeadIncentivePaid('${lead.id}')">Mark ₹${(approved-paid).toLocaleString('en-IN')} Paid</button> `;
+          if (entitlement > paid) actions += `<button class="btn sm danger" onclick="openLeadRejection('${lead.id}','incentive')">Reject Incentive</button>`;
+        }
+        return `<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:9px"><b>${escapeHtml(lead.company)}</b><br><span style="font-size:10px;color:var(--t2)">${escapeHtml(lead.contactPerson)} · ${escapeHtml(lead.contactNumber)}</span></td><td style="padding:9px">${escapeHtml(lead.referrerName || lead.referrerUsername)}</td><td style="padding:9px">${leadStatusBadge(lead.status)}${lead.rejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">${escapeHtml(lead.rejectionReason)}</div>` : ''}</td><td style="padding:9px">₹${entitlement.toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Approved ₹${approved.toLocaleString('en-IN')} · Paid ₹${paid.toLocaleString('en-IN')}</span>${lead.incentiveRejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">Rejected: ${escapeHtml(lead.incentiveRejectionReason)}</div>` : ''}</td><td style="padding:9px">${actions || escapeHtml(lead.incentiveApprovalStatus || '—')}</td></tr>`;
+      }).join('');
+      return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:760px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:9px">Company / Contact</th><th style="text-align:left;padding:9px">Referrer</th><th style="text-align:left;padding:9px">Lead Status</th><th style="text-align:left;padding:9px">Incentive</th><th style="text-align:left;padding:9px">${mode === 'my' ? 'Approval Status' : 'Actions'}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function renderLeadManagement() {
+      if (!currentUser) return;
+      const all = Object.values(leadData).sort((a,b) => firestoreTime(b.createdAt) - firestoreTime(a.createdAt));
+      const mine = all.filter(lead => lead.referrerUsername === currentUser);
+      const myEntitlement = mine.reduce((sum, lead) => sum + Number(lead.entitlementAmount || 0), 0);
+      document.getElementById('leadStatMy').textContent = mine.length;
+      document.getElementById('leadStatQualified').textContent = mine.filter(lead => lead.status === 'Qualified').length;
+      document.getElementById('leadStatConverted').textContent = mine.filter(lead => lead.status === 'Converted to Deal').length;
+      document.getElementById('leadStatIncentive').textContent = '₹' + myEntitlement.toLocaleString('en-IN');
+      document.getElementById('leadMyContainer').innerHTML = leadTable(mine, 'my');
+      const reviewCard = document.getElementById('leadReviewCard');
+      reviewCard.style.display = isLeadReviewer() ? 'block' : 'none';
+      if (isLeadReviewer()) document.getElementById('leadReviewContainer').innerHTML = leadTable(all, 'review');
+      const approvalCard = document.getElementById('leadApprovalCard');
+      const settingsCard = document.getElementById('leadSettingsCard');
+      const settingsTabButton = document.getElementById('leadSettingsTabButton');
+      approvalCard.style.display = settingsCard.style.display = isLeadIncentiveAuthority() ? 'block' : 'none';
+      settingsTabButton.style.display = isLeadIncentiveAuthority() ? 'flex' : 'none';
+      if (isLeadIncentiveAuthority()) {
+        const actionable = all.filter(lead => Number(lead.entitlementAmount || 0) > Number(lead.approvedAmount || 0) || Number(lead.approvedAmount || 0) > Number(lead.paidAmount || 0));
+        document.getElementById('leadApprovalContainer').innerHTML = leadTable(actionable, 'approval');
+        document.getElementById('leadQualifiedIncentive').value = Number(leadIncentiveConfig.qualifiedAmount || 0);
+        document.getElementById('leadConvertedIncentive').value = Number(leadIncentiveConfig.convertedAmount || 0);
+        document.getElementById('leadIncentiveEffectiveFrom').value = leadIncentiveConfig.effectiveFrom || dateKey(new Date());
+        const history = (leadIncentiveConfig.history || []).slice().reverse();
+        document.getElementById('leadSettingsHistory').innerHTML = history.length ? `<div style="font-size:11px;color:var(--t2)"><b>Recent plan history:</b> ${history.slice(0,5).map(item => `₹${Number(item.qualifiedAmount||0).toLocaleString('en-IN')} qualified / ₹${Number(item.convertedAmount||0).toLocaleString('en-IN')} converted from ${escapeHtml(item.effectiveFrom || '—')}`).join(' · ')}</div>` : '';
+      }
+      const byUser = {};
+      all.forEach(lead => {
+        const key = lead.referrerUsername || 'unknown';
+        if (!byUser[key]) byUser[key] = { name: lead.referrerName || key, submitted:0, qualified:0, converted:0, entitlement:0, paid:0 };
+        const item = byUser[key]; item.submitted++; if (['Qualified','Converted to Deal'].includes(lead.status)) item.qualified++; if (lead.status === 'Converted to Deal') item.converted++;
+        item.entitlement += Number(lead.entitlementAmount || 0); item.paid += Number(lead.paidAmount || 0);
+      });
+      const leaders = Object.values(byUser).sort((a,b) => b.converted-a.converted || b.entitlement-a.entitlement || b.qualified-a.qualified);
+      document.getElementById('leadLeaderboardContainer').innerHTML = leaders.length ? leaders.map((item,index) => `<div style="display:grid;grid-template-columns:35px 1fr auto;gap:10px;padding:10px;border-bottom:.5px solid var(--bd);align-items:center"><b>${index+1}</b><div><b>${escapeHtml(item.name)}</b><div style="font-size:10px;color:var(--t2)">${item.submitted} submitted · ${item.qualified} qualified · ${item.converted} converted</div></div><div style="text-align:right;font-weight:700;color:var(--success)">₹${item.entitlement.toLocaleString('en-IN')}<div style="font-size:9px;color:var(--t2)">Paid ₹${item.paid.toLocaleString('en-IN')}</div></div></div>`).join('') : '<div class="empty"><p>No lead referrals yet.</p></div>';
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // CUSTOMERS
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2490,7 +2913,7 @@
       return toDateObject(value)?.getTime() || 0;
     }
 
-    async function createCrmNotification({ recipientUsername, type, activityId, dealId, dueDate, message }) {
+    async function createCrmNotification({ recipientUsername, type, activityId, dealId, leadId, dueDate, message }) {
       if (!recipientUsername) return;
       const ref = db.collection(CRM_NOTIFICATIONS).doc();
       const record = {
@@ -2499,6 +2922,7 @@
         type,
         activityId: activityId || null,
         dealId: dealId || null,
+        leadId: leadId || null,
         dueDate: dueDate || null,
         message,
         read: false,
@@ -2630,7 +3054,16 @@
         db.collection(CRM_ACTIVITIES).where('responsibleUsername', '==', currentUser)
           .onSnapshot(handleLiveChange, handleLiveError),
         db.collection(CRM_NOTIFICATIONS).where('recipientUsername', '==', currentUser)
-          .onSnapshot(handleLiveChange, handleLiveError)
+          .onSnapshot(handleLiveChange, handleLiveError),
+        db.collection(CRM_LEADS).onSnapshot(snapshot => {
+          leadData = {};
+          snapshot.forEach(doc => { leadData[doc.id] = { id: doc.id, ...doc.data() }; });
+          renderLeadManagement();
+        }, handleLiveError),
+        db.collection(CRM_LEAD_CONFIG).doc('current').onSnapshot(doc => {
+          if (doc.exists) leadIncentiveConfig = { ...leadIncentiveConfig, ...doc.data() };
+          renderLeadManagement();
+        }, handleLiveError)
       );
       if (isExtensionApprover()) {
         taskUnsubscribers.push(
@@ -3319,6 +3752,7 @@
         renderActivities();
       }
       if (tabName === 'kam') renderKAM();
+      if (tabName === 'referrals') renderLeadManagement();
     }
     
     function openModal(id) {
