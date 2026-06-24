@@ -1,8 +1,7 @@
 
 
-
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.24.2 - Updesh contact administration and KAM confirmation -->
+<!-- DQAP CRM 2026.06.24.3 - Updesh deal deletion access -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -2492,6 +2491,52 @@
       openModal('addDealModal');
     }
 
+    function canDeleteDeal() {
+      return String(currentUser || '').toLowerCase() === 'updesh';
+    }
+
+    async function deleteDeal(id) {
+      const deal = dealData[id];
+      if (!deal || !canDeleteDeal()) {
+        showToast('Only Updesh can delete deals', 'error');
+        return;
+      }
+      try {
+        const linkedActivities = await db.collection(CRM_ACTIVITIES).where('dealId', '==', id).get();
+        if (linkedActivities.size > 450) {
+          showToast('This deal has too many linked activities for safe deletion. Contact the administrator.', 'error');
+          return;
+        }
+        const warning = linkedActivities.size
+          ? `Delete deal "${deal.title}"? ${linkedActivities.size} linked activity record(s) will be preserved under the contact but unlinked from this deal.`
+          : `Delete deal "${deal.title}"? This action cannot be undone.`;
+        if (!window.confirm(warning)) return;
+        const batch = db.batch();
+        linkedActivities.docs.forEach(activityDoc => batch.update(activityDoc.ref, {
+          dealId: null,
+          deletedDealTitle: deal.title || '',
+          dealDeletedAt: new Date(),
+          dealDeletedBy: currentUser
+        }));
+        batch.delete(db.collection(CRM_DEALS).doc(id));
+        await batch.commit();
+        Object.values(activityData).filter(activity => activity.dealId === id).forEach(activity => {
+          activity.dealId = null;
+          activity.deletedDealTitle = deal.title || '';
+        });
+        Object.values(kamActivityData).filter(activity => activity.dealId === id).forEach(activity => {
+          activity.dealId = null;
+          activity.deletedDealTitle = deal.title || '';
+        });
+        delete dealData[id];
+        populateCustomerDropdowns();
+        renderDeals(); renderActivityDeals(); renderActivities(); renderDashboard();
+        showToast('Deal deleted; linked activity history was preserved', 'success');
+      } catch (error) {
+        showToast('Could not delete deal: ' + error.message, 'error');
+      }
+    }
+
     function updateDealGrossMarginPercent() {
       const value = Number(document.getElementById('dealValue')?.value || 0);
       const margin = Number(document.getElementById('dealGrossMargin')?.value || 0);
@@ -2676,6 +2721,7 @@
             <div style="font-size:10.5px;color:${salesIncentive.rate ? '#6A1B9A' : 'var(--t2)'};font-weight:600;margin-top:3px">Sales Incentive Target: ₹${Math.round(salesIncentive.target).toLocaleString('en-IN')} (${salesIncentive.rate}% of GP)${salesIncentive.rate ? ` · Order ₹${Math.round(salesIncentive.orderAmount).toLocaleString('en-IN')} / Completion ₹${Math.round(salesIncentive.completionAmount).toLocaleString('en-IN')}` : ' · Below margin floor'}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
               ${d.username === currentUser ? `<button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>` : ''}
+              ${canDeleteDeal() ? `<button class="btn sm danger" onclick="deleteDeal('${d.id}')"><i class="ti ti-trash"></i> Delete Deal</button>` : ''}
               <button class="btn sm primary" onclick="openLogActivityModal('deal','${d.id}')"><i class="ti ti-plus"></i> Log / Plan Activity</button>
               <button class="btn sm" onclick="openActivityHistoryModal('deal','${d.id}')"><i class="ti ti-history"></i> View Activity Logs</button>
             </div>
