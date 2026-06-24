@@ -1,6 +1,8 @@
 
 
+
 <!DOCTYPE html>
+<!-- DQAP CRM 2026.06.24.2 - Updesh contact administration and KAM confirmation -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -856,9 +858,10 @@
   <div id="addCustomerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>Add Contact</span>
+        <span id="customerModalTitle">Add Contact</span>
         <button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button>
       </div>
+      <input type="hidden" id="customerEditId">
       <div class="form-group">
         <label>Company Name</label>
         <input type="text" id="customerName" placeholder="Enter company name">
@@ -883,9 +886,13 @@
         <label>Notes</label>
         <textarea id="customerNotes" placeholder="Additional notes..."></textarea>
       </div>
+      <div class="form-group" id="customerOwnerGroup" style="display:none">
+        <label>Contact Owner</label>
+        <select id="customerOwner"></select>
+      </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal('addCustomerModal')">Cancel</button>
-        <button class="btn primary" onclick="saveCustomer()">Save</button>
+        <button class="btn primary" id="customerSaveButton" onclick="saveCustomer()">Save Contact</button>
       </div>
     </div>
   </div>
@@ -2183,13 +2190,52 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // CUSTOMERS
     // ═══════════════════════════════════════════════════════════════════════════
+    function canAdministerCustomer(customer) {
+      return String(currentUser || '').toLowerCase() === 'updesh' || customer?.username === currentUser;
+    }
+
+    function populateCustomerOwnerSelect(selectedUsername = currentUser) {
+      const group = document.getElementById('customerOwnerGroup');
+      const select = document.getElementById('customerOwner');
+      const isUpdesh = String(currentUser || '').toLowerCase() === 'updesh';
+      if (!group || !select) return;
+      group.style.display = isUpdesh ? 'block' : 'none';
+      const owners = wikiUsers.length ? wikiUsers : [{ username: currentUser, fullName: currentUser }];
+      select.innerHTML = owners.map(user => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.fullName || user.username)} (${escapeHtml(user.username)})</option>`).join('');
+      select.value = selectedUsername || currentUser;
+      if (!select.value && owners.length) select.value = owners[0].username;
+    }
+
     function openAddCustomerModal() {
+      document.getElementById('customerEditId').value = '';
+      document.getElementById('customerModalTitle').textContent = 'Add Contact';
+      document.getElementById('customerSaveButton').textContent = 'Save Contact';
       document.getElementById('customerName').value = '';
       document.getElementById('customerContact').value = '';
       document.getElementById('customerEmail').value = '';
       document.getElementById('customerPhone').value = '';
       document.getElementById('customerIndustry').value = '';
       document.getElementById('customerNotes').value = '';
+      populateCustomerOwnerSelect(currentUser);
+      openModal('addCustomerModal');
+    }
+
+    function openEditCustomerModal(id) {
+      const customer = customerData[id];
+      if (!customer || !canAdministerCustomer(customer)) {
+        showToast('You do not have permission to edit this contact', 'error');
+        return;
+      }
+      document.getElementById('customerEditId').value = id;
+      document.getElementById('customerModalTitle').textContent = 'Edit Contact';
+      document.getElementById('customerSaveButton').textContent = 'Update Contact';
+      document.getElementById('customerName').value = customer.name || '';
+      document.getElementById('customerContact').value = customer.contact || '';
+      document.getElementById('customerEmail').value = customer.email || '';
+      document.getElementById('customerPhone').value = customer.phone || '';
+      document.getElementById('customerIndustry').value = customer.industry || '';
+      document.getElementById('customerNotes').value = customer.notes || '';
+      populateCustomerOwnerSelect(customer.username || currentUser);
       openModal('addCustomerModal');
     }
     
@@ -2205,6 +2251,14 @@
       const phone = document.getElementById('customerPhone').value.trim();
       const industry = document.getElementById('customerIndustry').value.trim();
       const notes = document.getElementById('customerNotes').value.trim();
+      const editId = document.getElementById('customerEditId').value;
+      const existing = editId ? customerData[editId] : null;
+      if (existing && !canAdministerCustomer(existing)) {
+        showToast('You do not have permission to edit this contact', 'error');
+        return;
+      }
+      const isUpdesh = String(currentUser || '').toLowerCase() === 'updesh';
+      const owner = isUpdesh ? (document.getElementById('customerOwner').value || currentUser) : (existing?.username || currentUser);
       
       if (!name) {
         showToast('Please enter company name', 'error');
@@ -2222,16 +2276,26 @@
       }
       
       try {
+        if (editId) {
+          const update = { name, contact, email, phone, industry, notes, username: owner, updatedAt: new Date() };
+          await db.collection(CRM_CUSTOMERS).doc(editId).update(update);
+          Object.assign(customerData[editId], update);
+          populateCustomerDropdowns();
+          closeModal('addCustomerModal');
+          renderCustomers(); renderKAM(); renderDeals(); renderDashboard();
+          showToast('Contact updated!', 'success');
+          return;
+        }
         const custRef = db.collection(CRM_CUSTOMERS).doc();
         await custRef.set({
           name, contact, email, phone, industry, notes, isKeyAccount: false,
-          username: currentUser,  // Use username instead of salesPersonId
+          username: owner,
           createdAt: new Date(),
           updatedAt: new Date()
         });
         
         customerData[custRef.id] = {
-          id: custRef.id, name, contact, email, phone, industry, notes, isKeyAccount: false, username: currentUser, createdAt: new Date()
+          id: custRef.id, name, contact, email, phone, industry, notes, isKeyAccount: false, username: owner, createdAt: new Date()
         };
         
         populateCustomerDropdowns();
@@ -2240,6 +2304,29 @@
         showToast('Contact added!', 'success');
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function deleteCustomer(id) {
+      const customer = customerData[id];
+      if (!customer || !canAdministerCustomer(customer)) {
+        showToast('You do not have permission to remove this contact', 'error');
+        return;
+      }
+      const linkedDeals = Object.values(dealData).filter(deal => deal.customerId === id);
+      if (linkedDeals.length) {
+        showToast(`Cannot remove this contact: ${linkedDeals.length} linked deal(s) must be reassigned or removed first`, 'error');
+        return;
+      }
+      if (!window.confirm(`Remove contact "${customer.name}"? This action cannot be undone.`)) return;
+      try {
+        await db.collection(CRM_CUSTOMERS).doc(id).delete();
+        delete customerData[id];
+        populateCustomerDropdowns();
+        renderCustomers(); renderKAM(); renderDashboard();
+        showToast('Contact removed', 'success');
+      } catch (error) {
+        showToast('Could not remove contact: ' + error.message, 'error');
       }
     }
     
@@ -2273,9 +2360,17 @@
       return { lastAddressed, daysSince, state, label: state === 'overdue' ? `${daysSince} days — UNADDRESSED` : `${daysSince} days ago` };
     }
 
-    async function toggleKeyAccount(id, checked) {
+    async function toggleKeyAccount(id, checked, checkbox) {
       const account = customerData[id];
-      if (!account || account.username !== currentUser) return;
+      if (!account || !canAdministerCustomer(account)) {
+        if (checkbox) checkbox.checked = !checked;
+        showToast('Only the contact owner or Updesh can change Key Account status', 'error');
+        return;
+      }
+      if (checked && !window.confirm(`Convert "${account.name}" to a Key Account? It will appear on the company-wide KAM page for all users.`)) {
+        if (checkbox) checkbox.checked = false;
+        return;
+      }
       const update = { isKeyAccount: checked, updatedAt: new Date() };
       if (checked) update.keyAccountMarkedAt = new Date();
       try {
@@ -2299,7 +2394,7 @@
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += '<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Email</th><th style="text-align:left;padding:12px">Phone</th><th style="text-align:left;padding:12px">Industry</th><th style="text-align:center;padding:12px">Key Account</th><th style="text-align:left;padding:12px">Activities</th></tr>';
+      html += '<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Email</th><th style="text-align:left;padding:12px">Phone</th><th style="text-align:left;padding:12px">Industry</th><th style="text-align:center;padding:12px">Key Account</th><th style="text-align:left;padding:12px">Activities</th><th style="text-align:left;padding:12px">Actions</th></tr>';
       
       custs.forEach(c => {
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
@@ -2308,8 +2403,9 @@
           <td style="padding:12px">${c.email || '—'}</td>
           <td style="padding:12px">${c.phone || '—'}</td>
           <td style="padding:12px">${c.industry || '—'}</td>
-          <td style="padding:12px;text-align:center"><input type="checkbox" aria-label="Mark ${escapeHtml(c.name)} as Key Account" ${c.isKeyAccount ? 'checked' : ''} onchange="toggleKeyAccount('${c.id}',this.checked)"></td>
+          <td style="padding:12px;text-align:center"><input type="checkbox" aria-label="Mark ${escapeHtml(c.name)} as Key Account" ${c.isKeyAccount ? 'checked' : ''} ${canAdministerCustomer(c) ? '' : 'disabled title="Only the contact owner or Updesh can change this"'} onchange="toggleKeyAccount('${c.id}',this.checked,this)"></td>
           <td style="padding:12px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${c.id}')"><i class="ti ti-plus"></i> Log / Plan Activity</button><button class="btn sm" onclick="openActivityHistoryModal('account','${c.id}')"><i class="ti ti-history"></i> View Activity Logs</button></div></td>
+          <td style="padding:12px">${canAdministerCustomer(c) ? `<div style="display:flex;gap:6px"><button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button><button class="btn sm danger" onclick="deleteCustomer('${c.id}')"><i class="ti ti-trash"></i></button></div>` : '—'}</td>
         </tr>`;
       });
       
