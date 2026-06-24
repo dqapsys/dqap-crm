@@ -1055,6 +1055,14 @@
       <div style="border-top:2px solid #1565C0;margin:18px 0 12px;padding-top:12px;color:#1565C0;font-weight:700">Next Activity Plan <span style="font-weight:500;font-size:11px">(optional)</span></div>
       <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:7px;padding:12px;color:#1565C0">
         <div class="form-group">
+          <label>Next Activity Type</label>
+          <select id="nextActivityType">
+            <option value="">-- Select Activity Type --</option>
+            <option value="Call">Call</option><option value="Email">Email</option><option value="Meeting">Meeting</option>
+            <option value="Site Visit">Site Visit</option><option value="Demo">Demo</option><option value="Follow-up">Follow-up</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Next Activity Date</label>
           <input type="date" id="activityNextDate">
         </div>
@@ -1063,8 +1071,8 @@
           <textarea id="nextActivityDescription" placeholder="Describe the next action required"></textarea>
         </div>
         <div class="form-group" style="margin-bottom:0">
-          <label>Supporting Hand</label>
-          <select id="activitySupportingHand">
+          <label>Supporting Hands <span style="font-weight:500;font-size:10px">(Ctrl-click to select multiple)</span></label>
+          <select id="activitySupportingHand" multiple size="4">
             <option value="">-- Select Wiki User --</option>
           </select>
         </div>
@@ -1180,6 +1188,7 @@
     let customerData = {};
     let dealData = {};
     let activityData = {};
+    let kamActivityData = {};
     let targetData = {};
     let leadData = {};
     let leadIncentiveConfig = {
@@ -1232,7 +1241,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260623.4';
+    const CRM_BUILD = '20260624.1';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1451,6 +1460,7 @@
         customerData = {};
         dealData = {};
         activityData = {};
+        kamActivityData = {};
         targetData = {};
         leadData = {};
         notificationData = {};
@@ -1486,6 +1496,9 @@
         customersSnap.forEach(doc => {
           customerData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        // KAM is company-wide: merge every contact marked as a Key Account for every user.
+        const keyAccountsSnap = await db.collection(CRM_CUSTOMERS).where('isKeyAccount', '==', true).get();
+        keyAccountsSnap.forEach(doc => { customerData[doc.id] = { id: doc.id, ...doc.data() }; });
         console.log(`Loaded ${customersSnap.size} customers for ${isLeadReviewer() ? 'sales oversight' : currentUser}`);
         
         const dealsSnap = isLeadReviewer()
@@ -1509,6 +1522,17 @@
         assignedActivitiesSnap.forEach(doc => {
           activityData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        const multiAssignedActivitiesSnap = await db.collection(CRM_ACTIVITIES)
+          .where('supportingUsernames', 'array-contains', currentUser).get();
+        multiAssignedActivitiesSnap.forEach(doc => { activityData[doc.id] = { id: doc.id, ...doc.data() }; });
+
+        // Load the contact history required to calculate company-wide KAM recency.
+        const keyAccountIds = Object.values(customerData).filter(customer => customer.isKeyAccount === true).map(customer => customer.id);
+        for (let start = 0; start < keyAccountIds.length; start += 10) {
+          const ids = keyAccountIds.slice(start, start + 10);
+          const kamActivitiesSnap = await db.collection(CRM_ACTIVITIES).where('keyAccountId', 'in', ids).get();
+          kamActivitiesSnap.forEach(doc => { kamActivityData[doc.id] = { id: doc.id, ...doc.data() }; });
+        }
 
         if (isExtensionApprover()) {
           const approvalSnap = await db.collection(CRM_ACTIVITIES)
@@ -2223,7 +2247,9 @@
       const opts = Object.values(customerData)
         .map(c => `<option value="${c.id}">${c.name}</option>`)
         .join('');
-      document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
+      const dealOpts = Object.values(customerData).filter(customer => isLeadReviewer() || customer.username === currentUser)
+        .map(customer => `<option value="${customer.id}">${customer.name}</option>`).join('');
+      document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + dealOpts;
       document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
         Object.values(dealData).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
       document.getElementById('activityKeyAccount').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
@@ -2234,7 +2260,7 @@
     }
 
     function keyAccountContactStatus(account) {
-      const addressed = Object.values(activityData)
+      const addressed = Object.values({ ...kamActivityData, ...activityData })
         .filter(activity => ['Meeting','Call'].includes(activity.activityType) && getActivityAccountId(activity) === account.id)
         .map(activity => dateKey(activity.activityDate)).filter(Boolean).sort();
       const lastAddressed = addressed.at(-1) || '';
@@ -2265,7 +2291,7 @@
     
     function renderCustomers() {
       const container = document.getElementById('customersContainer');
-      const custs = Object.values(customerData);
+      const custs = Object.values(customerData).filter(customer => isLeadReviewer() || customer.username === currentUser);
       
       if (custs.length === 0) {
         container.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No contacts yet.</p></div>';
@@ -2294,7 +2320,7 @@
     function renderKAM() {
       const container = document.getElementById('kamContainer');
       if (!container) return;
-      const accounts = Object.values(customerData).filter(account => account.isKeyAccount === true && account.username === currentUser);
+      const accounts = Object.values(customerData).filter(account => account.isKeyAccount === true);
       if (!accounts.length) {
         container.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>No Key Accounts selected. Mark contacts using the Key Account checkbox on Contacts.</p></div>';
         return;
@@ -2304,7 +2330,7 @@
         const status = keyAccountContactStatus(account);
         const overdue = status.state === 'overdue';
         rows += `<tr style="border-bottom:.5px solid var(--bd);${overdue ? 'background:#FFEBEE' : ''}">
-          <td style="padding:12px;font-weight:700">${escapeHtml(account.name)}</td>
+          <td style="padding:12px;font-weight:700">${escapeHtml(account.name)}<div style="font-size:9.5px;color:var(--t2);font-weight:500">Owner: ${escapeHtml(account.username || '—')}</div></td>
           <td style="padding:12px">${escapeHtml(account.contact || '—')}</td>
           <td style="padding:12px">${status.lastAddressed ? formatDate(status.lastAddressed) : 'Never'}</td>
           <td style="padding:12px;color:${overdue ? 'var(--danger)' : 'var(--success)'};font-weight:800">${escapeHtml(status.label)}</td>
@@ -2569,6 +2595,17 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // CALENDAR WITH DAY DETAILS
     // ═══════════════════════════════════════════════════════════════════════════
+    function calendarMeetingsForDate(dateStr) {
+      const events = [];
+      Object.values(activityData).forEach(activity => {
+        if (activity.activityType === 'Meeting' && dateKey(activity.activityDate) === dateStr) events.push(activity);
+        if (activity.nextActivityType === 'Meeting' && dateKey(activity.nextActivityDate) === dateStr && activity.taskStatus !== 'completed' && !activity.completedDate) {
+          events.push({ ...activity, calendarPlanned: true, activityType: 'Meeting', activityDate: activity.nextActivityDate, description: activity.nextActivityDescription });
+        }
+      });
+      return events;
+    }
+
     function renderCalendar() {
       const year = currentCalendarDate.getFullYear();
       const month = currentCalendarDate.getMonth();
@@ -2602,13 +2639,13 @@
         }
         
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayActivities = Object.values(activityData).filter(a => a.activityType === 'Meeting' && dateKey(a.activityDate) === dateStr);
+        const dayActivities = calendarMeetingsForDate(dateStr);
         
         html += `<td onclick="showDayDetails('${dateStr}')">
           <div class="day-num">${day}</div>`;
         
         dayActivities.slice(0, 3).forEach(a => {
-          html += `<div class="event">${a.activityType}</div>`;
+          html += `<div class="event">${a.calendarPlanned ? 'Planned Meeting' : a.activityType}</div>`;
         });
         
         if (dayActivities.length > 3) {
@@ -2632,7 +2669,7 @@
     }
     
     function showDayDetails(dateStr) {
-      const dayActivities = Object.values(activityData).filter(a => a.activityType === 'Meeting' && dateKey(a.activityDate) === dateStr);
+      const dayActivities = calendarMeetingsForDate(dateStr);
       const date = new Date(dateStr);
       const dayName = date.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       
@@ -2648,9 +2685,9 @@
           html += `<div class="meeting-detail">
             <div style="display: flex; justify-content: space-between; align-items: start;">
               <div>
-                <strong>${a.activityType}</strong>${dealInfo}
+                <strong>${a.calendarPlanned ? 'Planned Meeting' : a.activityType}</strong>${dealInfo}
                 <div style="margin-top: 6px; color: var(--t1);">${a.description || 'No details'}</div>
-                ${a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">📌 Next: ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` — ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hand: ${escapeHtml(a.supportingName || a.responsibleName || 'Unassigned')}</div>` : ''}
+                ${!a.calendarPlanned && a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">📌 Next: ${escapeHtml(a.nextActivityType || 'Activity')} · ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` — ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>` : ''}
               </div>
             </div>
           </div>`;
@@ -2798,6 +2835,24 @@
       });
     }
 
+    function getSupportingUsernames(activity) {
+      const values = Array.isArray(activity?.supportingUsernames) ? activity.supportingUsernames : [activity?.supportingUsername || activity?.responsibleUsername].filter(Boolean);
+      return [...new Set(values.filter(Boolean))];
+    }
+
+    function getSupportingNames(activity) {
+      const values = Array.isArray(activity?.supportingNames) ? activity.supportingNames : [activity?.supportingName || activity?.responsibleName].filter(Boolean);
+      return [...new Set(values.filter(Boolean))];
+    }
+
+    function isSupportingHand(activity, username = currentUser) {
+      return getSupportingUsernames(activity).includes(username);
+    }
+
+    function supportingHandsLabel(activity) {
+      return getSupportingNames(activity).join(', ') || getSupportingUsernames(activity).join(', ') || 'Unassigned';
+    }
+
     function syncActivityAccountFromDeal() {
       const dealId = document.getElementById('activityDeal').value;
       if (dealId && dealData[dealId]) document.getElementById('activityKeyAccount').value = dealData[dealId].customerId || '';
@@ -2813,7 +2868,7 @@
       const kamFlag = kamStatus?.state === 'overdue'
         ? `<div style="background:#FFEBEE;border:2px solid #D32F2F;color:#B71C1C;padding:10px;border-radius:6px;margin-bottom:10px;font-weight:800"><i class="ti ti-alert-triangle"></i> KAM FLAG: ${escapeHtml(account.name)} has had no recorded Meeting or Call for more than 30 days (${escapeHtml(kamStatus.label)}).</div>`
         : '';
-      const matches = Object.values(activityData).filter(activity => contextType === 'deal'
+      const matches = Object.values({ ...kamActivityData, ...activityData }).filter(activity => contextType === 'deal'
         ? activity.dealId === contextId
         : getActivityAccountId(activity) === contextId
       ).sort((a, b) => (dateKey(b.activityDate) || '').localeCompare(dateKey(a.activityDate) || ''));
@@ -2827,7 +2882,7 @@
           <div style="display:flex;justify-content:space-between;gap:10px"><b>${escapeHtml(activity.activityType || 'Activity')}</b><span style="font-size:11px;color:var(--t2)">${formatDate(activity.activityDate)}</span></div>
           ${deal ? `<div style="font-size:10.5px;color:var(--p);margin-top:3px">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:10.5px;color:var(--p);margin-top:3px">Contact activity</div>'}
           ${activity.description ? `<div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.description)}</div>` : ''}
-          ${activity.nextActivityDate ? `<div style="font-size:10.5px;color:#1565C0;margin-top:4px">Next: ${formatDate(activity.nextActivityDate)}${activity.nextActivityDescription ? ` — ${escapeHtml(activity.nextActivityDescription)}` : ''}</div>` : ''}
+          ${activity.nextActivityDate ? `<div style="font-size:10.5px;color:#1565C0;margin-top:4px">Next ${escapeHtml(activity.nextActivityType || 'Activity')}: ${formatDate(activity.nextActivityDate)}${activity.nextActivityDescription ? ` — ${escapeHtml(activity.nextActivityDescription)}` : ''}</div>` : ''}
         </div>`;
       }).join('');
     }
@@ -2887,8 +2942,9 @@
       document.getElementById('activityDate').value = today;
       document.getElementById('activityDescription').value = '';
       document.getElementById('activityNextDate').value = '';
+      document.getElementById('nextActivityType').value = '';
       document.getElementById('nextActivityDescription').value = '';
-      document.getElementById('activitySupportingHand').value = '';
+      Array.from(document.getElementById('activitySupportingHand').options).forEach(option => { option.selected = false; });
       openModal('addActivityModal');
     }
     
@@ -2903,12 +2959,16 @@
       const keyAccountId = document.getElementById('activityKeyAccount').value || dealData[dealId]?.customerId || '';
       const date = document.getElementById('activityDate').value;
       const supportingSelect = document.getElementById('activitySupportingHand');
-      const supportingUsername = supportingSelect.value;
-      const supportingName = supportingSelect.options[supportingSelect.selectedIndex]?.dataset.name || supportingUsername;
+      const supportingOptions = Array.from(supportingSelect.selectedOptions).filter(option => option.value);
+      const supportingUsernames = supportingOptions.map(option => option.value);
+      const supportingNames = supportingOptions.map(option => option.dataset.name || option.value);
+      const supportingUsername = supportingUsernames[0] || '';
+      const supportingName = supportingNames[0] || '';
       const desc = document.getElementById('activityDescription').value.trim();
       const nextDate = document.getElementById('activityNextDate').value;
+      const nextType = document.getElementById('nextActivityType').value;
       const nextDescription = document.getElementById('nextActivityDescription').value.trim();
-      const hasNextPlan = !!(nextDate || nextDescription || supportingUsername);
+      const hasNextPlan = !!(nextDate || nextType || nextDescription || supportingUsernames.length);
       
       if (!keyAccountId || !date) {
         showToast('Please select a contact and activity date', 'error');
@@ -2918,8 +2978,8 @@
         showToast('The selected deal does not belong to this contact', 'error');
         return;
       }
-      if (hasNextPlan && (!supportingUsername || !nextDate || !nextDescription)) {
-        showToast('Complete all Next Activity Plan fields, or leave all three blank', 'error');
+      if (hasNextPlan && (!supportingUsernames.length || !nextDate || !nextType || !nextDescription)) {
+        showToast('Complete all Next Activity Plan fields, or leave the plan blank', 'error');
         return;
       }
       
@@ -2932,12 +2992,15 @@
           activityDate: date,
           description: desc,
           nextActivityDate: nextDate,
+          nextActivityType: nextType,
           nextActivityDescription: nextDescription,
           dueAcknowledgedBy: [],
           username: currentUser,
           creatorName: currentUserData?.fullName || currentUserData?.displayName || currentUser,
           supportingUsername: hasNextPlan ? supportingUsername : null,
           supportingName: hasNextPlan ? supportingName : null,
+          supportingUsernames: hasNextPlan ? supportingUsernames : [],
+          supportingNames: hasNextPlan ? supportingNames : [],
           // Legacy aliases keep existing task queries and earlier data compatible.
           responsibleUsername: hasNextPlan ? supportingUsername : null,
           responsibleName: hasNextPlan ? supportingName : null,
@@ -2956,8 +3019,8 @@
 
         const deal = dealData[dealId] || {};
         const customer = customerData[keyAccountId] || {};
-        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Contact: ${customer.name || '—'}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextDescription}; Date: ${formatDate(nextDate)}.`;
-        const notificationRecipients = hasNextPlan ? [...new Set([supportingUsername, 'updesh'].filter(Boolean))] : [];
+        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Contact: ${customer.name || '—'}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextType} — ${nextDescription}; Date: ${formatDate(nextDate)}.`;
+        const notificationRecipients = hasNextPlan ? [...new Set([...supportingUsernames, 'updesh'].filter(Boolean))] : [];
         const notificationResults = await Promise.allSettled(notificationRecipients.map(recipientUsername => createCrmNotification({
           recipientUsername,
           type: 'next_activity_plan',
@@ -3040,8 +3103,7 @@
       const today = dateKey(new Date());
       return Object.values(activityData)
         .filter(activity => {
-          const responsible = activity.supportingUsername || activity.responsibleUsername;
-          const recipients = [activity.username, responsible].filter(Boolean);
+          const recipients = [activity.username, ...getSupportingUsernames(activity)].filter(Boolean);
           const acknowledged = Array.isArray(activity.dueAcknowledgedBy) ? activity.dueAcknowledgedBy : [];
           return activity.nextActivityDate && dateKey(activity.nextActivityDate) <= today &&
             recipients.includes(currentUser) && !acknowledged.includes(currentUser) &&
@@ -3068,7 +3130,7 @@
           <div style="font-size:15px;font-weight:800">${overdue ? 'OVERDUE' : 'DUE TODAY'} · ${formatDate(activity.nextActivityDate)}</div>
           <div style="font-size:12px;margin-top:5px">Please acknowledge this planned activity.</div>
         </div>
-        <div style="line-height:1.75;font-size:12px"><b>Contact:</b> ${escapeHtml(account?.name || '—')}<br>${deal ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br>` : ''}<b>Planned activity:</b> ${escapeHtml(activity.nextActivityDescription || '—')}<br><b>Planned by:</b> ${escapeHtml(activity.creatorName || activity.username || '—')}</div>`;
+        <div style="line-height:1.75;font-size:12px"><b>Contact:</b> ${escapeHtml(account?.name || '—')}<br>${deal ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br>` : ''}<b>Planned activity:</b> ${escapeHtml(activity.nextActivityType || 'Activity')} — ${escapeHtml(activity.nextActivityDescription || '—')}<br><b>Supporting hands:</b> ${escapeHtml(supportingHandsLabel(activity))}<br><b>Planned by:</b> ${escapeHtml(activity.creatorName || activity.username || '—')}</div>`;
       modal.classList.add('active');
     }
 
@@ -3095,6 +3157,9 @@
         const assignedSnap = await db.collection(CRM_ACTIVITIES)
           .where('responsibleUsername', '==', currentUser).get();
         assignedSnap.forEach(doc => { activityData[doc.id] = { id: doc.id, ...doc.data() }; });
+        const multiAssignedSnap = await db.collection(CRM_ACTIVITIES)
+          .where('supportingUsernames', 'array-contains', currentUser).get();
+        multiAssignedSnap.forEach(doc => { activityData[doc.id] = { id: doc.id, ...doc.data() }; });
 
         const notificationSnap = await db.collection(CRM_NOTIFICATIONS)
           .where('recipientUsername', '==', currentUser).get();
@@ -3155,6 +3220,8 @@
       taskUnsubscribers.push(
         db.collection(CRM_ACTIVITIES).where('responsibleUsername', '==', currentUser)
           .onSnapshot(handleLiveChange, handleLiveError),
+        db.collection(CRM_ACTIVITIES).where('supportingUsernames', 'array-contains', currentUser)
+          .onSnapshot(handleLiveChange, handleLiveError),
         db.collection(CRM_NOTIFICATIONS).where('recipientUsername', '==', currentUser)
           .onSnapshot(handleLiveChange, handleLiveError),
         db.collection(CRM_LEADS).onSnapshot(snapshot => {
@@ -3189,8 +3256,7 @@
       const notification = notificationData[id];
       if (!notification) return;
       const activity = activityData[notification.activityId];
-      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-      if (notification.type === 'next_activity_plan' && supportingUsername === currentUser && (activity?.planResponseStatus || 'pending') === 'pending') {
+      if (notification.type === 'next_activity_plan' && isSupportingHand(activity) && (activity?.planResponseStatus || 'pending') === 'pending') {
         showToast('Please accept the plan or propose a new date', 'warning');
         return;
       }
@@ -3219,12 +3285,11 @@
       return Object.values(activityData)
         .sort((a, b) => firestoreTime(a.createdAt) - firestoreTime(b.createdAt))
         .map(activity => {
-          const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
           const status = activity.planResponseStatus || 'pending';
-          if (supportingUsername === currentUser && status === 'pending') return { activity, action: 'support-response' };
+          if (isSupportingHand(activity) && status === 'pending') return { activity, action: 'support-response' };
           if (activity.username === currentUser && ['date-proposed', 'sales-review'].includes(status)) return { activity, action: 'sales-review' };
           if (currentUser === 'updesh' && status === 'updesh-review') return { activity, action: 'updesh-review' };
-          if (status === 'sales-approved-final' && supportingUsername === currentUser && !activity.supportAcknowledgedAt) {
+          if (status === 'sales-approved-final' && isSupportingHand(activity) && !activity.supportAcknowledgedAt) {
             return { activity, action: 'final-ack' };
           }
           return null;
@@ -3238,11 +3303,11 @@
         <div style="padding:10px 12px;background:#E3F2FD;color:#0D47A1;font-size:13px;font-weight:800">${escapeHtml(deal.title || customer.name || 'CRM Activity')}</div>
         <div style="padding:11px 12px;font-size:11px;line-height:1.7;color:#37474F">
           Contact: <b>${escapeHtml(customer.name || '—')}</b>${activity.dealId ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
-          Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(activity.supportingName || activity.responsibleName || '—')}</b><br>
+          Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hands: <b>${escapeHtml(supportingHandsLabel(activity))}</b><br>
           Logged activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
         </div>
         <div style="margin:0 12px 12px;padding:10px;background:#1565C0;color:#fff;border-radius:6px">
-          <div style="font-size:9.5px;font-weight:800;letter-spacing:.8px">NEXT ACTIVITY PLAN · ${formatDate(activity.nextActivityDate)}</div>
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.8px">NEXT ACTIVITY PLAN · ${escapeHtml(activity.nextActivityType || 'Activity')} · ${formatDate(activity.nextActivityDate)}</div>
           <div style="font-size:12px;margin-top:5px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
         </div>
         ${activity.proposedNextActivityDate ? `<div style="margin:0 12px 12px;padding:10px;background:#FFF3E0;border:1px solid #FFB74D;color:#E65100;border-radius:6px"><b>Proposed date: ${formatDate(activity.proposedNextActivityDate)}</b><br><span style="font-size:11px">Reason: ${escapeHtml(activity.dateProposalReason || '—')}</span></div>` : ''}
@@ -3308,31 +3373,30 @@
       const activity = activityData[id];
       const proposedDate = document.getElementById('forcedProposedDate')?.value;
       const reason = document.getElementById('forcedProposalReason')?.value.trim();
-      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-      if (!activity || supportingUsername !== currentUser || !proposedDate || !reason) { showToast('Proposed date and reason are mandatory', 'error'); return; }
+      if (!activity || !isSupportingHand(activity) || !proposedDate || !reason) { showToast('Proposed date and reason are mandatory', 'error'); return; }
       if (proposedDate === activity.nextActivityDate) { showToast('Proposed date must be different', 'error'); return; }
       const update = { planResponseStatus: 'sales-review', proposedNextActivityDate: proposedDate, dateProposalReason: reason, planRespondedBy: currentUser, planRespondedAt: new Date() };
       await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
       await markActivityNotificationsRead(id);
       const deal = dealData[activity.dealId] || {};
-      await notifyActivityUsers(activity, [activity.username, 'updesh'], 'next_activity_date_proposed', `${activity.supportingName || currentUser} proposed ${formatDate(proposedDate)} for ${deal.title || 'the CRM deal'}. Reason: ${reason}.`, proposedDate);
+      await notifyActivityUsers(activity, [activity.username, 'updesh'], 'next_activity_date_proposed', `${currentUser} proposed ${formatDate(proposedDate)} for ${deal.title || 'the CRM deal'}. Reason: ${reason}.`, proposedDate);
       renderActivities(); renderTaskCenter(); renderForcedActionModal();
     }
 
     async function salesReviewProposal(id, decision) {
       const activity = activityData[id];
       if (!activity || activity.username !== currentUser || !['sales-review', 'date-proposed'].includes(activity.planResponseStatus)) return;
-      const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
+      const supportingUsernames = getSupportingUsernames(activity);
       if (decision === 'approve') {
         const update = { nextActivityDate: activity.proposedNextActivityDate, dueAcknowledgedBy: [], planResponseStatus: 'sales-approved-final', salesDecision: 'approved', salesDecisionBy: currentUser, salesDecisionAt: new Date(), salesAcknowledgedAt: new Date() };
         await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
-        await notifyActivityUsers(activity, [supportingUsername, 'updesh'], 'salesperson_approved_proposal', `Salesperson approved the revised date ${formatDate(activity.proposedNextActivityDate)}. Supporting Hand acknowledgement is mandatory.`, activity.proposedNextActivityDate);
+        await notifyActivityUsers(activity, [...supportingUsernames, 'updesh'], 'salesperson_approved_proposal', `Salesperson approved the revised date ${formatDate(activity.proposedNextActivityDate)}. Supporting Hand acknowledgement is mandatory.`, activity.proposedNextActivityDate);
       } else {
         const reason = document.getElementById('forcedEscalationReason')?.value.trim();
         if (!reason) { showToast('Escalation reason is mandatory', 'error'); return; }
         const update = { planResponseStatus: 'updesh-review', escalationReason: reason, escalatedBy: currentUser, escalatedAt: new Date() };
         await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
-        await notifyActivityUsers(activity, ['updesh', supportingUsername], 'proposal_escalated', `Revised date ${formatDate(activity.proposedNextActivityDate)} escalated to Updesh. Reason: ${reason}.`, activity.proposedNextActivityDate);
+        await notifyActivityUsers(activity, ['updesh', ...supportingUsernames], 'proposal_escalated', `Revised date ${formatDate(activity.proposedNextActivityDate)} escalated to Updesh. Reason: ${reason}.`, activity.proposedNextActivityDate);
       }
       await markActivityNotificationsRead(id); renderActivities(); renderTaskCenter(); renderForcedActionModal();
     }
@@ -3341,24 +3405,23 @@
       const activity = activityData[id];
       const remarks = document.getElementById('forcedDecisionRemarks')?.value.trim();
       if (currentUser !== 'updesh' || !activity || activity.planResponseStatus !== 'updesh-review' || !remarks) { showToast('Final decision remarks are mandatory', 'error'); return; }
-      const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
+      const supportingUsernames = getSupportingUsernames(activity);
       const update = { planResponseStatus: 'final-acknowledged', finalDecision: decision, finalDecisionRemarks: remarks, finalDecisionBy: currentUser, finalDecisionAt: new Date() };
       if (decision === 'approved') { update.nextActivityDate = activity.proposedNextActivityDate; update.dueAcknowledgedBy = []; }
       await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
       await markActivityNotificationsRead(id);
-      await notifyActivityUsers(activity, [activity.username, supportingUsername], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. This is the final decision; no acknowledgement is required.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
+      await notifyActivityUsers(activity, [activity.username, ...supportingUsernames], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. This is the final decision; no acknowledgement is required.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
       renderActivities(); renderTaskCenter(); renderForcedActionModal();
     }
 
     async function acknowledgeFinalDecision(id) {
       const activity = activityData[id];
       if (!activity) return;
-      const supportingUsername = activity.supportingUsername || activity.responsibleUsername;
       const update = {};
       let roleMatched = false;
       // One person may hold both roles. Record both acknowledgements in one write.
       if (activity.username === currentUser) { update.salesAcknowledgedAt = new Date(); roleMatched = true; }
-      if (supportingUsername === currentUser) { update.supportAcknowledgedAt = new Date(); roleMatched = true; }
+      if (isSupportingHand(activity)) { update.supportAcknowledgedAt = new Date(); roleMatched = true; }
       if (!roleMatched) return;
       const salesAck = !!(update.salesAcknowledgedAt || activity.salesAcknowledgedAt || activity.planResponseStatus === 'sales-approved-final');
       const supportAck = !!(update.supportAcknowledgedAt || activity.supportAcknowledgedAt);
@@ -3402,9 +3465,7 @@
         const activity = activityData[item.activityId];
         const deal = activity ? dealData[activity.dealId] : null;
         const customer = activity ? customerData[getActivityAccountId(activity)] : null;
-        const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-        const supportingName = activity?.supportingName || activity?.responsibleName;
-        const requiresAction = item.type === 'next_activity_plan' && supportingUsername === currentUser && (activity?.planResponseStatus || 'pending') === 'pending';
+        const requiresAction = item.type === 'next_activity_plan' && isSupportingHand(activity) && (activity?.planResponseStatus || 'pending') === 'pending';
         const isPlanNotification = item.type === 'next_activity_plan' && !!activity;
         const notificationPalette = {
           next_activity_plan: ['#1565C0','#EAF3FF'], next_activity_date_proposed: ['#EF6C00','#FFF3E0'],
@@ -3419,11 +3480,11 @@
             <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || customer?.name || 'CRM Activity')}</div>
             <div style="font-size:10.5px;color:var(--t2);line-height:1.6">
               Contact: <b>${escapeHtml(customer?.name || '—')}</b>${deal ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
-              Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hand: <b>${escapeHtml(supportingName || supportingUsername || '—')}</b><br>
+              Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hands: <b>${escapeHtml(supportingHandsLabel(activity))}</b><br>
               Activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
             </div>
             <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
-              <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN · ${formatDate(activity.nextActivityDate)}</div>
+              <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN · ${escapeHtml(activity.nextActivityType || 'Activity')} · ${formatDate(activity.nextActivityDate)}</div>
               <div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
             </div>` : `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>`}
           ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>`}
@@ -3433,7 +3494,7 @@
         const deal = dealData[activity.dealId];
         html += `<div style="background:#fff;border-radius:6px;padding:10px;margin-bottom:8px;border-left:3px solid #F57C00">
           <div style="font-size:12px;font-weight:600">Extension approval: ${escapeHtml(deal?.title || 'CRM activity')}</div>
-          <div style="font-size:11px;margin-top:4px">${escapeHtml(activity.responsibleName || activity.responsibleUsername)} requested ${formatDate(activity.requestedExtensionDate)}${activity.extensionReason ? ` — ${escapeHtml(activity.extensionReason)}` : ''}</div>
+          <div style="font-size:11px;margin-top:4px">${escapeHtml(activity.extensionRequestedBy || supportingHandsLabel(activity))} requested ${formatDate(activity.requestedExtensionDate)}${activity.extensionReason ? ` — ${escapeHtml(activity.extensionReason)}` : ''}</div>
           <div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm primary" onclick="reviewExtension('${activity.id}','approved')">Approve</button><button class="btn sm" onclick="reviewExtension('${activity.id}','rejected')">Reject</button></div>
         </div>`;
       });
@@ -3464,8 +3525,7 @@
 
     async function completeAssignedActivity(id) {
       const activity = activityData[id];
-      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-      if (!activity || supportingUsername !== currentUser) return;
+      if (!activity || !isSupportingHand(activity)) return;
       await db.collection(CRM_ACTIVITIES).doc(id).update({ taskStatus: 'completed', completedDate: new Date() });
       activity.taskStatus = 'completed';
       activity.completedDate = new Date();
@@ -3475,7 +3535,7 @@
         activityId: id,
         dealId: activity.dealId,
         dueDate: activity.nextActivityDate,
-        message: `${activity.supportingName || activity.responsibleName || currentUser} completed the Next Activity Plan.`
+        message: `${currentUser} completed the Next Activity Plan.`
       });
       renderActivities();
       renderTaskCenter();
@@ -3484,8 +3544,7 @@
 
     async function acceptNextActivityPlan(id) {
       const activity = activityData[id];
-      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-      if (!activity || supportingUsername !== currentUser) return;
+      if (!activity || !isSupportingHand(activity)) return;
       const update = {
         planResponseStatus: 'accepted',
         planRespondedBy: currentUser,
@@ -3496,7 +3555,7 @@
       Object.assign(activity, update);
       await markActivityNotificationsRead(id);
       const deal = dealData[activity.dealId] || {};
-      const message = `${activity.supportingName || activity.responsibleName || currentUser} accepted the Next Activity Plan for ${deal.title || 'the CRM deal'} scheduled on ${formatDate(activity.nextActivityDate)}: ${activity.nextActivityDescription || 'No description'}.`;
+      const message = `${currentUser} accepted the Next Activity Plan for ${deal.title || 'the CRM deal'} scheduled on ${formatDate(activity.nextActivityDate)}: ${activity.nextActivityDescription || 'No description'}.`;
       const recipients = [...new Set([activity.username, 'updesh'].filter(Boolean))];
       await Promise.all(recipients.map(recipientUsername => createCrmNotification({
         recipientUsername,
@@ -3514,8 +3573,7 @@
 
     function openExtensionRequest(id) {
       const activity = activityData[id];
-      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-      if (!activity || supportingUsername !== currentUser) return;
+      if (!activity || !isSupportingHand(activity)) return;
       document.getElementById('extensionActivityId').value = id;
       document.getElementById('extensionRevisedDate').value = activity.nextActivityDate || '';
       document.getElementById('extensionReason').value = '';
@@ -3527,8 +3585,7 @@
       const revisedDate = document.getElementById('extensionRevisedDate').value;
       const reason = document.getElementById('extensionReason').value.trim();
       const activity = activityData[id];
-      const supportingUsername = activity?.supportingUsername || activity?.responsibleUsername;
-      if (!activity || supportingUsername !== currentUser || !revisedDate || !reason) {
+      if (!activity || !isSupportingHand(activity) || !revisedDate || !reason) {
         showToast('Please select a proposed date and enter the reason', 'error');
         return;
       }
@@ -3548,7 +3605,7 @@
       Object.assign(activity, update);
       await markActivityNotificationsRead(id);
       const deal = dealData[activity.dealId] || {};
-      const message = `${activity.supportingName || activity.responsibleName || currentUser} proposed ${formatDate(revisedDate)} instead of ${formatDate(activity.nextActivityDate)} for ${deal.title || 'the CRM deal'}. Reason: ${reason}. Next activity: ${activity.nextActivityDescription || 'No description'}.`;
+      const message = `${currentUser} proposed ${formatDate(revisedDate)} instead of ${formatDate(activity.nextActivityDate)} for ${deal.title || 'the CRM deal'}. Reason: ${reason}. Next activity: ${activity.nextActivityDescription || 'No description'}.`;
       const recipients = [...new Set([activity.username, 'updesh'].filter(Boolean))];
       await Promise.all(recipients.map(recipientUsername => createCrmNotification({
         recipientUsername,
@@ -3589,7 +3646,7 @@
       Object.assign(activity, update);
       delete pendingApprovalData[id];
 
-      const recipients = [...new Set([activity.responsibleUsername, activity.username].filter(Boolean))];
+      const recipients = [...new Set([...getSupportingUsernames(activity), activity.username].filter(Boolean))];
       for (const recipient of recipients) {
         await createCrmNotification({
           recipientUsername: recipient,
@@ -3623,9 +3680,7 @@
       
       activities.slice(0, 50).forEach(a => {
         const deal = dealData[a.dealId];
-        const supportingUsername = a.supportingUsername || a.responsibleUsername;
-        const supportingName = a.supportingName || a.responsibleName;
-        const assignedToMe = supportingUsername === currentUser;
+        const assignedToMe = isSupportingHand(a);
         const planStatus = a.planResponseStatus || 'pending';
         const completed = a.taskStatus === 'completed' || !!a.completedDate;
         const overdue = !completed && a.nextActivityDate && a.nextActivityDate < new Date().toISOString().split('T')[0];
@@ -3638,13 +3693,13 @@
           ${deal ? `<div style="font-size: 11px; font-weight: 600; color: var(--p); margin-bottom: 6px;">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:11px;color:var(--danger)">Deal unavailable</div>'}
           ${a.description ? `<div style="font-size: 12px; margin-bottom: 6px;">${escapeHtml(a.description)}</div>` : ''}
           <div style="font-size:10.5px;color:var(--t2);margin-bottom:4px">Created by: ${escapeHtml(a.creatorName || a.username || '')}</div>
-          <div style="font-size:10.5px;color:var(--t2);margin-bottom:6px">Supporting Hand: ${escapeHtml(supportingName || supportingUsername || 'Unassigned')}</div>
+          <div style="font-size:10.5px;color:var(--t2);margin-bottom:6px">Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>
           <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
-            <div style="font-size:10px;font-weight:700">NEXT ACTIVITY PLAN</div>
+            <div style="font-size:10px;font-weight:700">NEXT ACTIVITY PLAN · ${escapeHtml(a.nextActivityType || 'Activity')}</div>
             ${a.nextActivityDate ? `<div style="font-size:10.5px;margin-top:4px">📌 ${formatDate(a.nextActivityDate)}${overdue ? ' · OVERDUE' : ''}</div>` : ''}
             ${a.nextActivityDescription ? `<div style="font-size:11px;margin-top:4px">${escapeHtml(a.nextActivityDescription)}</div>` : ''}
           </div>
-          ${planStatus === 'accepted' ? `<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:6px">✓ PLAN ACCEPTED by ${escapeHtml(a.planRespondedBy || supportingName || '')}</div>` : ''}
+          ${planStatus === 'accepted' ? `<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:6px">✓ PLAN ACCEPTED by ${escapeHtml(a.planRespondedBy || '')}</div>` : ''}
           ${['date-proposed','sales-review'].includes(planStatus) ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">Awaiting salesperson decision · Proposed: ${formatDate(a.proposedNextActivityDate)} — ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
           ${planStatus === 'updesh-review' ? `<div style="font-size:10px;color:#6A1B9A;margin-top:6px;font-weight:700">Escalated to Updesh for final decision</div>` : ''}
           ${planStatus === 'sales-approved-final' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">Revised date approved by salesperson · Supporting Hand acknowledgement pending</div>` : ''}
