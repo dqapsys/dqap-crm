@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.24.3 - Updesh deal deletion access -->
+<!-- DQAP CRM 2026.06.25.1 - FY26-27 sales incentive qualification gates -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1201,7 +1201,8 @@
       qualifiedAmount: 500, convertedAmount: 2500, effectiveFrom: '2026-06-23', updatedBy: 'system',
       salesMarginFloorPct: 12, salesMarginTargetPct: 15, salesMarginStrongPct: 18, salesMarginExcellentPct: 21,
       salesRateBelowTarget: 2, salesRateTarget: 3, salesRateStrong: 4.5, salesRateExcellent: 6,
-      salesPerDealCap: 150000, salesOrderStageWeight: 50, salesAnnualPoolCapPct: 2
+      salesPerDealCap: 150000, salesOrderStageWeight: 50, salesAnnualPoolCapPct: 2,
+      salesQualificationGatePct: 75, salesIncentiveRatePct: 3
     };
     let wikiUsers = [];
     let notificationData = {};
@@ -1221,6 +1222,22 @@
     const CRM_LEADS = 'dqap_crm_leads_v2';
     const CRM_LEAD_CONFIG = 'dqap_crm_lead_incentive_config';
     const CRM_INCENTIVE_LEDGER = 'dqap_crm_incentive_ledger';
+
+    const FY26_27_SALES_INCENTIVE_PLAN = {
+      label: 'FY 2026-27',
+      startDate: '2026-04-01',
+      endDate: '2027-03-31',
+      gatePct: 75,
+      incentiveRatePct: 3,
+      company: { sales: 140000000, billing: 120000000, grossProfit: 28500000 },
+      users: {
+        chetan: { name: 'Chetan', sales: 74500000, billing: 62500000, grossProfit: 15400000 },
+        ravi: { name: 'Ravi', sales: 30000000, billing: 27500000, grossProfit: 6000000 },
+        pratim: { name: 'Pratim', sales: 15000000, billing: 12500000, grossProfit: 3000000 },
+        jawed: { name: 'Jawed', sales: 8000000, billing: 7500000, grossProfit: 1600000 },
+        keshav: { name: 'Keshav', sales: 12500000, billing: 10000000, grossProfit: 2500000 }
+      }
+    };
     const LEAD_REVIEWERS = ['chetan', 'pratim', 'updesh'];
     
     // Safe Firebase initialization
@@ -2068,49 +2085,115 @@
         salesMarginFloorPct: Number(leadIncentiveConfig.salesMarginFloorPct || 0), salesMarginTargetPct: Number(leadIncentiveConfig.salesMarginTargetPct || 0), salesMarginStrongPct: Number(leadIncentiveConfig.salesMarginStrongPct || 0), salesMarginExcellentPct: Number(leadIncentiveConfig.salesMarginExcellentPct || 0),
         salesRateBelowTarget: Number(leadIncentiveConfig.salesRateBelowTarget || 0), salesRateTarget: Number(leadIncentiveConfig.salesRateTarget || 0), salesRateStrong: Number(leadIncentiveConfig.salesRateStrong || 0), salesRateExcellent: Number(leadIncentiveConfig.salesRateExcellent || 0),
         salesPerDealCap: Number(leadIncentiveConfig.salesPerDealCap || 0), salesOrderStageWeight: Number(leadIncentiveConfig.salesOrderStageWeight || 0), salesAnnualPoolCapPct: Number(leadIncentiveConfig.salesAnnualPoolCapPct || 0),
+        salesQualificationGatePct: Number(leadIncentiveConfig.salesQualificationGatePct || 75), salesIncentiveRatePct: Number(leadIncentiveConfig.salesIncentiveRatePct || 3),
         replacedAt: new Date(), replacedBy: currentUser
       };
       const history = [...(leadIncentiveConfig.history || []), prior].slice(-20);
-      const record = { qualifiedAmount, convertedAmount, effectiveFrom, salesMarginFloorPct, salesMarginTargetPct, salesMarginStrongPct, salesMarginExcellentPct, salesRateBelowTarget, salesRateTarget, salesRateStrong, salesRateExcellent, salesPerDealCap, salesOrderStageWeight, salesAnnualPoolCapPct, updatedBy: currentUser, updatedAt: new Date(), history };
+      const record = { qualifiedAmount, convertedAmount, effectiveFrom, salesMarginFloorPct, salesMarginTargetPct, salesMarginStrongPct, salesMarginExcellentPct, salesRateBelowTarget, salesRateTarget, salesRateStrong, salesRateExcellent, salesPerDealCap, salesOrderStageWeight, salesAnnualPoolCapPct, salesQualificationGatePct: Number(leadIncentiveConfig.salesQualificationGatePct || 75), salesIncentiveRatePct: Number(leadIncentiveConfig.salesIncentiveRatePct || 3), updatedBy: currentUser, updatedAt: new Date(), history };
       await db.collection(CRM_LEAD_CONFIG).doc('current').set(record);
       leadIncentiveConfig = record; renderLeadManagement(); renderDeals(); showToast('Lead and salesperson incentive policies updated', 'success');
     }
 
-    function salesMarginRate(marginPercent) {
-      const pct = Number(marginPercent || 0);
-      if (pct < Number(leadIncentiveConfig.salesMarginFloorPct || 0)) return 0;
-      if (pct < Number(leadIncentiveConfig.salesMarginTargetPct || 0)) return Number(leadIncentiveConfig.salesRateBelowTarget || 0);
-      if (pct < Number(leadIncentiveConfig.salesMarginStrongPct || 0)) return Number(leadIncentiveConfig.salesRateTarget || 0);
-      if (pct < Number(leadIncentiveConfig.salesMarginExcellentPct || 0)) return Number(leadIncentiveConfig.salesRateStrong || 0);
-      return Number(leadIncentiveConfig.salesRateExcellent || 0);
+    function activeSalesIncentivePlan() {
+      return {
+        ...FY26_27_SALES_INCENTIVE_PLAN,
+        gatePct: Number(leadIncentiveConfig.salesQualificationGatePct || FY26_27_SALES_INCENTIVE_PLAN.gatePct),
+        incentiveRatePct: Number(leadIncentiveConfig.salesIncentiveRatePct || FY26_27_SALES_INCENTIVE_PLAN.incentiveRatePct)
+      };
+    }
+
+    function inPlanDate(dateValue, plan = activeSalesIncentivePlan()) {
+      const date = toDateObject(dateValue);
+      if (!date) return false;
+      const start = new Date(`${plan.startDate}T00:00:00`);
+      const end = new Date(`${plan.endDate}T23:59:59`);
+      return date >= start && date <= end;
+    }
+
+    function emptySalesActuals() { return { sales: 0, billing: 0, grossProfit: 0, deals: 0 }; }
+
+    function salesPlanActuals(owner = null, plan = activeSalesIncentivePlan()) {
+      const actual = emptySalesActuals();
+      Object.values(dealData).forEach(deal => {
+        if (owner && String(deal.username || '').toLowerCase() !== String(owner).toLowerCase()) return;
+        const ordered = ['Order','Billed'].includes(deal.stage) && inPlanDate(deal.orderDate, plan);
+        if (ordered) {
+          actual.sales += Number(deal.value || 0);
+          actual.grossProfit += Number(deal.grossMarginAmount || 0);
+          actual.deals++;
+        }
+        if (deal.stage === 'Billed' && inPlanDate(deal.billingDate, plan)) {
+          actual.billing += Number(deal.value || 0);
+        }
+      });
+      return actual;
+    }
+
+    function pctOf(actual, target) { return target ? actual / target * 100 : 0; }
+
+    function salesGateStatus(actual, target, gatePct) {
+      return {
+        salesPct: pctOf(actual.sales, target.sales),
+        billingPct: pctOf(actual.billing, target.billing),
+        grossProfitPct: pctOf(actual.grossProfit, target.grossProfit),
+        qualified: pctOf(actual.sales, target.sales) >= gatePct && pctOf(actual.billing, target.billing) >= gatePct && pctOf(actual.grossProfit, target.grossProfit) >= gatePct
+      };
+    }
+
+    function salesIncentiveForOwner(owner) {
+      const plan = activeSalesIncentivePlan();
+      const key = String(owner || '').toLowerCase();
+      const quota = plan.users[key] || null;
+      const companyActual = salesPlanActuals(null, plan);
+      const companyGate = salesGateStatus(companyActual, plan.company, plan.gatePct);
+      const actual = salesPlanActuals(key, plan);
+      if (!quota) {
+        return { plan, owner: key, quota: null, actual, companyActual, companyGate, individualGate: null, qualified: false, incentive: 0, reason: 'No individual FY26-27 quota mapped' };
+      }
+      const individualGate = salesGateStatus(actual, quota, plan.gatePct);
+      const qualified = companyGate.qualified && individualGate.qualified;
+      const incentive = qualified ? actual.grossProfit * plan.incentiveRatePct / 100 : 0;
+      const targetIncentive = quota.grossProfit * plan.incentiveRatePct / 100;
+      const reason = !companyGate.qualified ? 'Company gate pending' : (!individualGate.qualified ? 'Individual gate pending' : 'Qualified');
+      return { plan, owner: key, quota, actual, companyActual, companyGate, individualGate, qualified, incentive, targetIncentive, reason };
     }
 
     function salesIncentiveForDeal(deal) {
+      const ownerCalc = salesIncentiveForOwner(deal?.username);
       const grossProfit = Number(deal?.grossMarginAmount || 0);
-      const rate = salesMarginRate(deal?.grossMarginPercent);
-      const target = Math.min(grossProfit * rate / 100, Number(leadIncentiveConfig.salesPerDealCap || 0));
-      const orderAmount = target * Number(leadIncentiveConfig.salesOrderStageWeight || 0) / 100;
-      return { rate, target, orderAmount, completionAmount: Math.max(target - orderAmount, 0) };
+      const potential = grossProfit * Number(ownerCalc.plan.incentiveRatePct || 0) / 100;
+      return { rate: Number(ownerCalc.plan.incentiveRatePct || 0), target: ownerCalc.qualified ? potential : 0, potential, ownerQualified: ownerCalc.qualified, reason: ownerCalc.reason };
     }
 
     function renderSalesIncentivePolicySummary() {
       const container = document.getElementById('salesIncentivePolicySummary');
       if (!container || !isLeadIncentiveAuthority()) return;
-      const byOwner = {};
-      let annualGrossProfit = 0, totalTarget = 0;
-      Object.values(dealData).forEach(deal => {
-        const calculation = salesIncentiveForDeal(deal);
-        const owner = deal.username || 'Unassigned';
-        if (!byOwner[owner]) byOwner[owner] = { count:0, grossProfit:0, incentive:0 };
-        byOwner[owner].count++;
-        byOwner[owner].grossProfit += Number(deal.grossMarginAmount || 0);
-        byOwner[owner].incentive += calculation.target;
-        annualGrossProfit += Number(deal.grossMarginAmount || 0);
-        totalTarget += calculation.target;
-      });
-      const rows = Object.entries(byOwner).sort((a,b) => b[1].incentive-a[1].incentive).map(([owner,item]) => `<tr><td style="padding:8px"><b>${escapeHtml(owner)}</b></td><td>${item.count}</td><td>₹${item.grossProfit.toLocaleString('en-IN')}</td><td style="font-weight:700;color:var(--success)">₹${Math.round(item.incentive).toLocaleString('en-IN')}</td></tr>`).join('');
-      const poolGuideline = annualGrossProfit * Number(leadIncentiveConfig.salesAnnualPoolCapPct || 0) / 100;
-      container.innerHTML = `<div style="font-weight:700;margin-bottom:7px">Current Sales Incentive Projection by Owner</div>${rows ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">Sales Owner</th><th>Deals</th><th>Gross Profit</th><th>Projected Incentive</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div style="font-size:11px;color:var(--t2)">No deals available.</div>'}<div style="font-size:10.5px;color:var(--t2);margin-top:8px">Projected pool: ₹${Math.round(totalTarget).toLocaleString('en-IN')} · Annual guideline (${Number(leadIncentiveConfig.salesAnnualPoolCapPct || 0)}% of GP): ₹${Math.round(poolGuideline).toLocaleString('en-IN')}</div>`;
+      const plan = activeSalesIncentivePlan();
+      const companyActual = salesPlanActuals(null, plan);
+      const companyGate = salesGateStatus(companyActual, plan.company, plan.gatePct);
+      const gateBadge = companyGate.qualified
+        ? '<span style="background:#E8F5E9;color:#2E7D32;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:800">Company Qualified</span>'
+        : '<span style="background:#FFF3E0;color:#E65100;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:800">Company Gate Pending</span>';
+      const rows = Object.keys(plan.users).map(owner => {
+        const calc = salesIncentiveForOwner(owner);
+        const status = calc.qualified ? '<span style="color:#2E7D32;font-weight:800">Qualified</span>' : `<span style="color:#B71C1C;font-weight:800">${escapeHtml(calc.reason)}</span>`;
+        return `<tr style="border-bottom:.5px solid var(--bd)">
+          <td style="padding:8px"><b>${escapeHtml(calc.quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
+          <td style="padding:8px">₹${Math.round(calc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual ₹${Math.round(calc.actual.sales).toLocaleString('en-IN')} · ${calc.individualGate.salesPct.toFixed(0)}%</span></td>
+          <td style="padding:8px">₹${Math.round(calc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual ₹${Math.round(calc.actual.billing).toLocaleString('en-IN')} · ${calc.individualGate.billingPct.toFixed(0)}%</span></td>
+          <td style="padding:8px">₹${Math.round(calc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual ₹${Math.round(calc.actual.grossProfit).toLocaleString('en-IN')} · ${calc.individualGate.grossProfitPct.toFixed(0)}%</span></td>
+          <td style="padding:8px">${status}</td>
+          <td style="padding:8px;font-weight:800;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(calc.incentive).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Plan ₹${Math.round(calc.targetIncentive).toLocaleString('en-IN')}</span></td>
+        </tr>`;
+      }).join('');
+      container.innerHTML = `<div style="font-weight:700;margin-bottom:7px">FY26-27 Sales Incentive Gate ${gateBadge}</div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Gate entry: company must achieve at least ${plan.gatePct}% of Sales, Billing and Gross Profit. After that, only individuals achieving ${plan.gatePct}% of all three individual quotas earn incentive at ${plan.incentiveRatePct}% of achieved Gross Profit.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">
+          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company Sales</b><br>₹${Math.round(companyActual.sales).toLocaleString('en-IN')} / ₹${Math.round(plan.company.sales).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.salesPct.toFixed(0)}%</span></div>
+          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company Billing</b><br>₹${Math.round(companyActual.billing).toLocaleString('en-IN')} / ₹${Math.round(plan.company.billing).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.billingPct.toFixed(0)}%</span></div>
+          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company GP</b><br>₹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.grossProfitPct.toFixed(0)}%</span></div>
+        </div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:920px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">Salesperson</th><th style="text-align:left;padding:8px">Sales</th><th style="text-align:left;padding:8px">Billing</th><th style="text-align:left;padding:8px">Gross Profit</th><th style="text-align:left;padding:8px">Gate</th><th style="text-align:left;padding:8px">Incentive</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
 
     function leadStatusBadge(status) {
@@ -2718,7 +2801,7 @@
             ${d.orderDate ? `<div style="font-size:11px;color:#1565C0;font-weight:600">Order: ${formatDate(d.orderDate)}</div>` : ''}
             ${d.billingDate ? `<div style="font-size:11px;color:#2E7D32;font-weight:600">Billed: ${formatDate(d.billingDate)}</div>` : ''}
             <div style="font-size:11px;color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'};font-weight:600">Gross Margin: ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
-            <div style="font-size:10.5px;color:${salesIncentive.rate ? '#6A1B9A' : 'var(--t2)'};font-weight:600;margin-top:3px">Sales Incentive Target: ₹${Math.round(salesIncentive.target).toLocaleString('en-IN')} (${salesIncentive.rate}% of GP)${salesIncentive.rate ? ` · Order ₹${Math.round(salesIncentive.orderAmount).toLocaleString('en-IN')} / Completion ₹${Math.round(salesIncentive.completionAmount).toLocaleString('en-IN')}` : ' · Below margin floor'}</div>
+            <div style="font-size:10.5px;color:${salesIncentive.ownerQualified ? '#6A1B9A' : 'var(--t2)'};font-weight:600;margin-top:3px">FY26-27 Incentive: ${salesIncentive.ownerQualified ? `₹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential ₹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`} (${salesIncentive.rate}% of GP) · ${escapeHtml(salesIncentive.reason)}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
               ${d.username === currentUser ? `<button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit Deal</button>` : ''}
               ${canDeleteDeal() ? `<button class="btn sm danger" onclick="deleteDeal('${d.id}')"><i class="ti ti-trash"></i> Delete Deal</button>` : ''}
@@ -2945,7 +3028,18 @@
       }
       const totalMarginPercent = totalBookingActual ? totalGrossMarginActual / totalBookingActual * 100 : 0;
       rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>₹${totalBookingTarget.toLocaleString('en-IN')}</td><td>₹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>₹${totalBillingTarget.toLocaleString('en-IN')}</td><td>₹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td><td>₹${totalGrossMarginTarget.toLocaleString('en-IN')}</td><td>₹${totalGrossMarginActual.toLocaleString('en-IN')}</td><td>${totalMarginPercent.toFixed(2)}%</td></tr>`;
-      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
+      const incentiveCalc = salesIncentiveForOwner(currentUser);
+      const incentivePanel = `<div style="margin:14px 0;padding:12px;border:1px solid var(--bd);border-radius:10px;background:${incentiveCalc.qualified ? '#E8F5E9' : '#FFF8E1'}">
+        <div style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : '#E65100'}">FY26-27 Sales Incentive: ${escapeHtml(incentiveCalc.reason)}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:5px">Company and individual gate require ${incentiveCalc.plan.gatePct}% achievement in Sales, Billing and Gross Profit. Incentive rate: ${incentiveCalc.plan.incentiveRatePct}% of achieved GP after qualification.</div>
+        ${incentiveCalc.quota ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px">
+          <div><b>Sales</b><br>₹${Math.round(incentiveCalc.actual.sales).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.salesPct.toFixed(0)}%</span></div>
+          <div><b>Billing</b><br>₹${Math.round(incentiveCalc.actual.billing).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.billingPct.toFixed(0)}%</span></div>
+          <div><b>Gross Profit</b><br>₹${Math.round(incentiveCalc.actual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.grossProfitPct.toFixed(0)}%</span></div>
+          <div><b>Earned Incentive</b><br><span style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(incentiveCalc.incentive).toLocaleString('en-IN')}</span><br><span style="font-size:10px">Plan ₹${Math.round(incentiveCalc.targetIncentive || 0).toLocaleString('en-IN')}</span></div>
+        </div>` : `<div style="font-size:11px;color:var(--danger);margin-top:8px">No individual quota is mapped for @${escapeHtml(currentUser || '')}; no salesperson incentive will be allocated.</div>`}
+      </div>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
 
     function openSetTargetModal() {
