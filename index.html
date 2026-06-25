@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.25.2 - Individual FY26-27 incentive dashboard -->
+<!-- DQAP CRM 2026.06.25.3 - Shared FY26-27 target dashboard -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -742,8 +742,7 @@
     <div id="tab-targets" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <span>Targets – Quarterly & Annual</span>
-          <button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-plus"></i> Set Targets</button>
+          <span>FY26-27 Targets — Salesperson Wise</span>
         </div>
         <div id="targetsContainer"></div>
       </div>
@@ -3084,6 +3083,49 @@
         </div>` : `<div style="font-size:11px;color:var(--danger);margin-top:8px">No individual quota is mapped for @${escapeHtml(currentUser || '')}; no salesperson incentive will be allocated.</div>`}
       </div>`;
       container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
+    }
+
+    function targetProgressCell(actual, target, accent = 'var(--p)') {
+      const pct = pctOf(actual, target);
+      return `<div style="min-width:150px">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px"><b>₹${Math.round(actual).toLocaleString('en-IN')}</b><span style="color:${pct >= 75 ? '#2E7D32' : pct >= 50 ? '#E65100' : '#B71C1C'};font-weight:800">${pct.toFixed(0)}%</span></div>
+        <div style="font-size:10px;color:var(--t2);margin:2px 0 5px">Target ₹${Math.round(target).toLocaleString('en-IN')}</div>
+        <div style="height:7px;background:#ECEFF1;border-radius:999px;overflow:hidden"><div style="height:100%;width:${Math.min(pct,100)}%;background:${accent};border-radius:999px"></div></div>
+      </div>`;
+    }
+
+    function renderTargets() {
+      const container = document.getElementById('targetsContainer');
+      if (!container) return;
+      const plan = activeSalesIncentivePlan();
+      const companyActual = salesPlanActuals(null, plan);
+      const companyGate = salesGateStatus(companyActual, plan.company, plan.gatePct);
+      const companyCards = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px">
+          <div style="background:#E3F2FD;border:1px solid #BBDEFB;border-radius:12px;padding:13px"><div style="font-size:10px;color:#1565C0;font-weight:900;text-transform:uppercase">Company Sales</div><div style="font-size:18px;font-weight:900;margin-top:5px">₹${Math.round(companyActual.sales).toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--t2)">Target ₹${Math.round(plan.company.sales).toLocaleString('en-IN')} · ${companyGate.salesPct.toFixed(0)}%</div></div>
+          <div style="background:#E8F5E9;border:1px solid #C8E6C9;border-radius:12px;padding:13px"><div style="font-size:10px;color:#2E7D32;font-weight:900;text-transform:uppercase">Company Billing</div><div style="font-size:18px;font-weight:900;margin-top:5px">₹${Math.round(companyActual.billing).toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--t2)">Target ₹${Math.round(plan.company.billing).toLocaleString('en-IN')} · ${companyGate.billingPct.toFixed(0)}%</div></div>
+          <div style="background:#FFF3E0;border:1px solid #FFE0B2;border-radius:12px;padding:13px"><div style="font-size:10px;color:#E65100;font-weight:900;text-transform:uppercase">Company GM</div><div style="font-size:18px;font-weight:900;margin-top:5px">₹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--t2)">Target ₹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')} · ${companyGate.grossProfitPct.toFixed(0)}%</div></div>
+        </div>`;
+      const rows = Object.keys(plan.users).map(owner => {
+        const calc = salesIncentiveForOwner(owner);
+        const minPct = Math.min(calc.individualGate.salesPct, calc.individualGate.billingPct, calc.individualGate.grossProfitPct);
+        const gateColor = minPct >= plan.gatePct ? '#2E7D32' : minPct >= 50 ? '#E65100' : '#B71C1C';
+        return `<tr style="border-bottom:.5px solid var(--bd)">
+          <td style="padding:10px;vertical-align:top"><b>${escapeHtml(calc.quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
+          <td style="padding:10px;vertical-align:top">${targetProgressCell(calc.actual.sales, calc.quota.sales, '#1565C0')}</td>
+          <td style="padding:10px;vertical-align:top">${targetProgressCell(calc.actual.billing, calc.quota.billing, '#2E7D32')}</td>
+          <td style="padding:10px;vertical-align:top">${targetProgressCell(calc.actual.grossProfit, calc.quota.grossProfit, '#E65100')}</td>
+          <td style="padding:10px;vertical-align:top"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span><br><span style="font-size:10px;color:var(--t2)">Minimum of Sales/Billing/GM</span></td>
+        </tr>`;
+      }).join('');
+      const myCalc = salesIncentiveForOwner(currentUser);
+      const myPanel = myCalc.quota ? `<div style="margin-top:14px;padding:12px;border-radius:10px;background:${myCalc.qualified ? '#E8F5E9' : '#FFF8E1'};border:1px solid var(--bd)">
+        <div style="font-weight:900;color:${myCalc.qualified ? '#2E7D32' : '#E65100'}">My incentive gate: ${escapeHtml(myCalc.reason)}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:4px">Gate requires ${plan.gatePct}% achievement in all three parameters: Sales, Billing and GM.</div>
+      </div>` : '';
+      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)}. Sales uses Order Date; Billing uses Billing Date; GM uses deal Gross Margin Amount for ordered deals.</div>
+        ${companyCards}
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px"><thead><tr style="background:#263F65;color:#fff"><th style="text-align:left;padding:10px">Salesperson</th><th style="text-align:left;padding:10px">Sales Target vs Achieved</th><th style="text-align:left;padding:10px">Billing Target vs Achieved</th><th style="text-align:left;padding:10px">GM Target vs Achieved</th><th style="text-align:left;padding:10px">Gate Status</th></tr></thead><tbody>${rows}</tbody></table></div>${myPanel}`;
     }
 
     function openSetTargetModal() {
