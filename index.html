@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.25.6 - Compact executive targets layout -->
+<!-- DQAP CRM 2026.06.25.7 - Meeting calendar next-month date fix -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1276,7 +1276,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260625.6';
+    const CRM_BUILD = '20260625.7';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -2970,8 +2970,7 @@
       
       // Next month days
       while (cellCount > 0 && cellCount < 7) {
-        const nextDay = cellCount === 0 ? 1 : (7 - cellCount + 1);
-        for (let i = nextDay; cellCount < 7; i++, cellCount++) {
+        for (let i = 1; cellCount < 7; i++, cellCount++) {
           html += `<td class="other-month"><div class="day-num">${i}</div></td>`;
         }
       }
@@ -3010,13 +3009,13 @@
     }
     
     function prevMonth() {
-      currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+      currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
       renderCalendar();
       document.getElementById('calendarDayDetailsContainer').innerHTML = '';
     }
     
     function nextMonth() {
-      currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+      currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1);
       renderCalendar();
       document.getElementById('calendarDayDetailsContainer').innerHTML = '';
     }
