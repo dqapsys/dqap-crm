@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.25.3 - Shared FY26-27 target dashboard -->
+<!-- DQAP CRM 2026.06.25.5 - Targets quarterly detail and contact/activity cleanup -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1081,7 +1081,7 @@
           <textarea id="nextActivityDescription" placeholder="Describe the next action required"></textarea>
         </div>
         <div class="form-group" style="margin-bottom:0">
-          <label>Supporting Hands <span style="font-weight:500;font-size:10px">(Ctrl-click to select multiple)</span></label>
+          <label>Supporting Hands <span style="font-weight:500;font-size:10px">(optional · Ctrl-click to select multiple)</span></label>
           <select id="activitySupportingHand" multiple size="4">
             <option value="">-- Select Wiki User --</option>
           </select>
@@ -1234,6 +1234,7 @@
       gatePct: 75,
       incentiveRatePct: 3,
       company: { sales: 140000000, billing: 120000000, grossProfit: 28500000 },
+      quarterWeights: { q1: 0.20, q2: 0.30, q3: 0.20, q4: 0.30 },
       users: {
         chetan: { name: 'Chetan', sales: 74500000, billing: 62500000, grossProfit: 15400000 },
         ravi: { name: 'Ravi', sales: 30000000, billing: 27500000, grossProfit: 6000000 },
@@ -1268,7 +1269,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260624.1';
+    const CRM_BUILD = '20260625.5';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1282,6 +1283,7 @@
       const query = new URLSearchParams(window.location.search);
       const handoffSession = fragment.get('sess') || query.get('sess');
       const receivedHandoff = !!handoffSession;
+      let handoffTab = query.get('tab') || '';
 
       // Try sessionStorage as fallback
       try { 
@@ -1289,6 +1291,24 @@
         if (sess) console.log('Found session in sessionStorage');
       } catch (e) {
         console.warn('Session storage unavailable');
+      }
+
+      // Installed PWA windows can occasionally lose the fragment/sessionStorage
+      // handoff. Wiki writes this short-lived bridge immediately before opening CRM.
+      if (!handoffSession) {
+        try {
+          const bridgeRaw = localStorage.getItem('dqap_crm_handoff');
+          if (bridgeRaw) {
+            const bridge = JSON.parse(bridgeRaw);
+            if (bridge && bridge.sess && Date.now() - Number(bridge.createdAt || 0) < 120000) {
+              sess = bridge.sess;
+              handoffTab = handoffTab || bridge.tab || '';
+              console.log('Found fresh Wiki session in localStorage handoff');
+            }
+          }
+        } catch (e) {
+          console.warn('CRM handoff bridge unavailable');
+        }
       }
 
       // A fresh Wiki handoff takes precedence over any older tab session.
@@ -1302,12 +1322,14 @@
         
         // Clean up URL after reading
         if (receivedHandoff) history.replaceState(null, document.title, window.location.pathname);
+        try { localStorage.removeItem('dqap_crm_handoff'); } catch (e) {}
       }
       
       if (sess) {
         // User logged in via Wiki - auto-login
         try {
           wikiSession = JSON.parse(sess);
+          if (handoffTab) wikiSession.targetTab = handoffTab;
           console.log('✅ Session found, calling autoLoginFromWiki');
           autoLoginFromWiki(wikiSession);
         } catch (e) {
@@ -1431,7 +1453,7 @@
             renderTaskCenter();
             renderDueActivityModal();
             startTaskRefresh();
-            const requestedTab = new URLSearchParams(window.location.search).get('tab');
+            const requestedTab = wikiSession?.targetTab || new URLSearchParams(window.location.search).get('tab');
             if (requestedTab && document.getElementById('tab-' + requestedTab)) switchTab(requestedTab);
             showToast(`✅ Welcome, ${resolvedDisplayName}!`, 'success');
             console.log('✅ Auto-logged in from Wiki:', username);
@@ -2208,7 +2230,18 @@
       const companyLabel = company.qualified ? 'Company gate qualified' : 'Company gate pending';
       const companyColor = company.qualified ? '#2E7D32' : '#E65100';
       if (!calc.quota) {
-        container.innerHTML = `<div class="alert warning" style="margin:0"><i class="ti ti-alert-triangle"></i><span>No FY26-27 individual sales quota is mapped for @${escapeHtml(currentUser || '')}. Sales incentive allocation will not apply until a quota is added.</span></div>`;
+        if (String(currentUser || '').toLowerCase() === 'updesh') {
+          container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+            <div><div style="font-size:13px;font-weight:900;color:${companyColor}">DQAP target status: ${companyLabel}</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Updesh carries company/DQAP targets, not an individual salesperson quota.</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+            ${targetProgressCell(calc.companyActual.sales, calc.plan.company.sales, '#1565C0')}
+            ${targetProgressCell(calc.companyActual.billing, calc.plan.company.billing, '#2E7D32')}
+            ${targetProgressCell(calc.companyActual.grossProfit, calc.plan.company.grossProfit, '#E65100')}
+          </div>`;
+        } else {
+          container.innerHTML = `<div class="alert warning" style="margin:0"><i class="ti ti-alert-triangle"></i><span>No FY26-27 individual sales quota is mapped for @${escapeHtml(currentUser || '')}. Sales incentive allocation will not apply until a quota is added.</span></div>`;
+        }
         return;
       }
       const personal = calc.individualGate;
@@ -2434,8 +2467,8 @@
 
     async function deleteCustomer(id) {
       const customer = customerData[id];
-      if (!customer || !canAdministerCustomer(customer)) {
-        showToast('You do not have permission to remove this contact', 'error');
+      if (!customer || !canDeleteCustomer()) {
+        showToast('Only Updesh can remove contacts', 'error');
         return;
       }
       const linkedDeals = Object.values(dealData).filter(deal => deal.customerId === id);
@@ -2453,6 +2486,10 @@
       } catch (error) {
         showToast('Could not remove contact: ' + error.message, 'error');
       }
+    }
+
+    function canDeleteCustomer() {
+      return String(currentUser || '').toLowerCase() === 'updesh';
     }
     
     function populateCustomerDropdowns() {
@@ -2529,8 +2566,8 @@
           <td style="padding:12px">${c.phone || '—'}</td>
           <td style="padding:12px">${c.industry || '—'}</td>
           <td style="padding:12px;text-align:center"><input type="checkbox" aria-label="Mark ${escapeHtml(c.name)} as Key Account" ${c.isKeyAccount ? 'checked' : ''} ${canAdministerCustomer(c) ? '' : 'disabled title="Only the contact owner or Updesh can change this"'} onchange="toggleKeyAccount('${c.id}',this.checked,this)"></td>
-          <td style="padding:12px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${c.id}')"><i class="ti ti-plus"></i> Log / Plan Activity</button><button class="btn sm" onclick="openActivityHistoryModal('account','${c.id}')"><i class="ti ti-history"></i> View Activity Logs</button></div></td>
-          <td style="padding:12px">${canAdministerCustomer(c) ? `<div style="display:flex;gap:6px"><button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button><button class="btn sm danger" onclick="deleteCustomer('${c.id}')"><i class="ti ti-trash"></i></button></div>` : '—'}</td>
+          <td style="padding:8px 10px"><div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${c.id}')"><i class="ti ti-plus"></i> Log / Plan</button><button class="btn sm" onclick="openActivityHistoryModal('account','${c.id}')"><i class="ti ti-history"></i> Logs</button></div></td>
+          <td style="padding:8px 10px">${canAdministerCustomer(c) || canDeleteCustomer() ? `<div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap">${canAdministerCustomer(c) ? `<button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}${canDeleteCustomer() ? `<button class="btn sm danger" onclick="deleteCustomer('${c.id}')"><i class="ti ti-trash"></i></button>` : ''}</div>` : '—'}</td>
         </tr>`;
       });
       
@@ -3094,6 +3131,43 @@
       </div>`;
     }
 
+    function fyQuarterKey(date) {
+      const d = toDateObject(date);
+      if (!d) return '';
+      const month = d.getMonth() + 1;
+      if (month >= 4 && month <= 6) return 'q1';
+      if (month >= 7 && month <= 9) return 'q2';
+      if (month >= 10 && month <= 12) return 'q3';
+      return 'q4';
+    }
+
+    function salesPlanQuarterTargets(target, quarterKey, plan = activeSalesIncentivePlan()) {
+      const weight = Number(plan.quarterWeights?.[quarterKey] || 0);
+      return {
+        sales: Number(target?.sales || 0) * weight,
+        billing: Number(target?.billing || 0) * weight,
+        grossProfit: Number(target?.grossProfit || 0) * weight
+      };
+    }
+
+    function salesPlanQuarterActuals(owner = null, quarterKey, plan = activeSalesIncentivePlan()) {
+      const actual = emptySalesActuals();
+      Object.values(dealData).forEach(deal => {
+        if (owner && String(deal.username || '').toLowerCase() !== String(owner).toLowerCase()) return;
+        const orderDate = toDateObject(deal.orderDate);
+        if (orderDate && inPlanDate(orderDate, plan) && fyQuarterKey(orderDate) === quarterKey && ['Order','Billed'].includes(deal.stage)) {
+          actual.sales += Number(deal.value || 0);
+          actual.grossProfit += Number(deal.grossMarginAmount || 0);
+          actual.deals++;
+        }
+        const billingDate = toDateObject(deal.billingDate);
+        if (billingDate && inPlanDate(billingDate, plan) && fyQuarterKey(billingDate) === quarterKey && deal.stage === 'Billed') {
+          actual.billing += Number(deal.value || 0);
+        }
+      });
+      return actual;
+    }
+
     function renderTargets() {
       const container = document.getElementById('targetsContainer');
       if (!container) return;
@@ -3118,6 +3192,25 @@
           <td style="padding:10px;vertical-align:top"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span><br><span style="font-size:10px;color:var(--t2)">Minimum of Sales/Billing/GM</span></td>
         </tr>`;
       }).join('');
+      const quarterLabels = { q1: 'Q1 Apr-Jun', q2: 'Q2 Jul-Sep', q3: 'Q3 Oct-Dec', q4: 'Q4 Jan-Mar' };
+      const quarterRows = Object.keys(plan.users).flatMap(owner => {
+        const quota = plan.users[owner];
+        return ['q1','q2','q3','q4'].map(q => {
+          const target = salesPlanQuarterTargets(quota, q, plan);
+          const actual = salesPlanQuarterActuals(owner, q, plan);
+          const gate = salesGateStatus(actual, target, plan.gatePct);
+          const minPct = Math.min(gate.salesPct, gate.billingPct, gate.grossProfitPct);
+          const gateColor = minPct >= plan.gatePct ? '#2E7D32' : minPct >= 50 ? '#E65100' : '#B71C1C';
+          return `<tr style="border-bottom:.5px solid var(--bd)">
+            <td style="padding:9px"><b>${escapeHtml(quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
+            <td style="padding:9px;font-weight:700">${quarterLabels[q]}</td>
+            <td style="padding:9px">${targetProgressCell(actual.sales, target.sales, '#1565C0')}</td>
+            <td style="padding:9px">${targetProgressCell(actual.billing, target.billing, '#2E7D32')}</td>
+            <td style="padding:9px">${targetProgressCell(actual.grossProfit, target.grossProfit, '#E65100')}</td>
+            <td style="padding:9px"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span></td>
+          </tr>`;
+        });
+      }).join('');
       const myCalc = salesIncentiveForOwner(currentUser);
       const myPanel = myCalc.quota ? `<div style="margin-top:14px;padding:12px;border-radius:10px;background:${myCalc.qualified ? '#E8F5E9' : '#FFF8E1'};border:1px solid var(--bd)">
         <div style="font-weight:900;color:${myCalc.qualified ? '#2E7D32' : '#E65100'}">My incentive gate: ${escapeHtml(myCalc.reason)}</div>
@@ -3125,7 +3218,10 @@
       </div>` : '';
       container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)}. Sales uses Order Date; Billing uses Billing Date; GM uses deal Gross Margin Amount for ordered deals.</div>
         ${companyCards}
-        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px"><thead><tr style="background:#263F65;color:#fff"><th style="text-align:left;padding:10px">Salesperson</th><th style="text-align:left;padding:10px">Sales Target vs Achieved</th><th style="text-align:left;padding:10px">Billing Target vs Achieved</th><th style="text-align:left;padding:10px">GM Target vs Achieved</th><th style="text-align:left;padding:10px">Gate Status</th></tr></thead><tbody>${rows}</tbody></table></div>${myPanel}`;
+        <div style="font-weight:900;margin:12px 0 8px;color:var(--p)">Annual target vs achieved</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px"><thead><tr style="background:#263F65;color:#fff"><th style="text-align:left;padding:10px">Salesperson</th><th style="text-align:left;padding:10px">Sales Target vs Achieved</th><th style="text-align:left;padding:10px">Billing Target vs Achieved</th><th style="text-align:left;padding:10px">GM Target vs Achieved</th><th style="text-align:left;padding:10px">Gate Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div style="font-weight:900;margin:16px 0 8px;color:var(--p)">Quarter-wise target vs achieved</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1080px"><thead><tr style="background:#263F65;color:#fff"><th style="text-align:left;padding:10px">Salesperson</th><th style="text-align:left;padding:10px">Quarter</th><th style="text-align:left;padding:10px">Sales</th><th style="text-align:left;padding:10px">Billing</th><th style="text-align:left;padding:10px">GM</th><th style="text-align:left;padding:10px">Gate</th></tr></thead><tbody>${quarterRows}</tbody></table></div>${myPanel}`;
     }
 
     function openSetTargetModal() {
@@ -3290,7 +3386,7 @@
       const nextDate = document.getElementById('activityNextDate').value;
       const nextType = document.getElementById('nextActivityType').value;
       const nextDescription = document.getElementById('nextActivityDescription').value.trim();
-      const hasNextPlan = !!(nextDate || nextType || nextDescription || supportingUsernames.length);
+      const hasNextPlan = !!(nextDate || nextType || nextDescription);
       
       if (!keyAccountId || !date) {
         showToast('Please select a contact and activity date', 'error');
@@ -3300,8 +3396,8 @@
         showToast('The selected deal does not belong to this contact', 'error');
         return;
       }
-      if (hasNextPlan && (!supportingUsernames.length || !nextDate || !nextType || !nextDescription)) {
-        showToast('Complete all Next Activity Plan fields, or leave the plan blank', 'error');
+      if (hasNextPlan && (!nextDate || !nextType || !nextDescription)) {
+        showToast('Complete Next Activity Date, Activity Type and Description, or leave the plan blank', 'error');
         return;
       }
       
