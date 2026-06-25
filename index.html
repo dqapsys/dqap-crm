@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.25.1 - FY26-27 sales incentive qualification gates -->
+<!-- DQAP CRM 2026.06.25.2 - Individual FY26-27 incentive dashboard -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -679,6 +679,11 @@
         </div>
       </div>
       
+      <div class="card" id="individualSalesIncentiveCard">
+        <div class="card-header">My FY26-27 Sales Incentive Status</div>
+        <div id="individualSalesIncentiveStatus"></div>
+      </div>
+      
       <div class="card">
         <div class="card-header">Pipeline by Stage</div>
         <canvas id="pipelineChart" height="80"></canvas>
@@ -780,35 +785,35 @@
       <div class="card" id="leadSettingsCard" style="display:none">
         <div class="card-header">Updesh — Lead and Deal Conversion Incentive Settings</div>
         <div class="alert"><i class="ti ti-info-circle"></i><span>These are total milestone entitlements, not cumulative amounts. Deal Conversion must be at least the Qualified Lead amount.</span></div>
-        <div class="form-row">
+        <div class="form-row" style="display:none" aria-hidden="true">
           <div class="form-group"><label>Qualified Lead Incentive (₹)</label><input id="leadQualifiedIncentive" type="number" min="0"></div>
           <div class="form-group"><label>Converted Deal Incentive (₹)</label><input id="leadConvertedIncentive" type="number" min="0"></div>
           <div class="form-group"><label>Effective From</label><input id="leadIncentiveEffectiveFrom" type="date"></div>
         </div>
         <div id="leadSettingsHistory" style="margin-top:12px"></div>
         <div style="border-top:2px solid var(--p);margin:22px 0 14px;padding-top:14px">
-          <div style="font-size:14px;font-weight:800;color:var(--p)">Salesperson Gross-Margin Incentive Policy</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">Separate from referral incentives. The applicable rate is a percentage of achieved gross profit, subject to the per-deal cap.</div>
+          <div style="font-size:14px;font-weight:800;color:var(--p)">FY26-27 Sales Incentive Rule</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Salesperson incentive is governed by the annual gate plan: company must qualify at 75% on Sales, Billing and Gross Profit; individual allocation is paid only to users who also qualify at 75% on all three individual quotas.</div>
         </div>
-        <div class="form-row">
+        <div class="form-row" style="display:none" aria-hidden="true">
           <div class="form-group"><label>Floor Margin % (below = no incentive)</label><input id="salesMarginFloorPct" type="number" min="0" step="0.5"></div>
           <div class="form-group"><label>Target Margin %</label><input id="salesMarginTargetPct" type="number" min="0" step="0.5"></div>
           <div class="form-group"><label>Strong Margin %</label><input id="salesMarginStrongPct" type="number" min="0" step="0.5"></div>
           <div class="form-group"><label>Excellent Margin %</label><input id="salesMarginExcellentPct" type="number" min="0" step="0.5"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" style="display:none" aria-hidden="true">
           <div class="form-group"><label>Below Target Rate (% of GP)</label><input id="salesRateBelowTarget" type="number" min="0" step="0.1"></div>
           <div class="form-group"><label>Target Rate (% of GP)</label><input id="salesRateTarget" type="number" min="0" step="0.1"></div>
           <div class="form-group"><label>Strong Rate (% of GP)</label><input id="salesRateStrong" type="number" min="0" step="0.1"></div>
           <div class="form-group"><label>Excellent Rate (% of GP)</label><input id="salesRateExcellent" type="number" min="0" step="0.1"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" style="display:none" aria-hidden="true">
           <div class="form-group"><label>Maximum Incentive per Deal (₹)</label><input id="salesPerDealCap" type="number" min="0"></div>
           <div class="form-group"><label>Order Stage Payment Weight (%)</label><input id="salesOrderStageWeight" type="number" min="0" max="100"></div>
           <div class="form-group"><label>Annual Pool Guideline (% of GP)</label><input id="salesAnnualPoolCapPct" type="number" min="0" step="0.1"></div>
         </div>
-        <button class="btn primary" onclick="saveLeadIncentiveSettings()">Save Lead and Sales Incentive Policies</button>
-        <div id="salesIncentivePolicySummary" style="margin-top:16px"></div>
+        <button class="btn primary" onclick="saveLeadIncentiveSettings()">Save Lead Incentive Settings</button>
+        <div id="salesIncentivePolicySummary" style="display:none;margin-top:16px"></div>
       </div>
     </div>
 
@@ -2194,6 +2199,45 @@
           <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company GP</b><br>₹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.grossProfitPct.toFixed(0)}%</span></div>
         </div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:920px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">Salesperson</th><th style="text-align:left;padding:8px">Sales</th><th style="text-align:left;padding:8px">Billing</th><th style="text-align:left;padding:8px">Gross Profit</th><th style="text-align:left;padding:8px">Gate</th><th style="text-align:left;padding:8px">Incentive</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function renderIndividualSalesIncentiveStatus() {
+      const container = document.getElementById('individualSalesIncentiveStatus');
+      if (!container) return;
+      const calc = salesIncentiveForOwner(currentUser);
+      const company = calc.companyGate;
+      const companyLabel = company.qualified ? 'Company gate qualified' : 'Company gate pending';
+      const companyColor = company.qualified ? '#2E7D32' : '#E65100';
+      if (!calc.quota) {
+        container.innerHTML = `<div class="alert warning" style="margin:0"><i class="ti ti-alert-triangle"></i><span>No FY26-27 individual sales quota is mapped for @${escapeHtml(currentUser || '')}. Sales incentive allocation will not apply until a quota is added.</span></div>`;
+        return;
+      }
+      const personal = calc.individualGate;
+      const personalLabel = personal.qualified ? 'Individual gate qualified' : 'Individual gate pending';
+      const personalColor = personal.qualified ? '#2E7D32' : '#B71C1C';
+      const metric = (label, actual, target, pct, color = 'var(--p)') => `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px">
+        <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase;letter-spacing:.04em">${label}</div>
+        <div style="font-size:16px;font-weight:900;color:${color};margin-top:4px">${pct.toFixed(0)}%</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">₹${Math.round(actual).toLocaleString('en-IN')} / ₹${Math.round(target).toLocaleString('en-IN')}</div>
+      </div>`;
+      container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+          <div>
+            <div style="font-size:13px;font-weight:900;color:${calc.qualified ? '#2E7D32' : '#E65100'}">${escapeHtml(calc.reason)}</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:3px">${companyLabel} · ${personalLabel} · Gate ${calc.plan.gatePct}% on Sales, Billing and GP</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase">Earned Incentive</div>
+            <div style="font-size:20px;font-weight:900;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(calc.incentive).toLocaleString('en-IN')}</div>
+            <div style="font-size:10px;color:var(--t2)">Plan ₹${Math.round(calc.targetIncentive || 0).toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+          ${metric('Sales', calc.actual.sales, calc.quota.sales, personal.salesPct, personal.salesPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
+          ${metric('Billing', calc.actual.billing, calc.quota.billing, personal.billingPct, personal.billingPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
+          ${metric('Gross Profit', calc.actual.grossProfit, calc.quota.grossProfit, personal.grossProfitPct, personal.grossProfitPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
+          ${metric('Company Gate', calc.companyActual.grossProfit, calc.plan.company.grossProfit, Math.min(company.salesPct, company.billingPct, company.grossProfitPct), companyColor)}
+        </div>
+        <div style="font-size:10.5px;color:var(--t2);margin-top:8px">FY26-27 period: ${formatDate(calc.plan.startDate)} to ${formatDate(calc.plan.endDate)}. Incentive rate: ${calc.plan.incentiveRatePct}% of achieved Gross Profit after both gates qualify.</div>`;
     }
 
     function leadStatusBadge(status) {
@@ -4010,6 +4054,7 @@
         .filter(d => d.stage === 'Billed')
         .reduce((sum, d) => sum + d.value, 0);
       document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
+      renderIndividualSalesIncentiveStatus();
       
       // Pipeline chart
       const stages = ['Lead', 'Prospect', 'Bid Submission', 'Negotiations', 'Billed'];
