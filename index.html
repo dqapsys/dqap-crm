@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.25.5 - Targets quarterly detail and contact/activity cleanup -->
+<!-- DQAP CRM 2026.06.25.6 - Compact executive targets layout -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -743,6 +743,13 @@
       <div class="card">
         <div class="card-header">
           <span>FY26-27 Targets — Salesperson Wise</span>
+          <select id="targetsPeriodSelect" onchange="renderTargets()" style="border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-weight:800;color:var(--p);background:#fff">
+            <option value="annual">Annual</option>
+            <option value="q1">Q1 Apr-Jun</option>
+            <option value="q2">Q2 Jul-Sep</option>
+            <option value="q3">Q3 Oct-Dec</option>
+            <option value="q4">Q4 Jan-Mar</option>
+          </select>
         </div>
         <div id="targetsContainer"></div>
       </div>
@@ -1269,7 +1276,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260625.5';
+    const CRM_BUILD = '20260625.6';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -3124,10 +3131,13 @@
 
     function targetProgressCell(actual, target, accent = 'var(--p)') {
       const pct = pctOf(actual, target);
-      return `<div style="min-width:150px">
-        <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px"><b>₹${Math.round(actual).toLocaleString('en-IN')}</b><span style="color:${pct >= 75 ? '#2E7D32' : pct >= 50 ? '#E65100' : '#B71C1C'};font-weight:800">${pct.toFixed(0)}%</span></div>
-        <div style="font-size:10px;color:var(--t2);margin:2px 0 5px">Target ₹${Math.round(target).toLocaleString('en-IN')}</div>
-        <div style="height:7px;background:#ECEFF1;border-radius:999px;overflow:hidden"><div style="height:100%;width:${Math.min(pct,100)}%;background:${accent};border-radius:999px"></div></div>
+      return `<div style="min-width:170px">
+        <div style="display:grid;grid-template-columns:82px 82px 46px;gap:8px;align-items:center;font-size:11px">
+          <b style="color:var(--t1)">₹${Math.round(actual).toLocaleString('en-IN')}</b>
+          <span style="color:var(--t2)">₹${Math.round(target).toLocaleString('en-IN')}</span>
+          <span style="color:${pct >= 75 ? '#2E7D32' : pct >= 50 ? '#E65100' : '#B71C1C'};font-weight:900">${pct.toFixed(0)}%</span>
+        </div>
+        <div style="height:7px;background:#EDF2F7;border-radius:999px;overflow:hidden;margin-top:5px"><div style="height:100%;width:${Math.min(pct,100)}%;background:${accent};border-radius:999px"></div></div>
       </div>`;
     }
 
@@ -3172,56 +3182,44 @@
       const container = document.getElementById('targetsContainer');
       if (!container) return;
       const plan = activeSalesIncentivePlan();
-      const companyActual = salesPlanActuals(null, plan);
+      const period = document.getElementById('targetsPeriodSelect')?.value || 'annual';
+      const isAnnual = period === 'annual';
+      const periodLabels = { annual: 'Annual', q1: 'Q1 Apr-Jun', q2: 'Q2 Jul-Sep', q3: 'Q3 Oct-Dec', q4: 'Q4 Jan-Mar' };
+      const companyActual = isAnnual ? salesPlanActuals(null, plan) : salesPlanQuarterActuals(null, period, plan);
+      const companyTarget = isAnnual ? plan.company : salesPlanQuarterTargets(plan.company, period, plan);
       const companyGate = salesGateStatus(companyActual, plan.company, plan.gatePct);
-      const companyCards = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px">
-          <div style="background:#E3F2FD;border:1px solid #BBDEFB;border-radius:12px;padding:13px"><div style="font-size:10px;color:#1565C0;font-weight:900;text-transform:uppercase">Company Sales</div><div style="font-size:18px;font-weight:900;margin-top:5px">₹${Math.round(companyActual.sales).toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--t2)">Target ₹${Math.round(plan.company.sales).toLocaleString('en-IN')} · ${companyGate.salesPct.toFixed(0)}%</div></div>
-          <div style="background:#E8F5E9;border:1px solid #C8E6C9;border-radius:12px;padding:13px"><div style="font-size:10px;color:#2E7D32;font-weight:900;text-transform:uppercase">Company Billing</div><div style="font-size:18px;font-weight:900;margin-top:5px">₹${Math.round(companyActual.billing).toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--t2)">Target ₹${Math.round(plan.company.billing).toLocaleString('en-IN')} · ${companyGate.billingPct.toFixed(0)}%</div></div>
-          <div style="background:#FFF3E0;border:1px solid #FFE0B2;border-radius:12px;padding:13px"><div style="font-size:10px;color:#E65100;font-weight:900;text-transform:uppercase">Company GM</div><div style="font-size:18px;font-weight:900;margin-top:5px">₹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--t2)">Target ₹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')} · ${companyGate.grossProfitPct.toFixed(0)}%</div></div>
-        </div>`;
+      const companyChips = ['sales','billing','grossProfit'].map((key, idx) => {
+        const labels = { sales:'Sales', billing:'Billing', grossProfit:'GM' };
+        const colors = idx === 1 ? ['#E8F5E9','#2E7D32'] : ['#E3F2FD','#1565C0'];
+        const pct = pctOf(companyActual[key], companyTarget[key]);
+        return `<div style="background:${colors[0]};color:${colors[1]};border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900">${labels[key]}: ₹${Math.round(companyActual[key]).toLocaleString('en-IN')} / ₹${Math.round(companyTarget[key]).toLocaleString('en-IN')} · ${pct.toFixed(0)}%</div>`;
+      }).join('');
       const rows = Object.keys(plan.users).map(owner => {
-        const calc = salesIncentiveForOwner(owner);
-        const minPct = Math.min(calc.individualGate.salesPct, calc.individualGate.billingPct, calc.individualGate.grossProfitPct);
+        const quota = plan.users[owner];
+        const target = isAnnual ? quota : salesPlanQuarterTargets(quota, period, plan);
+        const actual = isAnnual ? salesPlanActuals(owner, plan) : salesPlanQuarterActuals(owner, period, plan);
+        const gate = salesGateStatus(actual, target, plan.gatePct);
+        const minPct = Math.min(gate.salesPct, gate.billingPct, gate.grossProfitPct);
         const gateColor = minPct >= plan.gatePct ? '#2E7D32' : minPct >= 50 ? '#E65100' : '#B71C1C';
         return `<tr style="border-bottom:.5px solid var(--bd)">
-          <td style="padding:10px;vertical-align:top"><b>${escapeHtml(calc.quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
-          <td style="padding:10px;vertical-align:top">${targetProgressCell(calc.actual.sales, calc.quota.sales, '#1565C0')}</td>
-          <td style="padding:10px;vertical-align:top">${targetProgressCell(calc.actual.billing, calc.quota.billing, '#2E7D32')}</td>
-          <td style="padding:10px;vertical-align:top">${targetProgressCell(calc.actual.grossProfit, calc.quota.grossProfit, '#E65100')}</td>
-          <td style="padding:10px;vertical-align:top"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span><br><span style="font-size:10px;color:var(--t2)">Minimum of Sales/Billing/GM</span></td>
+          <td style="padding:9px"><b>${escapeHtml(quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
+          <td style="padding:9px">${targetProgressCell(actual.sales, target.sales, '#1565C0')}</td>
+          <td style="padding:9px">${targetProgressCell(actual.billing, target.billing, '#2E7D32')}</td>
+          <td style="padding:9px">${targetProgressCell(actual.grossProfit, target.grossProfit, '#1565C0')}</td>
+          <td style="padding:9px"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span></td>
         </tr>`;
       }).join('');
-      const quarterLabels = { q1: 'Q1 Apr-Jun', q2: 'Q2 Jul-Sep', q3: 'Q3 Oct-Dec', q4: 'Q4 Jan-Mar' };
-      const quarterRows = Object.keys(plan.users).flatMap(owner => {
-        const quota = plan.users[owner];
-        return ['q1','q2','q3','q4'].map(q => {
-          const target = salesPlanQuarterTargets(quota, q, plan);
-          const actual = salesPlanQuarterActuals(owner, q, plan);
-          const gate = salesGateStatus(actual, target, plan.gatePct);
-          const minPct = Math.min(gate.salesPct, gate.billingPct, gate.grossProfitPct);
-          const gateColor = minPct >= plan.gatePct ? '#2E7D32' : minPct >= 50 ? '#E65100' : '#B71C1C';
-          return `<tr style="border-bottom:.5px solid var(--bd)">
-            <td style="padding:9px"><b>${escapeHtml(quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
-            <td style="padding:9px;font-weight:700">${quarterLabels[q]}</td>
-            <td style="padding:9px">${targetProgressCell(actual.sales, target.sales, '#1565C0')}</td>
-            <td style="padding:9px">${targetProgressCell(actual.billing, target.billing, '#2E7D32')}</td>
-            <td style="padding:9px">${targetProgressCell(actual.grossProfit, target.grossProfit, '#E65100')}</td>
-            <td style="padding:9px"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span></td>
-          </tr>`;
-        });
-      }).join('');
       const myCalc = salesIncentiveForOwner(currentUser);
-      const myPanel = myCalc.quota ? `<div style="margin-top:14px;padding:12px;border-radius:10px;background:${myCalc.qualified ? '#E8F5E9' : '#FFF8E1'};border:1px solid var(--bd)">
+      const myPanel = isAnnual && myCalc.quota ? `<div style="margin-top:12px;padding:10px;border-radius:10px;background:${myCalc.qualified ? '#E8F5E9' : '#F6FBFF'};border:1px solid var(--bd)">
         <div style="font-weight:900;color:${myCalc.qualified ? '#2E7D32' : '#E65100'}">My incentive gate: ${escapeHtml(myCalc.reason)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Gate requires ${plan.gatePct}% achievement in all three parameters: Sales, Billing and GM.</div>
       </div>` : '';
-      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)}. Sales uses Order Date; Billing uses Billing Date; GM uses deal Gross Margin Amount for ordered deals.</div>
-        ${companyCards}
-        <div style="font-weight:900;margin:12px 0 8px;color:var(--p)">Annual target vs achieved</div>
-        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px"><thead><tr style="background:#263F65;color:#fff"><th style="text-align:left;padding:10px">Salesperson</th><th style="text-align:left;padding:10px">Sales Target vs Achieved</th><th style="text-align:left;padding:10px">Billing Target vs Achieved</th><th style="text-align:left;padding:10px">GM Target vs Achieved</th><th style="text-align:left;padding:10px">Gate Status</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <div style="font-weight:900;margin:16px 0 8px;color:var(--p)">Quarter-wise target vs achieved</div>
-        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1080px"><thead><tr style="background:#263F65;color:#fff"><th style="text-align:left;padding:10px">Salesperson</th><th style="text-align:left;padding:10px">Quarter</th><th style="text-align:left;padding:10px">Sales</th><th style="text-align:left;padding:10px">Billing</th><th style="text-align:left;padding:10px">GM</th><th style="text-align:left;padding:10px">Gate</th></tr></thead><tbody>${quarterRows}</tbody></table></div>${myPanel}`;
+      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} · Showing ${periodLabels[period]}. Sales uses Order Date; Billing uses Billing Date; GM uses deal Gross Margin Amount.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${companyChips}</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px">
+          <thead><tr style="background:#EAF3FB;color:var(--p);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:9px">Salesperson</th><th style="text-align:left;padding:9px">Sales<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Billing<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">GM<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Gate</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>${myPanel}`;
     }
 
     function openSetTargetModal() {
