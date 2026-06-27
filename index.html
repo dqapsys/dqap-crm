@@ -1099,11 +1099,33 @@
         <input type="text" id="dealTitle" placeholder="Project name">
       </div>
       <div class="form-group">
-        <label>Contact / Company</label>
-        <input id="dealCustomerSearch" type="search" placeholder="Search contact/company..." oninput="populateCustomerDropdowns()" style="margin-bottom:6px">
+        <label>Customer Company *</label>
+        <input id="dealCompanySearch" type="search" placeholder="Search company..." oninput="populateDealCompanyDropdown()" style="margin-bottom:6px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="dealCompany" onchange="populateDealContactDropdown(this.value)" style="flex:1">
+            <option value="">-- Select Company --</option>
+          </select>
+          <button type="button" class="btn sm" onclick="populateDealContactDropdown(document.getElementById('dealCompany').value)">Next</button>
+        </div>
+      </div>
+      <div class="form-group" id="dealContactGroup" style="display:none">
+        <label>Contact Person *</label>
         <select id="dealCustomer">
-          <option value="">-- Select Contact --</option>
+          <option value="">-- Select Contact Person --</option>
         </select>
+        <div style="margin-top:8px">
+          <button type="button" class="btn sm" onclick="toggleDealNewContactForm(true)"><i class="ti ti-user-plus"></i> Add New Contact</button>
+        </div>
+      </div>
+      <div id="dealNewContactGroup" class="form-group" style="display:none;padding:10px;border:1px dashed var(--bd);border-radius:8px;background:#F8FAFC">
+        <label>Add New Contact under selected company</label>
+        <input id="dealNewContactName" type="text" placeholder="Full name" style="margin-bottom:6px">
+        <input id="dealNewContactEmail" type="email" placeholder="Email" style="margin-bottom:6px">
+        <input id="dealNewContactPhone" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="15" placeholder="Contact number" oninput="this.value=this.value.replace(/\D/g,'')" style="margin-bottom:6px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="btn sm primary" onclick="addDealInlineContact()"><i class="ti ti-check"></i> Save Contact</button>
+          <button type="button" class="btn sm" onclick="toggleDealNewContactForm(false)">Cancel</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Deal Value (₹)</label>
@@ -1844,6 +1866,8 @@
           if (doc.exists) dealData[id] = { id: doc.id, ...doc.data() };
         }));
 
+        await ensureDealCodes();
+
         const missingCustomerIds = [...new Set(Object.values(dealData)
           .map(deal => deal.customerId)
           .concat(Object.values(activityData).map(activity => activity.keyAccountId))
@@ -2035,6 +2059,7 @@
             const ref = db.collection(CRM_DEALS).doc();
             const data = {
               title,
+              dealCode: generateDealCode(ref.id),
               customerId: customer.id,
               value,
               stage,
@@ -2259,7 +2284,7 @@
         }
         const dealRef = db.collection(CRM_DEALS).doc();
         const grossMarginPercent = value ? grossMarginAmount / value * 100 : 0;
-        const dealRecord = { title, customerId: customer.id, value, grossMarginAmount, grossMarginPercent, stage: 'Lead', probability: 20, closeDate, notes: `Converted from referred lead. Requirement: ${lead.requirement}`, username: salesOwner, sourceLeadId: id, leadReferrerUsername: lead.referrerUsername, createdAt: new Date(), updatedAt: new Date() };
+        const dealRecord = { title, dealCode: generateDealCode(dealRef.id), customerId: customer.id, customerCompanyName: customer.name || lead.company || '', value, grossMarginAmount, grossMarginPercent, stage: 'Lead', probability: 20, closeDate, notes: `Converted from referred lead. Requirement: ${lead.requirement}`, username: salesOwner, sourceLeadId: id, leadReferrerUsername: lead.referrerUsername, createdAt: new Date(), updatedAt: new Date() };
         batch.set(dealRef, dealRecord);
         const convertedAmount = Number(lead.convertedIncentiveSnapshot ?? leadIncentiveConfig.convertedAmount ?? 0);
         const previousEntitlement = Number(lead.entitlementAmount || 0);
@@ -2752,12 +2777,136 @@
       if (!q) return true;
       return values.map(value => String(value || '').toLowerCase()).join(' ').includes(q);
     }
+
+    function companyNameKey(name) {
+      return String(name || '').trim().toLowerCase();
+    }
+
+    function uniqueCompanyNames() {
+      return [...new Set(Object.values(customerData)
+        .map(customer => String(customer.name || '').trim())
+        .filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+    }
+
+    function contactsForCompany(companyName) {
+      const key = companyNameKey(companyName);
+      return Object.values(customerData)
+        .filter(customer => companyNameKey(customer.name) === key)
+        .sort((a, b) => String(a.contact || '').localeCompare(String(b.contact || '')) || String(a.email || '').localeCompare(String(b.email || '')));
+    }
+
+    function populateDealCompanyDropdown(selectedCompanyName = null) {
+      const select = document.getElementById('dealCompany');
+      if (!select) return;
+      const previous = selectedCompanyName ?? select.value ?? '';
+      const search = document.getElementById('dealCompanySearch')?.value || '';
+      const companies = uniqueCompanyNames()
+        .filter(company => optionTextMatches([company], search));
+      select.innerHTML = '<option value="">-- Select Company --</option>' +
+        (companies.length
+          ? companies.map(company => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`).join('')
+          : '<option value="" disabled>No matching company</option>');
+      select.value = companies.includes(previous) ? previous : '';
+      populateDealContactDropdown(select.value);
+    }
+
+    function populateDealContactDropdown(companyName = '', selectedContactId = null) {
+      const contactGroup = document.getElementById('dealContactGroup');
+      const select = document.getElementById('dealCustomer');
+      if (!select) return;
+      const selected = selectedContactId ?? select.value ?? '';
+      const contacts = companyName ? contactsForCompany(companyName) : [];
+      if (contactGroup) contactGroup.style.display = companyName ? 'block' : 'none';
+      select.innerHTML = '<option value="">-- Select Contact Person --</option>' +
+        (contacts.length
+          ? contacts.map(contact => {
+              const label = `${contact.contact || 'Unnamed contact'}${contact.email ? ' · ' + contact.email : ''}${contact.phone ? ' · ' + contact.phone : ''}`;
+              return `<option value="${contact.id}">${escapeHtml(label)}</option>`;
+            }).join('')
+          : '<option value="" disabled>No contact available. Add a new contact below.</option>');
+      select.value = contacts.some(contact => contact.id === selected) ? selected : '';
+      toggleDealNewContactForm(false);
+    }
+
+    function toggleDealNewContactForm(show) {
+      const group = document.getElementById('dealNewContactGroup');
+      if (!group) return;
+      group.style.display = show ? 'block' : 'none';
+      if (!show) {
+        ['dealNewContactName','dealNewContactEmail','dealNewContactPhone'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+    }
+
+    async function addDealInlineContact() {
+      const companyName = document.getElementById('dealCompany')?.value || '';
+      const contact = document.getElementById('dealNewContactName')?.value.trim() || '';
+      const email = document.getElementById('dealNewContactEmail')?.value.trim() || '';
+      const phone = document.getElementById('dealNewContactPhone')?.value.trim() || '';
+      if (!companyName) return showToast('Please select a company first', 'error');
+      if (!contact) return showToast('Please enter contact full name', 'error');
+      if (email && !isValidEmail(email)) return showToast('Please enter a valid email', 'error');
+      if (phone && !/^\d+$/.test(phone)) return showToast('Phone number should contain digits only', 'error');
+      try {
+        const ref = db.collection(CRM_CUSTOMERS).doc();
+        const existingCompanyContact = contactsForCompany(companyName)[0] || {};
+        const record = {
+          name: companyName,
+          contact,
+          email,
+          phone,
+          industry: existingCompanyContact.industry || '',
+          isKeyAccount: existingCompanyContact.isKeyAccount === true,
+          notes: 'Added from Deal modal',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        await ref.set(record);
+        customerData[ref.id] = { id: ref.id, ...record };
+        populateDealCompanyDropdown(companyName);
+        populateDealContactDropdown(companyName, ref.id);
+        renderCustomers();
+        renderKAM();
+        showToast('Contact added under selected company', 'success');
+      } catch (error) {
+        showToast('Could not add contact: ' + error.message, 'error');
+      }
+    }
+
+    function generateDealCode(seed = '') {
+      const cleanSeed = String(seed || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const suffix = (cleanSeed || randomPart).slice(0, 6).padEnd(6, randomPart);
+      return `DEAL${new Date().getFullYear().toString().slice(-2)}${suffix}`;
+    }
+
+    async function ensureDealCodes() {
+      const missing = Object.values(dealData).filter(deal => !deal.dealCode);
+      if (!missing.length) return;
+      try {
+        for (let start = 0; start < missing.length; start += 400) {
+          const batch = db.batch();
+          missing.slice(start, start + 400).forEach(deal => {
+            const dealCode = generateDealCode(deal.id);
+            deal.dealCode = dealCode;
+            batch.update(db.collection(CRM_DEALS).doc(deal.id), { dealCode, updatedAt: new Date() });
+          });
+          await batch.commit();
+        }
+      } catch (error) {
+        console.warn('Deal ID migration could not be written; generated IDs will display locally for this session:', error);
+        missing.forEach(deal => {
+          if (!deal.dealCode) deal.dealCode = generateDealCode(deal.id);
+        });
+      }
+    }
     
     function populateCustomerDropdowns() {
-      const selectedDealCustomer = document.getElementById('dealCustomer')?.value || '';
       const selectedActivityDeal = document.getElementById('activityDeal')?.value || '';
       const selectedActivityAccount = document.getElementById('activityKeyAccount')?.value || '';
-      const dealCustomerSearch = document.getElementById('dealCustomerSearch')?.value || '';
       const activityDealSearch = document.getElementById('activityDealSearch')?.value || '';
       const activityAccountSearch = document.getElementById('activityKeyAccountSearch')?.value || '';
       const sortedCustomers = Object.values(customerData)
@@ -2766,8 +2915,6 @@
         .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
       const accountMatches = sortedCustomers
         .filter(c => optionTextMatches([c.name, c.contact, c.email, c.phone, c.industry], activityAccountSearch));
-      const dealCustomerMatches = sortedCustomers
-        .filter(customer => optionTextMatches([customer.name, customer.contact, customer.email, customer.phone, customer.industry], dealCustomerSearch));
       const activityDealMatches = sortedDeals
         .filter(deal => {
           const customer = customerData[deal.customerId];
@@ -2776,17 +2923,10 @@
       const opts = accountMatches
         .map(c => `<option value="${c.id}">${escapeHtml(c.name || '')}</option>`)
         .join('');
-      const dealOpts = dealCustomerMatches
-        .map(customer => `<option value="${customer.id}">${escapeHtml(customer.name || '')}</option>`).join('');
       const activityDealOpts = activityDealMatches
         .map(d => `<option value="${d.id}">${escapeHtml(d.title || '')}</option>`).join('');
-      const dealSelect = document.getElementById('dealCustomer');
       const activityDealSelect = document.getElementById('activityDeal');
       const activityAccountSelect = document.getElementById('activityKeyAccount');
-      if (dealSelect) {
-        dealSelect.innerHTML = '<option value="">-- Select Contact --</option>' + (dealOpts || '<option value="" disabled>No matching contact/company</option>');
-        dealSelect.value = dealCustomerMatches.some(customer => customer.id === selectedDealCustomer) ? selectedDealCustomer : '';
-      }
       if (activityDealSelect) {
         activityDealSelect.innerHTML = '<option value="">-- Select Deal --</option>' + (activityDealOpts || '<option value="" disabled>No matching deal</option>');
         activityDealSelect.value = activityDealMatches.some(deal => deal.id === selectedActivityDeal) ? selectedActivityDeal : '';
@@ -3224,13 +3364,14 @@
     }
 
     function openAddDealModal() {
-      if (document.getElementById('dealCustomerSearch')) document.getElementById('dealCustomerSearch').value = '';
-      populateCustomerDropdowns();
+      if (document.getElementById('dealCompanySearch')) document.getElementById('dealCompanySearch').value = '';
+      populateDealCompanyDropdown('');
       populateDealOwnerSelect(currentUser);
       document.getElementById('dealEditId').value = '';
       document.getElementById('dealModalTitle').textContent = 'Add Deal';
       document.getElementById('dealSaveButton').textContent = 'Save Deal';
       document.getElementById('dealTitle').value = '';
+      document.getElementById('dealCompany').value = '';
       document.getElementById('dealCustomer').value = '';
       document.getElementById('dealValue').value = '';
       document.getElementById('dealGrossMargin').value = '';
@@ -3244,6 +3385,7 @@
       document.getElementById('customLossReasonText').value = '';
       document.getElementById('lossReasonGroup').classList.remove('visible');
       document.getElementById('customLossReasonGroup').classList.remove('visible');
+      toggleDealNewContactForm(false);
       populateDealPartnersSelect(null);
       toggleDealStageDateFields('Lead');
       updateDealGrossMarginPercent();
@@ -3257,14 +3399,16 @@
         return;
       }
 
-      if (document.getElementById('dealCustomerSearch')) document.getElementById('dealCustomerSearch').value = '';
-      populateCustomerDropdowns();
+      if (document.getElementById('dealCompanySearch')) document.getElementById('dealCompanySearch').value = '';
       populateDealOwnerSelect(deal.username || currentUser);
+      const dealContact = customerData[deal.customerId];
+      populateDealCompanyDropdown(dealContact?.name || '');
       document.getElementById('dealEditId').value = id;
       document.getElementById('dealModalTitle').textContent = 'Edit Deal';
       document.getElementById('dealSaveButton').textContent = 'Update Deal';
       document.getElementById('dealTitle').value = deal.title || '';
-      document.getElementById('dealCustomer').value = deal.customerId || '';
+      document.getElementById('dealCompany').value = dealContact?.name || '';
+      populateDealContactDropdown(dealContact?.name || '', deal.customerId || '');
       document.getElementById('dealValue').value = deal.value || '';
       document.getElementById('dealGrossMargin').value = deal.grossMarginAmount || '';
       document.getElementById('dealStage').value = deal.stage || 'Lead';
@@ -3389,6 +3533,7 @@
       }
 
       const title = document.getElementById('dealTitle').value.trim();
+      const companyName = document.getElementById('dealCompany')?.value || '';
       const customerId = document.getElementById('dealCustomer').value;
       const value = parseInt(document.getElementById('dealValue').value) || 0;
       const grossMarginAmount = parseFloat(document.getElementById('dealGrossMargin').value) || 0;
@@ -3404,8 +3549,8 @@
       const selectedPartnerUsernames = [...new Set(partnerOptions.map(option => String(option.value || '').toLowerCase()).filter(value => value && value !== String(owner).toLowerCase()))];
       const selectedPartnerNames = new Map(partnerOptions.map(option => [String(option.value || '').toLowerCase(), option.dataset.name || option.textContent || option.value]));
       
-      if (!title || !customerId || !value) {
-        showToast('Please fill required fields', 'error');
+      if (!title || !companyName || !customerId || !value) {
+        showToast('Please fill Deal Title, Customer Company, Contact Person and Deal Value', 'error');
         return;
       }
       if (grossMarginAmount > value) {
@@ -3442,6 +3587,7 @@
 
         const dealObj = {
           title, customerId, value, grossMarginAmount,
+          customerCompanyName: companyName,
           grossMarginPercent: value ? Number((grossMarginAmount / value * 100).toFixed(2)) : 0,
           stage, probability, closeDate, notes,
           orderDate: orderDate || existingDeal?.orderDate || null,
@@ -3477,10 +3623,12 @@
 
         let savedDealId = editId;
         if (editId) {
+          dealObj.dealCode = existingDeal?.dealCode || generateDealCode(editId);
           await db.collection(CRM_DEALS).doc(editId).update(dealObj);
           dealData[editId] = { ...existingDeal, ...dealObj, id: editId };
         } else {
           const dealRef = db.collection(CRM_DEALS).doc();
+          dealObj.dealCode = generateDealCode(dealRef.id);
           dealObj.createdAt = new Date();
           await dealRef.set(dealObj);
           savedDealId = dealRef.id;
@@ -3512,7 +3660,7 @@
       const deals = scopedDeals.filter(deal => {
         const customer = customerData[deal.customerId];
         return crmTextMatch([
-          deal.title, deal.stage, deal.value, deal.probability, deal.closeDate, deal.orderDate, deal.billingDate,
+          deal.dealCode, deal.title, deal.stage, deal.value, deal.probability, deal.closeDate, deal.orderDate, deal.billingDate,
           deal.notes, deal.lossReason, deal.customLossReason, deal.username, customer?.name, customer?.contact, customer?.email
         ], search);
       });
@@ -3591,6 +3739,7 @@
           else if (d.stage === 'Billed') stageClass = 'won';
           const borderColor = d.stage === 'Lost' ? '#B71C1C' : d.stage === 'Billed' ? '#2E7D32' : Number(d.probability || 0) >= 75 ? '#2E7D32' : 'var(--p)';
           html += `<article class="deal-kanban-card" style="border-left-color:${borderColor}">
+            <div style="font-size:10px;color:#006994;font-weight:900;margin-bottom:3px">${escapeHtml(d.dealCode || generateDealCode(d.id))}</div>
             <div class="deal-kanban-title">${escapeHtml(d.title || 'Untitled Deal')}</div>
             <div class="deal-kanban-customer">${escapeHtml(customer?.name || '—')}${isLeadReviewer() ? `<br>Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}` : ''}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
