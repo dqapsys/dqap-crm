@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.27.3 - Date display standardized to dd-mm-yyyy -->
+<!-- DQAP CRM 2026.06.27.7 - Dashboard incentive status labels Booking Billing GM -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1021,7 +1021,7 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label>Deal Value (₹) *</label><input id="leadDealValue" type="number" min="1"></div>
-        <div class="form-group"><label>Gross Margin Amount (₹)</label><input id="leadDealGrossMargin" type="number" min="0"></div>
+        <div class="form-group"><label>Gross Margin Amount (₹)</label><input id="leadDealGrossMargin" type="number"></div>
         <div class="form-group"><label>Expected Close Date</label><input id="leadDealCloseDate" type="date"></div>
       </div>
       <div class="modal-footer"><button class="btn" onclick="closeModal('leadConversionModal')">Cancel</button><button class="btn primary" onclick="confirmLeadConversion()">Create CRM Deal</button></div>
@@ -1110,8 +1110,13 @@
       </div>
       <div class="form-group">
         <label>Gross Margin Amount (₹)</label>
-        <input type="number" id="dealGrossMargin" placeholder="20000" min="0" oninput="updateDealGrossMarginPercent()">
+        <input type="number" id="dealGrossMargin" placeholder="20000" oninput="updateDealGrossMarginPercent()">
         <div id="dealGrossMarginPercent" style="font-size:10.5px;color:var(--t2);margin-top:4px">Gross Margin: 0.00% of PO value · minimum target 20%</div>
+      </div>
+      <div class="form-group">
+        <label>Deal Partners / Shared Effort</label>
+        <select id="dealPartners" multiple size="4"></select>
+        <div style="font-size:10.5px;color:var(--t2);margin-top:4px">Owner may invite partner(s). Revenue, GM and incentive attribution are shared equally only after partner accepts.</div>
       </div>
       <div class="form-group">
         <label>Stage</label>
@@ -1461,7 +1466,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260627.3';
+    const CRM_BUILD = '20260627.7';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1756,6 +1761,13 @@
         dealsSnap.forEach(doc => {
           dealData[doc.id] = { id: doc.id, ...doc.data() };
         });
+        if (!isLeadReviewer()) {
+          const partnerDealsSnap = await db.collection(CRM_DEALS)
+            .where('dealPartnerUsernames', 'array-contains', currentUser).get();
+          partnerDealsSnap.forEach(doc => {
+            dealData[doc.id] = { id: doc.id, ...doc.data() };
+          });
+        }
         console.log(`Loaded ${dealsSnap.size} deals for ${isLeadReviewer() ? 'sales oversight' : currentUser}`);
         
         // Load activities filtered by username
@@ -1805,6 +1817,12 @@
         await Promise.all(notifiedActivityIds.map(async id => {
           const doc = await db.collection(CRM_ACTIVITIES).doc(id).get();
           if (doc.exists) activityData[id] = { id: doc.id, ...doc.data() };
+        }));
+        const notifiedDealIds = [...new Set(Object.values(notificationData)
+          .map(notification => notification.dealId).filter(id => id && !dealData[id]))];
+        await Promise.all(notifiedDealIds.map(async id => {
+          const doc = await db.collection(CRM_DEALS).doc(id).get();
+          if (doc.exists) dealData[id] = { id: doc.id, ...doc.data() };
         }));
         
         // Load targets filtered by username
@@ -2222,7 +2240,7 @@
       const grossMarginAmount = Number(document.getElementById('leadDealGrossMargin').value) || 0;
       const closeDate = document.getElementById('leadDealCloseDate').value;
       if (!lead || lead.status !== 'Qualified' || !salesOwner || !title || value <= 0) return showToast('Sales owner, deal title and positive deal value are mandatory', 'error');
-      if (grossMarginAmount < 0 || grossMarginAmount > value) return showToast('Gross Margin must be between zero and deal value', 'error');
+      if (grossMarginAmount > value) return showToast('Gross Margin cannot be greater than deal value', 'error');
       try {
         const ownerContacts = await db.collection(CRM_CUSTOMERS).where('username', '==', salesOwner).get();
         let customer = ownerContacts.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -2347,18 +2365,43 @@
 
     function emptySalesActuals() { return { sales: 0, billing: 0, grossProfit: 0, deals: 0 }; }
 
+    function dealPartnerRecords(deal) {
+      return Array.isArray(deal?.dealPartners) ? deal.dealPartners : [];
+    }
+
+    function acceptedDealPartners(deal) {
+      return dealPartnerRecords(deal).filter(partner => partner && partner.status === 'accepted' && partner.username);
+    }
+
+    function pendingDealPartners(deal) {
+      return dealPartnerRecords(deal).filter(partner => partner && partner.status === 'pending' && partner.username);
+    }
+
+    function dealParticipantUsernames(deal, includePending = false) {
+      const users = [deal?.username, ...acceptedDealPartners(deal).map(partner => partner.username)];
+      if (includePending) users.push(...pendingDealPartners(deal).map(partner => partner.username));
+      return [...new Set(users.filter(Boolean).map(value => String(value).toLowerCase()))];
+    }
+
+    function dealShareForUser(deal, username) {
+      const key = String(username || '').toLowerCase();
+      const participants = dealParticipantUsernames(deal, false);
+      return participants.includes(key) ? 1 / Math.max(participants.length, 1) : 0;
+    }
+
     function salesPlanActuals(owner = null, plan = activeSalesIncentivePlan()) {
       const actual = emptySalesActuals();
       Object.values(dealData).forEach(deal => {
-        if (owner && String(deal.username || '').toLowerCase() !== String(owner).toLowerCase()) return;
+        const share = owner ? dealShareForUser(deal, owner) : 1;
+        if (owner && share <= 0) return;
         const ordered = ['Order','Billed'].includes(deal.stage) && inPlanDate(deal.orderDate, plan);
         if (ordered) {
-          actual.sales += Number(deal.value || 0);
-          actual.grossProfit += Number(deal.grossMarginAmount || 0);
+          actual.sales += Number(deal.value || 0) * share;
+          actual.grossProfit += Number(deal.grossMarginAmount || 0) * share;
           actual.deals++;
         }
         if (deal.stage === 'Billed' && inPlanDate(deal.billingDate, plan)) {
-          actual.billing += Number(deal.value || 0);
+          actual.billing += Number(deal.value || 0) * share;
         }
       });
       return actual;
@@ -2394,9 +2437,11 @@
     }
 
     function salesIncentiveForDeal(deal) {
-      const ownerCalc = salesIncentiveForOwner(deal?.username);
+      const activeUser = dealShareForUser(deal, currentUser) > 0 ? currentUser : deal?.username;
+      const ownerCalc = salesIncentiveForOwner(activeUser);
       const grossProfit = Number(deal?.grossMarginAmount || 0);
-      const potential = grossProfit * Number(ownerCalc.plan.incentiveRatePct || 0) / 100;
+      const share = dealShareForUser(deal, activeUser) || 1;
+      const potential = grossProfit * share * Number(ownerCalc.plan.incentiveRatePct || 0) / 100;
       return { rate: Number(ownerCalc.plan.incentiveRatePct || 0), target: ownerCalc.qualified ? potential : 0, potential, ownerQualified: ownerCalc.qualified, reason: ownerCalc.reason };
     }
 
@@ -2444,9 +2489,9 @@
             <div><div style="font-size:13px;font-weight:900;color:${companyColor}">DQAP target status: ${companyLabel}</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Updesh carries company/DQAP targets, not an individual salesperson quota.</div></div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-            ${targetProgressCell(calc.companyActual.sales, calc.plan.company.sales, '#1565C0')}
-            ${targetProgressCell(calc.companyActual.billing, calc.plan.company.billing, '#2E7D32')}
-            ${targetProgressCell(calc.companyActual.grossProfit, calc.plan.company.grossProfit, '#E65100')}
+            ${targetProgressCell(calc.companyActual.sales, calc.plan.company.sales, '#1565C0', 'Booking')}
+            ${targetProgressCell(calc.companyActual.billing, calc.plan.company.billing, '#2E7D32', 'Billing')}
+            ${targetProgressCell(calc.companyActual.grossProfit, calc.plan.company.grossProfit, '#E65100', 'GM')}
           </div>`;
         } else {
           container.innerHTML = `<div class="alert warning" style="margin:0"><i class="ti ti-alert-triangle"></i><span>No FY26-27 individual sales quota is mapped for @${escapeHtml(currentUser || '')}. Sales incentive allocation will not apply until a quota is added.</span></div>`;
@@ -3119,6 +3164,23 @@
       if (!select.value && owners.length) select.value = owners[0].username;
     }
 
+    function populateDealPartnersSelect(deal = null) {
+      const select = document.getElementById('dealPartners');
+      if (!select) return;
+      const owner = String(document.getElementById('dealOwner')?.value || deal?.username || currentUser || '').toLowerCase();
+      const existingPartners = dealPartnerRecords(deal);
+      const selected = new Set(existingPartners.filter(partner => partner.status !== 'rejected').map(partner => String(partner.username || '').toLowerCase()));
+      const owners = wikiUsers.length ? wikiUsers : [{ username: currentUser, fullName: currentUser }];
+      select.innerHTML = owners
+        .filter(user => String(user.username || '').toLowerCase() !== owner)
+        .map(user => {
+          const username = String(user.username || '').toLowerCase();
+          const partner = existingPartners.find(item => String(item.username || '').toLowerCase() === username);
+          const label = `${user.fullName || user.username} (${user.username})${partner?.status ? ' - ' + partner.status : ''}`;
+          return `<option value="${escapeHtml(username)}" data-name="${escapeHtml(user.fullName || user.username)}" ${selected.has(username) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+        }).join('');
+    }
+
     function openAddDealModal() {
       populateCustomerDropdowns();
       populateDealOwnerSelect(currentUser);
@@ -3139,6 +3201,7 @@
       document.getElementById('customLossReasonText').value = '';
       document.getElementById('lossReasonGroup').classList.remove('visible');
       document.getElementById('customLossReasonGroup').classList.remove('visible');
+      populateDealPartnersSelect(null);
       toggleDealStageDateFields('Lead');
       updateDealGrossMarginPercent();
       openModal('addDealModal');
@@ -3170,6 +3233,7 @@
       document.getElementById('customLossReasonText').value = deal.customLossReason || '';
       document.getElementById('lossReasonGroup').classList.toggle('visible', deal.stage === 'Lost');
       document.getElementById('customLossReasonGroup').classList.toggle('visible', deal.stage === 'Lost' && deal.lossReason === 'Other');
+      populateDealPartnersSelect(deal);
       toggleDealStageDateFields(deal.stage || 'Lead');
       updateDealGrossMarginPercent();
       openModal('addDealModal');
@@ -3239,6 +3303,11 @@
     
     // Handle loss reason visibility
     document.addEventListener('change', function(e) {
+      if (e.target.id === 'dealOwner') {
+        const editId = document.getElementById('dealEditId')?.value;
+        populateDealPartnersSelect(editId ? dealData[editId] : null);
+      }
+
       if (e.target.id === 'dealStage') {
         const lossGroup = document.getElementById('lossReasonGroup');
         toggleDealStageDateFields(e.target.value);
@@ -3287,13 +3356,16 @@
       const notes = document.getElementById('dealNotes').value.trim();
       const isUpdesh = String(currentUser || '').toLowerCase() === 'updesh';
       const owner = isUpdesh ? (document.getElementById('dealOwner')?.value || existingDeal?.username || currentUser) : (existingDeal?.username || currentUser);
+      const partnerOptions = Array.from(document.getElementById('dealPartners')?.selectedOptions || []);
+      const selectedPartnerUsernames = [...new Set(partnerOptions.map(option => String(option.value || '').toLowerCase()).filter(value => value && value !== String(owner).toLowerCase()))];
+      const selectedPartnerNames = new Map(partnerOptions.map(option => [String(option.value || '').toLowerCase(), option.dataset.name || option.textContent || option.value]));
       
       if (!title || !customerId || !value) {
         showToast('Please fill required fields', 'error');
         return;
       }
-      if (grossMarginAmount < 0 || grossMarginAmount > value) {
-        showToast('Gross Margin amount must be between zero and the Deal Value', 'error');
+      if (grossMarginAmount > value) {
+        showToast('Gross Margin amount cannot be greater than the Deal Value', 'error');
         return;
       }
       if ((stage === 'Order' || stage === 'Billed') && !orderDate) {
@@ -3306,6 +3378,24 @@
       }
       
       try {
+        const existingPartners = dealPartnerRecords(existingDeal);
+        const dealPartners = selectedPartnerUsernames.map(username => {
+          const existingPartner = existingPartners.find(partner => String(partner.username || '').toLowerCase() === username);
+          return {
+            username,
+            name: selectedPartnerNames.get(username) || existingPartner?.name || username,
+            status: existingPartner?.status === 'accepted' ? 'accepted' : 'pending',
+            invitedAt: existingPartner?.invitedAt || new Date(),
+            invitedBy: existingPartner?.invitedBy || currentUser,
+            respondedAt: existingPartner?.respondedAt || null
+          };
+        });
+        const dealPartnerUsernames = dealPartners
+          .filter(partner => partner.status !== 'rejected')
+          .map(partner => partner.username);
+        const newlyInvitedPartners = dealPartners
+          .filter(partner => partner.status === 'pending' && !existingPartners.some(existingPartner => String(existingPartner.username || '').toLowerCase() === partner.username && existingPartner.status === 'pending'));
+
         const dealObj = {
           title, customerId, value, grossMarginAmount,
           grossMarginPercent: value ? Number((grossMarginAmount / value * 100).toFixed(2)) : 0,
@@ -3313,6 +3403,8 @@
           orderDate: orderDate || existingDeal?.orderDate || null,
           billingDate: billingDate || existingDeal?.billingDate || null,
           username: owner,
+          dealPartners,
+          dealPartnerUsernames,
           updatedAt: new Date()
         };
         
@@ -3339,6 +3431,7 @@
           dealObj.customLossReason = null;
         }
 
+        let savedDealId = editId;
         if (editId) {
           await db.collection(CRM_DEALS).doc(editId).update(dealObj);
           dealData[editId] = { ...existingDeal, ...dealObj, id: editId };
@@ -3346,8 +3439,15 @@
           const dealRef = db.collection(CRM_DEALS).doc();
           dealObj.createdAt = new Date();
           await dealRef.set(dealObj);
+          savedDealId = dealRef.id;
           dealData[dealRef.id] = { id: dealRef.id, ...dealObj };
         }
+        await Promise.all(newlyInvitedPartners.map(partner => createCrmNotification({
+          recipientUsername: partner.username,
+          type: 'deal_partner_invite',
+          dealId: savedDealId,
+          message: `${currentUser} invited you as a partner on deal "${title}". Revenue and gross margin will be shared equally after acceptance.`
+        })));
         
         populateCustomerDropdowns();
         closeModal('addDealModal');
@@ -3364,7 +3464,7 @@
       const container = document.getElementById('dealsContainer');
       const search = document.getElementById('dealsSearchInput')?.value || '';
       const groupBy = document.getElementById('dealsGroupBySelect')?.value || 'stage';
-      const scopedDeals = Object.values(dealData).filter(deal => isLeadReviewer() || deal.username === currentUser);
+      const scopedDeals = Object.values(dealData).filter(deal => isLeadReviewer() || dealParticipantUsernames(deal, true).includes(String(currentUser || '').toLowerCase()));
       const deals = scopedDeals.filter(deal => {
         const customer = customerData[deal.customerId];
         return crmTextMatch([
@@ -3419,6 +3519,7 @@
           .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
         const total = stat.total;
         const gmTotal = stat.gmTotal;
+        const gmPercent = total ? (gmTotal / total * 100) : 0;
         const width = Math.max(4, Math.round((total / maxTotal) * 100));
         html += `<section class="deals-column">
           <div class="deals-column-header">
@@ -3427,7 +3528,7 @@
               <button type="button" onclick="setDealColumnSort('count','number')" style="all:unset;cursor:pointer">${groupDeals.length}${sortArrow(dealColumnSortState, 'count')}</button>
             </div>
             <div class="deals-column-total">₹${formatCurrency(total)}</div>
-            <div class="deals-column-meta"><span>Gross Margin</span><span>₹${formatCurrency(gmTotal)}</span></div>
+            <div class="deals-column-meta"><span>Gross Margin</span><span>₹${formatCurrency(gmTotal)} (${gmPercent.toFixed(2)}%)</span></div>
             <div class="deals-column-meta" style="margin-top:4px">
               <button type="button" onclick="setDealColumnSort('total','number')" style="all:unset;cursor:pointer;color:#2E7D32;font-weight:800">Sort Value${sortArrow(dealColumnSortState, 'total')}</button>
               <button type="button" onclick="setDealColumnSort('gmTotal','number')" style="all:unset;cursor:pointer;color:#006994;font-weight:800">Sort GM${sortArrow(dealColumnSortState, 'gmTotal')}</button>
@@ -3438,6 +3539,9 @@
         groupDeals.forEach(d => {
           const customer = customerData[d.customerId];
           const salesIncentive = salesIncentiveForDeal(d);
+          const acceptedPartners = acceptedDealPartners(d);
+          const pendingPartners = pendingDealPartners(d);
+          const shareCount = dealParticipantUsernames(d, false).length;
           let stageClass = '';
           if (d.stage === 'Lost') stageClass = 'lost';
           else if (d.stage === 'Billed') stageClass = 'won';
@@ -3450,6 +3554,7 @@
               <span class="deal-stage ${stageClass}">${escapeHtml(d.stage || 'Lead')}</span>
             </div>
             <div style="font-size:10.5px;color:var(--t2);margin-top:6px">Probability: ${Number(d.probability || 0)}%${d.closeDate ? ` · Close: ${formatDate(d.closeDate)}` : ''}</div>
+            ${(acceptedPartners.length || pendingPartners.length) ? `<div style="font-size:10px;color:#006994;margin-top:5px"><b>Partners:</b> ${acceptedPartners.map(p => escapeHtml(p.name || p.username)).join(', ') || 'None accepted'}${pendingPartners.length ? ` · Pending: ${pendingPartners.map(p => escapeHtml(p.name || p.username)).join(', ')}` : ''}${shareCount > 1 ? ` · Share each: ${(100 / shareCount).toFixed(0)}%` : ''}</div>` : ''}
             ${d.orderDate ? `<div style="font-size:10.5px;color:#1565C0;font-weight:700;margin-top:3px">Order: ${formatDate(d.orderDate)}</div>` : ''}
             ${d.billingDate ? `<div style="font-size:10.5px;color:#2E7D32;font-weight:700;margin-top:3px">Billed: ${formatDate(d.billingDate)}</div>` : ''}
             <div class="deal-kanban-gm" style="color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'}">GM ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
@@ -3643,15 +3748,17 @@
 
     function targetActualsByQuarter(year) {
       const actuals = { q1:{booking:0,billing:0,grossMargin:0}, q2:{booking:0,billing:0,grossMargin:0}, q3:{booking:0,billing:0,grossMargin:0}, q4:{booking:0,billing:0,grossMargin:0} };
-      Object.values(dealData).filter(deal => deal.username === currentUser).forEach(deal => {
+      Object.values(dealData).forEach(deal => {
+        const share = dealShareForUser(deal, currentUser);
+        if (share <= 0) return;
         const orderDate = toDateObject(deal.orderDate);
         if (orderDate && orderDate.getFullYear() === year && ['Order','Billed'].includes(deal.stage)) {
           const quarter = actuals[`q${getQuarter(orderDate)}`];
-          quarter.booking += Number(deal.value || 0);
-          quarter.grossMargin += Number(deal.grossMarginAmount || 0);
+          quarter.booking += Number(deal.value || 0) * share;
+          quarter.grossMargin += Number(deal.grossMarginAmount || 0) * share;
         }
         const billingDate = toDateObject(deal.billingDate);
-        if (billingDate && billingDate.getFullYear() === year && deal.stage === 'Billed') actuals[`q${getQuarter(billingDate)}`].billing += Number(deal.value || 0);
+        if (billingDate && billingDate.getFullYear() === year && deal.stage === 'Billed') actuals[`q${getQuarter(billingDate)}`].billing += Number(deal.value || 0) * share;
       });
       return actuals;
     }
@@ -3693,9 +3800,10 @@
       container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
 
-    function targetProgressCell(actual, target, accent = 'var(--p)') {
+    function targetProgressCell(actual, target, accent = 'var(--p)', label = '') {
       const pct = pctOf(actual, target);
       return `<div style="min-width:170px">
+        ${label ? `<div style="font-size:10px;color:var(--t2);font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${escapeHtml(label)}</div>` : ''}
         <div style="display:grid;grid-template-columns:82px 82px 46px;gap:8px;align-items:center;font-size:11px">
           <b style="color:var(--t1)">₹${Math.round(actual).toLocaleString('en-IN')}</b>
           <span style="color:var(--t2)">₹${Math.round(target).toLocaleString('en-IN')}</span>
@@ -3727,16 +3835,17 @@
     function salesPlanQuarterActuals(owner = null, quarterKey, plan = activeSalesIncentivePlan()) {
       const actual = emptySalesActuals();
       Object.values(dealData).forEach(deal => {
-        if (owner && String(deal.username || '').toLowerCase() !== String(owner).toLowerCase()) return;
+        const share = owner ? dealShareForUser(deal, owner) : 1;
+        if (owner && share <= 0) return;
         const orderDate = toDateObject(deal.orderDate);
         if (orderDate && inPlanDate(orderDate, plan) && fyQuarterKey(orderDate) === quarterKey && ['Order','Billed'].includes(deal.stage)) {
-          actual.sales += Number(deal.value || 0);
-          actual.grossProfit += Number(deal.grossMarginAmount || 0);
+          actual.sales += Number(deal.value || 0) * share;
+          actual.grossProfit += Number(deal.grossMarginAmount || 0) * share;
           actual.deals++;
         }
         const billingDate = toDateObject(deal.billingDate);
         if (billingDate && inPlanDate(billingDate, plan) && fyQuarterKey(billingDate) === quarterKey && deal.stage === 'Billed') {
-          actual.billing += Number(deal.value || 0);
+          actual.billing += Number(deal.value || 0) * share;
         }
       });
       return actual;
@@ -4240,6 +4349,10 @@
       const notification = notificationData[id];
       if (!notification) return;
       const activity = activityData[notification.activityId];
+      if (notification.type === 'deal_partner_invite') {
+        showToast('Please accept or reject the deal partner invite', 'warning');
+        return;
+      }
       if (notification.type === 'next_activity_plan' && isSupportingHand(activity) && (activity?.planResponseStatus || 'pending') === 'pending') {
         showToast('Please accept the plan or propose a new date', 'warning');
         return;
@@ -4247,6 +4360,47 @@
       await db.collection(CRM_NOTIFICATIONS).doc(id).update({ read: true, readAt: new Date() });
       notification.read = true;
       renderTaskCenter();
+    }
+
+    async function respondDealPartnerInvite(dealId, notificationId, decision) {
+      const deal = dealData[dealId];
+      if (!deal) return showToast('Deal unavailable. Please refresh CRM and try again.', 'error');
+      const status = decision === 'accepted' ? 'accepted' : 'rejected';
+      const partners = dealPartnerRecords(deal).map(partner => {
+        if (String(partner.username || '').toLowerCase() !== String(currentUser || '').toLowerCase()) return partner;
+        return { ...partner, status, respondedAt: new Date(), respondedBy: currentUser };
+      });
+      if (!partners.some(partner => String(partner.username || '').toLowerCase() === String(currentUser || '').toLowerCase())) {
+        partners.push({ username: currentUser, name: currentUserName(), status, invitedAt: new Date(), respondedAt: new Date(), respondedBy: currentUser });
+      }
+      const partnerUsernames = partners.filter(partner => partner.status !== 'rejected').map(partner => String(partner.username || '').toLowerCase()).filter(Boolean);
+      try {
+        await db.collection(CRM_DEALS).doc(dealId).update({
+          dealPartners: partners,
+          dealPartnerUsernames: [...new Set(partnerUsernames)],
+          updatedAt: new Date()
+        });
+        Object.assign(deal, { dealPartners: partners, dealPartnerUsernames: [...new Set(partnerUsernames)], updatedAt: new Date() });
+        if (notificationId && notificationData[notificationId]) {
+          await db.collection(CRM_NOTIFICATIONS).doc(notificationId).update({ read: true, readAt: new Date(), decision: status });
+          notificationData[notificationId].read = true;
+          notificationData[notificationId].decision = status;
+        }
+        if (deal.username) {
+          await createCrmNotification({
+            recipientUsername: deal.username,
+            type: `deal_partner_${status}`,
+            dealId,
+            message: `${currentUserName()} ${status === 'accepted' ? 'accepted' : 'rejected'} partner invite for deal "${deal.title || 'Untitled Deal'}".`
+          });
+        }
+        renderDeals();
+        renderTargets();
+        renderTaskCenter();
+        showToast(`Deal partner invite ${status}`, status === 'accepted' ? 'success' : 'warning');
+      } catch (error) {
+        showToast('Could not update partner invite: ' + error.message, 'error');
+      }
     }
 
     async function markActivityNotificationsRead(activityId) {
@@ -4447,19 +4601,25 @@
       let html = '<div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;padding:12px"><div style="font-weight:700;margin-bottom:10px">🔔 Task Notifications</div>';
       unread.forEach(item => {
         const activity = activityData[item.activityId];
-        const deal = activity ? dealData[activity.dealId] : null;
-        const customer = activity ? customerData[getActivityAccountId(activity)] : null;
+        const deal = activity ? dealData[activity.dealId] : (item.dealId ? dealData[item.dealId] : null);
+        const customer = activity ? customerData[getActivityAccountId(activity)] : (deal ? customerData[deal.customerId] : null);
         const requiresAction = item.type === 'next_activity_plan' && isSupportingHand(activity) && (activity?.planResponseStatus || 'pending') === 'pending';
         const isPlanNotification = item.type === 'next_activity_plan' && !!activity;
+        const isPartnerInvite = item.type === 'deal_partner_invite' && !!deal;
         const notificationPalette = {
           next_activity_plan: ['#1565C0','#EAF3FF'], next_activity_date_proposed: ['#EF6C00','#FFF3E0'],
           proposal_escalated: ['#6A1B9A','#F3E5F5'], proposal_final_decision: ['#2E7D32','#E8F5E9'],
           salesperson_approved_proposal: ['#00838F','#E0F7FA'], next_activity_accepted: ['#2E7D32','#E8F5E9'],
-          activity_completed: ['#2E7D32','#E8F5E9']
+          activity_completed: ['#2E7D32','#E8F5E9'], deal_partner_invite: ['#006994','#E3F2FD'],
+          deal_partner_accepted: ['#2E7D32','#E8F5E9'], deal_partner_rejected: ['#B71C1C','#FFEBEE']
         };
         const palette = notificationPalette[item.type] || ['#B71C1C','#FFF8F8'];
         html += `<div style="background:${palette[1]};border:1px solid ${palette[0]}55;border-radius:7px;padding:12px;margin-bottom:8px;border-left:5px solid ${palette[0]}">
           ${requiresAction ? '<div style="font-size:11px;font-weight:800;color:#B71C1C;margin-bottom:8px">ACTION REQUIRED — Accept the plan or propose a new date</div>' : ''}
+          ${isPartnerInvite ? `<div style="font-size:11px;font-weight:800;color:#006994;margin-bottom:8px">DEAL PARTNER INVITE</div>
+            <div style="font-size:13px;font-weight:800;color:#006994;margin-bottom:5px">${escapeHtml(deal.title || 'Untitled Deal')}</div>
+            <div style="font-size:11px;color:var(--t2);line-height:1.6">Contact: <b>${escapeHtml(customer?.name || '—')}</b> · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b><br>${escapeHtml(item.message || '')}</div>
+            <div style="display:flex;gap:7px;margin-top:10px"><button class="btn sm primary" onclick="respondDealPartnerInvite('${deal.id}','${item.id}','accepted')">Accept Partner Invite</button><button class="btn sm" onclick="respondDealPartnerInvite('${deal.id}','${item.id}','rejected')">Reject</button></div>` : ''}
           ${isPlanNotification ? `
             <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || customer?.name || 'CRM Activity')}</div>
             <div style="font-size:10.5px;color:var(--t2);line-height:1.6">
@@ -4470,8 +4630,8 @@
             <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
               <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN · ${escapeHtml(activity.nextActivityType || 'Activity')} · ${formatDate(activity.nextActivityDate)}</div>
               <div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
-            </div>` : `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>`}
-          ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>`}
+            </div>` : (!isPartnerInvite ? `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>` : '')}
+          ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : (!isPartnerInvite ? `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>` : '')}
         </div>`;
       });
       approvals.forEach(activity => {
@@ -4490,7 +4650,7 @@
       const container = document.getElementById('activityDealsContainer');
       if (!container) return;
       if (!container) return;
-      const ownDeals = Object.values(dealData).filter(deal => deal.username === currentUser);
+      const ownDeals = Object.values(dealData).filter(deal => dealParticipantUsernames(deal, false).includes(String(currentUser || '').toLowerCase()));
       if (!ownDeals.length) {
         container.innerHTML = '<div style="font-size:12px;color:var(--t2)">No deals available for activity logging.</div>';
         return;
@@ -4754,9 +4914,12 @@
         }).length;
       document.getElementById('statActivitiesMonth').textContent = recentActivities;
       
-      const wonValue = Object.values(dealData)
+      const companyFyActual = salesPlanActuals(null);
+      const wonValue = companyFyActual.billing;
+      const allBilledValue = Object.values(dealData)
         .filter(d => d.stage === 'Billed')
-        .reduce((sum, d) => sum + d.value, 0);
+        .reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const billedOutsideFyValue = Math.max(0, allBilledValue - wonValue);
       document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
       renderIndividualSalesIncentiveStatus();
       
@@ -4828,6 +4991,9 @@
       const keyAccountsDue = Object.values(customerData).filter(account => account.isKeyAccount === true && keyAccountContactStatus(account).state === 'overdue');
       if (keyAccountsDue.length) {
         alerts += `<div class="alert danger"><i class="ti ti-building"></i><strong>KAM Alert:</strong> ${keyAccountsDue.length} Key Account(s) have had no recorded Meeting or Call for more than 30 days. Open KAM to review.</div>`;
+      }
+      if (billedOutsideFyValue > 0) {
+        alerts += `<div class="alert warning"><i class="ti ti-receipt"></i><strong>Billing date check:</strong> ₹${Number(billedOutsideFyValue).toLocaleString('en-IN')} of Billed-stage value is excluded from FY26-27 Won/Billing because billing date is missing or outside 01-04-2026 to 31-03-2027.</div>`;
       }
       if (canViewTenderManagement()) {
         const openTenders = Object.values(tenderData).filter(tenderIsOpen);
