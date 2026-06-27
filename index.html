@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.26.4 - Tender Management restored with latest Deals pipeline retained -->
+<!-- DQAP CRM 2026.06.27.3 - Date display standardized to dd-mm-yyyy -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -827,7 +827,7 @@
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px">
-          <input id="contactsSearchInput" type="search" placeholder="Search contacts by company, person, email, phone, owner..." oninput="renderCustomers()" style="width:min(420px,100%);padding:9px 11px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;font-size:13px;background:#fff">
+          <input id="contactsSearchInput" type="search" placeholder="Search contacts by company, person, email, phone..." oninput="renderCustomers()" style="width:min(420px,100%);padding:9px 11px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;font-size:13px;background:#fff">
           <span id="contactsSearchCount" style="font-size:11px;color:var(--t2)"></span>
         </div>
         <div id="customersContainer"></div>
@@ -1404,6 +1404,8 @@
     let pipelineChart = null;
     let currentCalendarDate = new Date();
     let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
+    let contactSortState = { key: 'name', type: 'text', dir: 'asc' };
+    let dealColumnSortState = { key: '', type: 'text', dir: 'asc' };
     
     const CRM_CUSTOMERS = 'dqap_crm_customers';
     const CRM_DEALS = 'dqap_crm_deals';
@@ -1459,7 +1461,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260626.4';
+    const CRM_BUILD = '20260627.3';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -1737,18 +1739,16 @@
           console.warn('Tender collection is unavailable; the rest of CRM will continue:', tenderLoadError);
         }
 
-        // Lead reviewers need company-wide oversight so converted Contacts/Deals remain visible
-        // even when a different salesperson is selected as owner.
-        const customersSnap = isLeadReviewer()
-          ? await db.collection(CRM_CUSTOMERS).get()
-          : await db.collection(CRM_CUSTOMERS).where('username', '==', currentUser).get();
+        // Contacts are company-wide master data. They are no longer mapped to
+        // an owner during manual addition or CSV import.
+        const customersSnap = await db.collection(CRM_CUSTOMERS).get();
         customersSnap.forEach(doc => {
           customerData[doc.id] = { id: doc.id, ...doc.data() };
         });
         // KAM is company-wide: merge every contact marked as a Key Account for every user.
         const keyAccountsSnap = await db.collection(CRM_CUSTOMERS).where('isKeyAccount', '==', true).get();
         keyAccountsSnap.forEach(doc => { customerData[doc.id] = { id: doc.id, ...doc.data() }; });
-        console.log(`Loaded ${customersSnap.size} customers for ${isLeadReviewer() ? 'sales oversight' : currentUser}`);
+        console.log(`Loaded ${customersSnap.size} company-wide contacts`);
         
         const dealsSnap = isLeadReviewer()
           ? await db.collection(CRM_DEALS).get()
@@ -1847,7 +1847,7 @@
       },
       deals: {
         title: 'Import Deals CSV',
-        csv: 'Deal Title,Contact Company,Deal Value,Stage,Probability,Expected Close Date,Notes\nPlant Automation,ABC Industries,500000,Prospect,50,2026-07-31,Initial discussion complete'
+        csv: 'Deal Title,Contact Company,Deal Value,Stage,Probability,Expected Close Date,Notes\nPlant Automation,ABC Industries,500000,Prospect,50,31-07-2026,Initial discussion complete'
       }
     };
 
@@ -1912,6 +1912,16 @@
       return String(value || '').trim().replace(/[<>]/g, '');
     }
 
+    function normalizeDateForStorage(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      const dmy = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+      const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (ymd) return raw;
+      return '';
+    }
+
     function csvRecord(headers, row) {
       const record = {};
       headers.forEach((header, index) => {
@@ -1974,7 +1984,6 @@
               industry: record.industry || '',
               isKeyAccount: false,
               notes: record.notes || '',
-              username: currentUser,
               createdAt: new Date(),
               updatedAt: new Date()
             };
@@ -1996,8 +2005,8 @@
             const value = Number(String(record.dealvalue || record.value || '').replace(/[^0-9.]/g, ''));
             const stage = record.stage || 'Lead';
             const probability = Number(record.probability || 0);
-            const closeDate = record.expectedclosedate || record.closedate || '';
-            if (!title || !customer || !(value > 0) || !validStages.has(stage) || probability < 0 || probability > 100 || (closeDate && !/^\d{4}-\d{2}-\d{2}$/.test(closeDate))) {
+            const closeDate = normalizeDateForStorage(record.expectedclosedate || record.closedate || '');
+            if (!title || !customer || !(value > 0) || !validStages.has(stage) || probability < 0 || probability > 100 || ((record.expectedclosedate || record.closedate) && !closeDate)) {
               skipped++;
               continue;
             }
@@ -2555,9 +2564,8 @@
     function populateCustomerOwnerSelect(selectedUsername = currentUser) {
       const group = document.getElementById('customerOwnerGroup');
       const select = document.getElementById('customerOwner');
-      const isUpdesh = String(currentUser || '').toLowerCase() === 'updesh';
       if (!group || !select) return;
-      group.style.display = isUpdesh ? 'block' : 'none';
+      group.style.display = 'none';
       const owners = wikiUsers.length ? wikiUsers : [{ username: currentUser, fullName: currentUser }];
       select.innerHTML = owners.map(user => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.fullName || user.username)} (${escapeHtml(user.username)})</option>`).join('');
       select.value = selectedUsername || currentUser;
@@ -2574,7 +2582,7 @@
       document.getElementById('customerPhone').value = '';
       document.getElementById('customerIndustry').value = '';
       document.getElementById('customerNotes').value = '';
-      populateCustomerOwnerSelect(currentUser);
+      populateCustomerOwnerSelect('');
       openModal('addCustomerModal');
     }
 
@@ -2615,8 +2623,6 @@
         showToast('You do not have permission to edit this contact', 'error');
         return;
       }
-      const isUpdesh = String(currentUser || '').toLowerCase() === 'updesh';
-      const owner = isUpdesh ? (document.getElementById('customerOwner').value || currentUser) : (existing?.username || currentUser);
       
       if (!name) {
         showToast('Please enter company name', 'error');
@@ -2635,7 +2641,8 @@
       
       try {
         if (editId) {
-          const update = { name, contact, email, phone, industry, notes, username: owner, updatedAt: new Date() };
+          const update = { name, contact, email, phone, industry, notes, updatedAt: new Date() };
+          if (existing?.username) update.username = existing.username;
           await db.collection(CRM_CUSTOMERS).doc(editId).update(update);
           Object.assign(customerData[editId], update);
           populateCustomerDropdowns();
@@ -2647,13 +2654,12 @@
         const custRef = db.collection(CRM_CUSTOMERS).doc();
         await custRef.set({
           name, contact, email, phone, industry, notes, isKeyAccount: false,
-          username: owner,
           createdAt: new Date(),
           updatedAt: new Date()
         });
         
         customerData[custRef.id] = {
-          id: custRef.id, name, contact, email, phone, industry, notes, isKeyAccount: false, username: owner, createdAt: new Date()
+          id: custRef.id, name, contact, email, phone, industry, notes, isKeyAccount: false, createdAt: new Date()
         };
         
         populateCustomerDropdowns();
@@ -2696,7 +2702,7 @@
       const opts = Object.values(customerData)
         .map(c => `<option value="${c.id}">${c.name}</option>`)
         .join('');
-      const dealOpts = Object.values(customerData).filter(customer => isLeadReviewer() || customer.username === currentUser)
+      const dealOpts = Object.values(customerData)
         .map(customer => `<option value="${customer.id}">${customer.name}</option>`).join('');
       document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + dealOpts;
       document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
@@ -2752,14 +2758,70 @@
       return parts.map(value => String(value || '').toLowerCase()).join(' ').includes(q);
     }
 
+    function normalizeSortValue(value, type = 'text') {
+      if (type === 'number') {
+        const cleaned = String(value ?? '').replace(/[^0-9.-]/g, '');
+        const numeric = Number(cleaned);
+        return Number.isFinite(numeric) ? numeric : 0;
+      }
+      if (type === 'boolean') return value ? 1 : 0;
+      return String(value ?? '').trim().toLowerCase();
+    }
+
+    function compareSortValues(a, b, type = 'text', dir = 'asc') {
+      const av = normalizeSortValue(a, type);
+      const bv = normalizeSortValue(b, type);
+      let result = 0;
+      if (type === 'text') result = String(av).localeCompare(String(bv));
+      else result = av === bv ? 0 : av > bv ? 1 : -1;
+      return dir === 'desc' ? -result : result;
+    }
+
+    function toggleSortState(state, key, type = 'text') {
+      if (state.key === key) state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+      else {
+        state.key = key;
+        state.type = type;
+        state.dir = type === 'number' || type === 'boolean' ? 'desc' : 'asc';
+      }
+      state.type = type;
+    }
+
+    function sortArrow(state, key) {
+      if (state.key !== key) return '<span style="opacity:.35;margin-left:4px">↕</span>';
+      return `<span style="margin-left:4px;color:var(--p)">${state.dir === 'asc' ? '▲' : '▼'}</span>`;
+    }
+
+    function sortableHeader(label, key, type = 'text', align = 'left') {
+      return `<th style="text-align:${align};padding:12px"><button type="button" onclick="setContactSort('${key}','${type}')" style="all:unset;cursor:pointer;font-weight:800;color:inherit">${label}${sortArrow(contactSortState, key)}</button></th>`;
+    }
+
+    function setContactSort(key, type = 'text') {
+      toggleSortState(contactSortState, key, type);
+      renderCustomers();
+    }
+
+    function setDealColumnSort(key, type = 'text') {
+      toggleSortState(dealColumnSortState, key, type);
+      renderDeals();
+    }
+
     function renderCustomers() {
       const container = document.getElementById('customersContainer');
       const search = document.getElementById('contactsSearchInput')?.value || '';
-      const scopedCusts = Object.values(customerData).filter(customer => isLeadReviewer() || customer.username === currentUser);
+      const scopedCusts = Object.values(customerData);
       const custs = scopedCusts.filter(customer => crmTextMatch([
-        customer.name, customer.contact, customer.email, customer.phone, customer.industry, customer.notes, customer.username,
+        customer.name, customer.contact, customer.email, customer.phone, customer.industry, customer.notes,
         customer.isKeyAccount ? 'key account kam' : ''
-      ], search));
+      ], search)).sort((a, b) => {
+        const key = contactSortState.key;
+        const valueFor = customer => {
+          if (key === 'keyAccount') return customer.isKeyAccount;
+          return customer[key] ?? '';
+        };
+        return compareSortValues(valueFor(a), valueFor(b), contactSortState.type, contactSortState.dir)
+          || compareSortValues(a.name, b.name, 'text', 'asc');
+      });
       const countEl = document.getElementById('contactsSearchCount');
       if (countEl) countEl.textContent = search.trim() ? `${custs.length} of ${scopedCusts.length} contacts` : `${scopedCusts.length} contacts`;
       
@@ -2773,11 +2835,11 @@
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += '<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Email</th><th style="text-align:left;padding:12px">Phone</th><th style="text-align:left;padding:12px">Industry</th><th style="text-align:center;padding:12px">Key Account</th><th style="text-align:left;padding:12px">Activities</th><th style="text-align:left;padding:12px">Actions</th></tr>';
+      html += `<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)">${sortableHeader('Company', 'name')}${sortableHeader('Contact', 'contact')}${sortableHeader('Email', 'email')}${sortableHeader('Phone', 'phone', 'number')}${sortableHeader('Industry', 'industry')}${sortableHeader('Key Account', 'keyAccount', 'boolean', 'center')}<th style="text-align:left;padding:12px">Activities</th><th style="text-align:left;padding:12px">Actions</th></tr>`;
       
       custs.forEach(c => {
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
-          <td style="padding: 12px; font-weight: 500;">${c.name}${isLeadReviewer() ? `<div style="font-size:9.5px;color:var(--t2);font-weight:500">Owner: ${escapeHtml(c.username || '—')}${c.sourceLeadId ? ' · Converted Lead' : ''}</div>` : ''}</td>
+          <td style="padding: 12px; font-weight: 500;">${c.name}${c.sourceLeadId ? `<div style="font-size:9.5px;color:var(--t2);font-weight:500">Converted Lead</div>` : ''}</td>
           <td style="padding: 12px;">${c.contact || '—'}</td>
           <td style="padding:12px">${c.email || '—'}</td>
           <td style="padding:12px">${c.phone || '—'}</td>
@@ -2805,7 +2867,7 @@
         const status = keyAccountContactStatus(account);
         const overdue = status.state === 'overdue';
         rows += `<tr style="border-bottom:.5px solid var(--bd);${overdue ? 'background:#FFEBEE' : ''}">
-          <td style="padding:12px;font-weight:700">${escapeHtml(account.name)}<div style="font-size:9.5px;color:var(--t2);font-weight:500">Owner: ${escapeHtml(account.username || '—')}</div></td>
+          <td style="padding:12px;font-weight:700">${escapeHtml(account.name)}</td>
           <td style="padding:12px">${escapeHtml(account.contact || '—')}</td>
           <td style="padding:12px">${status.lastAddressed ? formatDate(status.lastAddressed) : 'Never'}</td>
           <td style="padding:12px;color:${overdue ? 'var(--danger)' : 'var(--success)'};font-weight:800">${escapeHtml(status.label)}</td>
@@ -3330,20 +3392,46 @@
       const maxTotal = Math.max(...groups.map(group => deals
         .filter(deal => groupBy === 'salesperson' ? (deal.username || 'Unassigned') === group : (deal.stage || 'Lead') === group)
         .reduce((sum, deal) => sum + Number(deal.value || 0), 0)), 1);
+      const groupStats = groups.map(group => {
+        const groupDeals = deals.filter(deal => groupBy === 'salesperson' ? (deal.username || 'Unassigned') === group : (deal.stage || 'Lead') === group);
+        return {
+          group,
+          deals: groupDeals,
+          count: groupDeals.length,
+          total: groupDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0),
+          gmTotal: groupDeals.reduce((sum, deal) => sum + Number(deal.grossMarginAmount || 0), 0)
+        };
+      });
+      if (dealColumnSortState.key) {
+        groupStats.sort((a, b) => {
+          const key = dealColumnSortState.key;
+          const av = key === 'group' ? a.group : a[key];
+          const bv = key === 'group' ? b.group : b[key];
+          return compareSortValues(av, bv, dealColumnSortState.type, dealColumnSortState.dir)
+            || compareSortValues(a.group, b.group, 'text', 'asc');
+        });
+      }
 
       let html = '<div class="deals-board">';
-      groups.forEach(group => {
-        const groupDeals = deals
-          .filter(deal => groupBy === 'salesperson' ? (deal.username || 'Unassigned') === group : (deal.stage || 'Lead') === group)
+      groupStats.forEach(stat => {
+        const group = stat.group;
+        const groupDeals = stat.deals
           .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
-        const total = groupDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
-        const gmTotal = groupDeals.reduce((sum, deal) => sum + Number(deal.grossMarginAmount || 0), 0);
+        const total = stat.total;
+        const gmTotal = stat.gmTotal;
         const width = Math.max(4, Math.round((total / maxTotal) * 100));
         html += `<section class="deals-column">
           <div class="deals-column-header">
-            <div class="deals-column-title"><span>${escapeHtml(group)}</span><span>${groupDeals.length}</span></div>
+            <div class="deals-column-title">
+              <button type="button" onclick="setDealColumnSort('group','text')" style="all:unset;cursor:pointer">${escapeHtml(group)}${sortArrow(dealColumnSortState, 'group')}</button>
+              <button type="button" onclick="setDealColumnSort('count','number')" style="all:unset;cursor:pointer">${groupDeals.length}${sortArrow(dealColumnSortState, 'count')}</button>
+            </div>
             <div class="deals-column-total">₹${formatCurrency(total)}</div>
             <div class="deals-column-meta"><span>Gross Margin</span><span>₹${formatCurrency(gmTotal)}</span></div>
+            <div class="deals-column-meta" style="margin-top:4px">
+              <button type="button" onclick="setDealColumnSort('total','number')" style="all:unset;cursor:pointer;color:#2E7D32;font-weight:800">Sort Value${sortArrow(dealColumnSortState, 'total')}</button>
+              <button type="button" onclick="setDealColumnSort('gmTotal','number')" style="all:unset;cursor:pointer;color:#006994;font-weight:800">Sort GM${sortArrow(dealColumnSortState, 'gmTotal')}</button>
+            </div>
             <div class="deals-total-bar"><div class="deals-total-fill" style="width:${width}%"></div></div>
           </div>
           <div class="deals-column-body">`;
@@ -3459,7 +3547,7 @@
     function showDayDetails(dateStr) {
       const dayActivities = calendarMeetingsForDate(dateStr);
       const date = new Date(dateStr);
-      const dayName = date.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const dayName = `${date.toLocaleDateString('en-IN', { weekday: 'long' })}, ${formatDate(dateStr)}`;
       
       let html = `<div style="background: var(--pl); border-left: 3px solid var(--p); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
         <strong style="color: var(--p);">📅 ${dayName}</strong> – ${dayActivities.length} meeting(s)
@@ -3951,6 +4039,10 @@
         date = value.toDate();
       } else if (Number.isFinite(value.seconds)) {
         date = new Date((value.seconds * 1000) + Math.floor((value.nanoseconds || 0) / 1000000));
+      } else if (typeof value === 'string') {
+        const dmy = value.trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (dmy) date = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+        else date = new Date(value);
       } else {
         date = new Date(value);
       }
@@ -4877,7 +4969,7 @@
     function formatDate(dateStr) {
       const d = toDateObject(dateStr);
       if (!d) return '—';
-      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
