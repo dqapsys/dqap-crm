@@ -1470,6 +1470,7 @@
     let wikiSession = null;
     let authInitialized = false;
     const CRM_BUILD = '20260627.8';
+    const SALES_ORDERING_STAGES = ['Order', 'Engineering Approvals', 'Billed'];
     
     function initializeAuth() {
       // Prevent double initialization
@@ -2397,7 +2398,7 @@
       Object.values(dealData).forEach(deal => {
         const share = owner ? dealShareForUser(deal, owner) : 1;
         if (owner && share <= 0) return;
-        const ordered = ['Order','Billed'].includes(deal.stage) && inPlanDate(deal.orderDate, plan);
+        const ordered = SALES_ORDERING_STAGES.includes(deal.stage) && inPlanDate(deal.orderDate, plan);
         if (ordered) {
           actual.sales += Number(deal.value || 0) * share;
           actual.deals++;
@@ -2763,33 +2764,36 @@
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
       const sortedDeals = Object.values(dealData)
         .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
-      const opts = sortedCustomers
-        .filter(c => optionTextMatches([c.name, c.contact, c.email, c.phone, c.industry], activityAccountSearch) || c.id === selectedActivityAccount)
-        .map(c => `<option value="${c.id}">${escapeHtml(c.name || '')}</option>`)
-        .join('');
-      const dealOpts = sortedCustomers
-        .filter(customer => optionTextMatches([customer.name, customer.contact, customer.email, customer.phone, customer.industry], dealCustomerSearch) || customer.id === selectedDealCustomer)
-        .map(customer => `<option value="${customer.id}">${escapeHtml(customer.name || '')}</option>`).join('');
-      const activityDealOpts = sortedDeals
+      const accountMatches = sortedCustomers
+        .filter(c => optionTextMatches([c.name, c.contact, c.email, c.phone, c.industry], activityAccountSearch));
+      const dealCustomerMatches = sortedCustomers
+        .filter(customer => optionTextMatches([customer.name, customer.contact, customer.email, customer.phone, customer.industry], dealCustomerSearch));
+      const activityDealMatches = sortedDeals
         .filter(deal => {
           const customer = customerData[deal.customerId];
-          return optionTextMatches([deal.title, deal.stage, deal.username, customer?.name], activityDealSearch) || deal.id === selectedActivityDeal;
-        })
+          return optionTextMatches([deal.title, deal.stage, deal.username, customer?.name], activityDealSearch);
+        });
+      const opts = accountMatches
+        .map(c => `<option value="${c.id}">${escapeHtml(c.name || '')}</option>`)
+        .join('');
+      const dealOpts = dealCustomerMatches
+        .map(customer => `<option value="${customer.id}">${escapeHtml(customer.name || '')}</option>`).join('');
+      const activityDealOpts = activityDealMatches
         .map(d => `<option value="${d.id}">${escapeHtml(d.title || '')}</option>`).join('');
       const dealSelect = document.getElementById('dealCustomer');
       const activityDealSelect = document.getElementById('activityDeal');
       const activityAccountSelect = document.getElementById('activityKeyAccount');
       if (dealSelect) {
-        dealSelect.innerHTML = '<option value="">-- Select Contact --</option>' + dealOpts;
-        dealSelect.value = selectedDealCustomer;
+        dealSelect.innerHTML = '<option value="">-- Select Contact --</option>' + (dealOpts || '<option value="" disabled>No matching contact/company</option>');
+        dealSelect.value = dealCustomerMatches.some(customer => customer.id === selectedDealCustomer) ? selectedDealCustomer : '';
       }
       if (activityDealSelect) {
-        activityDealSelect.innerHTML = '<option value="">-- Select Deal --</option>' + activityDealOpts;
-        activityDealSelect.value = selectedActivityDeal;
+        activityDealSelect.innerHTML = '<option value="">-- Select Deal --</option>' + (activityDealOpts || '<option value="" disabled>No matching deal</option>');
+        activityDealSelect.value = activityDealMatches.some(deal => deal.id === selectedActivityDeal) ? selectedActivityDeal : '';
       }
       if (activityAccountSelect) {
-        activityAccountSelect.innerHTML = '<option value="">-- Select Contact --</option>' + opts;
-        activityAccountSelect.value = selectedActivityAccount;
+        activityAccountSelect.innerHTML = '<option value="">-- Select Contact --</option>' + (opts || '<option value="" disabled>No matching contact/company</option>');
+        activityAccountSelect.value = accountMatches.some(account => account.id === selectedActivityAccount) ? selectedActivityAccount : '';
       }
     }
 
@@ -3337,7 +3341,7 @@
     }
 
     function toggleDealStageDateFields(stage) {
-      document.getElementById('orderDateGroup')?.classList.toggle('visible', stage === 'Order' || stage === 'Billed');
+      document.getElementById('orderDateGroup')?.classList.toggle('visible', SALES_ORDERING_STAGES.includes(stage));
       document.getElementById('billingDateGroup')?.classList.toggle('visible', stage === 'Billed');
     }
     
@@ -3408,8 +3412,8 @@
         showToast('Gross Margin amount cannot be greater than the Deal Value', 'error');
         return;
       }
-      if ((stage === 'Order' || stage === 'Billed') && !orderDate) {
-        showToast('Order Date is required for Order and Billed stages', 'error');
+      if (SALES_ORDERING_STAGES.includes(stage) && !orderDate) {
+        showToast('Order Date is required for Order, Engineering Approvals and Billed stages', 'error');
         return;
       }
       if (stage === 'Billed' && !billingDate) {
@@ -3792,7 +3796,7 @@
         const share = dealShareForUser(deal, currentUser);
         if (share <= 0) return;
         const orderDate = toDateObject(deal.orderDate);
-        if (orderDate && orderDate.getFullYear() === year && ['Order','Billed'].includes(deal.stage)) {
+        if (orderDate && orderDate.getFullYear() === year && SALES_ORDERING_STAGES.includes(deal.stage)) {
           const quarter = actuals[`q${getQuarter(orderDate)}`];
           quarter.booking += Number(deal.value || 0) * share;
         }
@@ -3839,7 +3843,7 @@
           <div><b>Earned Incentive</b><br><span style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(incentiveCalc.incentive).toLocaleString('en-IN')}</span><br><span style="font-size:10px">Plan ₹${Math.round(incentiveCalc.targetIncentive || 0).toLocaleString('en-IN')}</span></div>
         </div>` : `<div style="font-size:11px;color:var(--danger);margin-top:8px">No individual quota is mapped for @${escapeHtml(currentUser || '')}; no salesperson incentive will be allocated.</div>`}
       </div>`;
-      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing and GM use Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
 
     function targetProgressCell(actual, target, accent = 'var(--p)', label = '') {
@@ -3880,7 +3884,7 @@
         const share = owner ? dealShareForUser(deal, owner) : 1;
         if (owner && share <= 0) return;
         const orderDate = toDateObject(deal.orderDate);
-        if (orderDate && inPlanDate(orderDate, plan) && fyQuarterKey(orderDate) === quarterKey && ['Order','Billed'].includes(deal.stage)) {
+        if (orderDate && inPlanDate(orderDate, plan) && fyQuarterKey(orderDate) === quarterKey && SALES_ORDERING_STAGES.includes(deal.stage)) {
           actual.sales += Number(deal.value || 0) * share;
           actual.deals++;
         }
@@ -3929,7 +3933,7 @@
         <div style="font-weight:900;color:${myCalc.qualified ? '#2E7D32' : '#E65100'}">My incentive gate: ${escapeHtml(myCalc.reason)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Gate requires ${plan.gatePct}% achievement in all three parameters: Sales, Billing and GM.</div>
       </div>` : '';
-      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} · Showing ${periodLabels[period]}. Booking uses Order Date; Billing and GM use Billing Date; GM uses deal Gross Margin Amount declared on the deal.</div>
+      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} · Showing ${periodLabels[period]}. Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date; GM uses deal Gross Margin Amount declared on the deal.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${companyChips}</div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px">
           <thead><tr style="background:#EAF3FB;color:var(--p);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:9px">Salesperson</th><th style="text-align:left;padding:9px">Sales<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Billing<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">GM<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Gate</th></tr></thead>
