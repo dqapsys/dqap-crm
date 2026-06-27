@@ -1,7 +1,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.27.7 - Dashboard incentive status labels Booking Billing GM -->
+<!-- DQAP CRM 2026.06.27.8 - GM on billing and searchable sorted mappings -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1100,6 +1100,7 @@
       </div>
       <div class="form-group">
         <label>Contact / Company</label>
+        <input id="dealCustomerSearch" type="search" placeholder="Search contact/company..." oninput="populateCustomerDropdowns()" style="margin-bottom:6px">
         <select id="dealCustomer">
           <option value="">-- Select Contact --</option>
         </select>
@@ -1235,12 +1236,14 @@
       </div>
       <div class="form-group">
         <label>Related Deal (optional for key-account activity)</label>
+        <input id="activityDealSearch" type="search" placeholder="Search deal..." oninput="populateCustomerDropdowns()" style="margin-bottom:6px">
         <select id="activityDeal" onchange="syncActivityAccountFromDeal()">
           <option value="">-- Select Deal --</option>
         </select>
       </div>
       <div class="form-group">
         <label>Contact / Company</label>
+        <input id="activityKeyAccountSearch" type="search" placeholder="Search contact/company..." oninput="populateCustomerDropdowns()" style="margin-bottom:6px">
         <select id="activityKeyAccount">
           <option value="">-- Select Contact --</option>
         </select>
@@ -1466,7 +1469,7 @@
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
-    const CRM_BUILD = '20260627.7';
+    const CRM_BUILD = '20260627.8';
     
     function initializeAuth() {
       // Prevent double initialization
@@ -2397,11 +2400,11 @@
         const ordered = ['Order','Billed'].includes(deal.stage) && inPlanDate(deal.orderDate, plan);
         if (ordered) {
           actual.sales += Number(deal.value || 0) * share;
-          actual.grossProfit += Number(deal.grossMarginAmount || 0) * share;
           actual.deals++;
         }
         if (deal.stage === 'Billed' && inPlanDate(deal.billingDate, plan)) {
           actual.billing += Number(deal.value || 0) * share;
+          actual.grossProfit += Number(deal.grossMarginAmount || 0) * share;
         }
       });
       return actual;
@@ -2742,17 +2745,52 @@
     function canDeleteCustomer() {
       return String(currentUser || '').toLowerCase() === 'updesh';
     }
+
+    function optionTextMatches(values, query) {
+      const q = String(query || '').trim().toLowerCase();
+      if (!q) return true;
+      return values.map(value => String(value || '').toLowerCase()).join(' ').includes(q);
+    }
     
     function populateCustomerDropdowns() {
-      const opts = Object.values(customerData)
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
+      const selectedDealCustomer = document.getElementById('dealCustomer')?.value || '';
+      const selectedActivityDeal = document.getElementById('activityDeal')?.value || '';
+      const selectedActivityAccount = document.getElementById('activityKeyAccount')?.value || '';
+      const dealCustomerSearch = document.getElementById('dealCustomerSearch')?.value || '';
+      const activityDealSearch = document.getElementById('activityDealSearch')?.value || '';
+      const activityAccountSearch = document.getElementById('activityKeyAccountSearch')?.value || '';
+      const sortedCustomers = Object.values(customerData)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      const sortedDeals = Object.values(dealData)
+        .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+      const opts = sortedCustomers
+        .filter(c => optionTextMatches([c.name, c.contact, c.email, c.phone, c.industry], activityAccountSearch) || c.id === selectedActivityAccount)
+        .map(c => `<option value="${c.id}">${escapeHtml(c.name || '')}</option>`)
         .join('');
-      const dealOpts = Object.values(customerData)
-        .map(customer => `<option value="${customer.id}">${customer.name}</option>`).join('');
-      document.getElementById('dealCustomer').innerHTML = '<option value="">-- Select Contact --</option>' + dealOpts;
-      document.getElementById('activityDeal').innerHTML = '<option value="">-- Select Deal --</option>' +
-        Object.values(dealData).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
-      document.getElementById('activityKeyAccount').innerHTML = '<option value="">-- Select Contact --</option>' + opts;
+      const dealOpts = sortedCustomers
+        .filter(customer => optionTextMatches([customer.name, customer.contact, customer.email, customer.phone, customer.industry], dealCustomerSearch) || customer.id === selectedDealCustomer)
+        .map(customer => `<option value="${customer.id}">${escapeHtml(customer.name || '')}</option>`).join('');
+      const activityDealOpts = sortedDeals
+        .filter(deal => {
+          const customer = customerData[deal.customerId];
+          return optionTextMatches([deal.title, deal.stage, deal.username, customer?.name], activityDealSearch) || deal.id === selectedActivityDeal;
+        })
+        .map(d => `<option value="${d.id}">${escapeHtml(d.title || '')}</option>`).join('');
+      const dealSelect = document.getElementById('dealCustomer');
+      const activityDealSelect = document.getElementById('activityDeal');
+      const activityAccountSelect = document.getElementById('activityKeyAccount');
+      if (dealSelect) {
+        dealSelect.innerHTML = '<option value="">-- Select Contact --</option>' + dealOpts;
+        dealSelect.value = selectedDealCustomer;
+      }
+      if (activityDealSelect) {
+        activityDealSelect.innerHTML = '<option value="">-- Select Deal --</option>' + activityDealOpts;
+        activityDealSelect.value = selectedActivityDeal;
+      }
+      if (activityAccountSelect) {
+        activityAccountSelect.innerHTML = '<option value="">-- Select Contact --</option>' + opts;
+        activityAccountSelect.value = selectedActivityAccount;
+      }
     }
 
     function getActivityAccountId(activity) {
@@ -3182,6 +3220,7 @@
     }
 
     function openAddDealModal() {
+      if (document.getElementById('dealCustomerSearch')) document.getElementById('dealCustomerSearch').value = '';
       populateCustomerDropdowns();
       populateDealOwnerSelect(currentUser);
       document.getElementById('dealEditId').value = '';
@@ -3214,6 +3253,7 @@
         return;
       }
 
+      if (document.getElementById('dealCustomerSearch')) document.getElementById('dealCustomerSearch').value = '';
       populateCustomerDropdowns();
       populateDealOwnerSelect(deal.username || currentUser);
       document.getElementById('dealEditId').value = id;
@@ -3755,10 +3795,12 @@
         if (orderDate && orderDate.getFullYear() === year && ['Order','Billed'].includes(deal.stage)) {
           const quarter = actuals[`q${getQuarter(orderDate)}`];
           quarter.booking += Number(deal.value || 0) * share;
-          quarter.grossMargin += Number(deal.grossMarginAmount || 0) * share;
         }
         const billingDate = toDateObject(deal.billingDate);
-        if (billingDate && billingDate.getFullYear() === year && deal.stage === 'Billed') actuals[`q${getQuarter(billingDate)}`].billing += Number(deal.value || 0) * share;
+        if (billingDate && billingDate.getFullYear() === year && deal.stage === 'Billed') {
+          actuals[`q${getQuarter(billingDate)}`].billing += Number(deal.value || 0) * share;
+          actuals[`q${getQuarter(billingDate)}`].grossMargin += Number(deal.grossMarginAmount || 0) * share;
+        }
       });
       return actuals;
     }
@@ -3797,7 +3839,7 @@
           <div><b>Earned Incentive</b><br><span style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(incentiveCalc.incentive).toLocaleString('en-IN')}</span><br><span style="font-size:10px">Plan ₹${Math.round(incentiveCalc.targetIncentive || 0).toLocaleString('en-IN')}</span></div>
         </div>` : `<div style="font-size:11px;color:var(--danger);margin-top:8px">No individual quota is mapped for @${escapeHtml(currentUser || '')}; no salesperson incentive will be allocated.</div>`}
       </div>`;
-      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing uses Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking uses Order Date; Billing and GM use Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
 
     function targetProgressCell(actual, target, accent = 'var(--p)', label = '') {
@@ -3840,12 +3882,12 @@
         const orderDate = toDateObject(deal.orderDate);
         if (orderDate && inPlanDate(orderDate, plan) && fyQuarterKey(orderDate) === quarterKey && ['Order','Billed'].includes(deal.stage)) {
           actual.sales += Number(deal.value || 0) * share;
-          actual.grossProfit += Number(deal.grossMarginAmount || 0) * share;
           actual.deals++;
         }
         const billingDate = toDateObject(deal.billingDate);
         if (billingDate && inPlanDate(billingDate, plan) && fyQuarterKey(billingDate) === quarterKey && deal.stage === 'Billed') {
           actual.billing += Number(deal.value || 0) * share;
+          actual.grossProfit += Number(deal.grossMarginAmount || 0) * share;
         }
       });
       return actual;
@@ -3887,7 +3929,7 @@
         <div style="font-weight:900;color:${myCalc.qualified ? '#2E7D32' : '#E65100'}">My incentive gate: ${escapeHtml(myCalc.reason)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Gate requires ${plan.gatePct}% achievement in all three parameters: Sales, Billing and GM.</div>
       </div>` : '';
-      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} · Showing ${periodLabels[period]}. Sales uses Order Date; Billing uses Billing Date; GM uses deal Gross Margin Amount.</div>
+      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} · Showing ${periodLabels[period]}. Booking uses Order Date; Billing and GM use Billing Date; GM uses deal Gross Margin Amount declared on the deal.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${companyChips}</div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px">
           <thead><tr style="background:#EAF3FB;color:var(--p);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:9px">Salesperson</th><th style="text-align:left;padding:9px">Sales<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Billing<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">GM<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Gate</th></tr></thead>
@@ -3998,7 +4040,9 @@
       document.getElementById('activityDeal').disabled = contextType === 'deal';
       document.getElementById('activityKeyAccount').disabled = true;
       if (contextType === 'account') {
-        const accountDeals = Object.values(dealData).filter(item => item.customerId === accountId && item.username === currentUser);
+        const accountDeals = Object.values(dealData)
+          .filter(item => item.customerId === accountId && item.username === currentUser)
+          .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
         document.getElementById('activityDeal').innerHTML = '<option value="">-- No specific deal --</option>' + accountDeals.map(item => `<option value="${item.id}">${escapeHtml(item.title)}</option>`).join('');
       }
     }
@@ -4019,6 +4063,8 @@
 
     function openAddActivityModal(dealId = '', keyAccountId = '') {
       const today = new Date().toISOString().split('T')[0];
+      if (document.getElementById('activityDealSearch')) document.getElementById('activityDealSearch').value = '';
+      if (document.getElementById('activityKeyAccountSearch')) document.getElementById('activityKeyAccountSearch').value = '';
       populateCustomerDropdowns();
       populateResponsibleUsers();
       document.getElementById('activityType').value = 'Call';
