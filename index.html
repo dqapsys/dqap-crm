@@ -801,7 +801,16 @@
       </div>
       
       <div class="card" id="individualSalesIncentiveCard">
-        <div class="card-header">My FY26-27 Sales Incentive Status</div>
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>My FY26-27 Sales Incentive Status</span>
+          <select id="individualIncentivePeriodSelect" onchange="renderIndividualSalesIncentiveStatus()" style="padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--p);font-weight:800;font-family:inherit">
+            <option value="annual">Annual</option>
+            <option value="q1">Q1 Apr-Jun</option>
+            <option value="q2">Q2 Jul-Sep</option>
+            <option value="q3">Q3 Oct-Dec</option>
+            <option value="q4">Q4 Jan-Mar</option>
+          </select>
+        </div>
         <div id="individualSalesIncentiveStatus"></div>
       </div>
       
@@ -1418,6 +1427,7 @@
     let targetData = {};
     let leadData = {};
     let tenderData = {};
+    let tenderDataLoaded = false;
     let leadIncentiveConfig = {
       qualifiedAmount: 500, convertedAmount: 2500, effectiveFrom: '2026-06-23', updatedBy: 'system',
       salesMarginFloorPct: 12, salesMarginTargetPct: 15, salesMarginStrongPct: 18, salesMarginExcellentPct: 21,
@@ -1665,16 +1675,7 @@
           try {
             await loadAllData();
             renderDashboard();
-            renderLeadManagement();
-            renderCustomers();
-            renderDeals();
-            renderCalendar();
-            renderTargets();
-            renderKAM();
             updateTenderAccessUI();
-            if (canViewTenderManagement()) renderTenders();
-            renderActivities();
-            renderActivityDeals();
             renderTaskCenter();
             renderDueActivityModal();
             startTaskRefresh();
@@ -1738,6 +1739,7 @@
         targetData = {};
         leadData = {};
         tenderData = {};
+        tenderDataLoaded = false;
         notificationData = {};
         pendingApprovalData = {};
 
@@ -1761,13 +1763,6 @@
           leadsSnap.forEach(doc => { leadData[doc.id] = { id: doc.id, ...doc.data() }; });
         } catch (leadLoadError) {
           console.warn('Lead collections are unavailable; the rest of CRM will continue:', leadLoadError);
-        }
-
-        try {
-          const tendersSnap = await db.collection(CRM_TENDERS).get();
-          tendersSnap.forEach(doc => { tenderData[doc.id] = { id: doc.id, ...doc.data() }; });
-        } catch (tenderLoadError) {
-          console.warn('Tender collection is unavailable; the rest of CRM will continue:', tenderLoadError);
         }
 
         // Contacts are company-wide master data. They are no longer mapped to
@@ -1866,7 +1861,8 @@
           if (doc.exists) dealData[id] = { id: doc.id, ...doc.data() };
         }));
 
-        await ensureDealCodes();
+        ensureDealCodes(false);
+        setTimeout(() => ensureDealCodes(true), 1200);
 
         const missingCustomerIds = [...new Set(Object.values(dealData)
           .map(deal => deal.customerId)
@@ -2447,22 +2443,25 @@
       };
     }
 
-    function salesIncentiveForOwner(owner) {
+    function salesIncentiveForOwner(owner, period = 'annual') {
       const plan = activeSalesIncentivePlan();
       const key = String(owner || '').toLowerCase();
       const quota = plan.users[key] || null;
-      const companyActual = salesPlanActuals(null, plan);
-      const companyGate = salesGateStatus(companyActual, plan.company, plan.gatePct);
-      const actual = salesPlanActuals(key, plan);
+      const isAnnual = period === 'annual';
+      const companyTarget = isAnnual ? plan.company : salesPlanQuarterTargets(plan.company, period, plan);
+      const companyActual = isAnnual ? salesPlanActuals(null, plan) : salesPlanQuarterActuals(null, period, plan);
+      const companyGate = salesGateStatus(companyActual, companyTarget, plan.gatePct);
+      const actual = isAnnual ? salesPlanActuals(key, plan) : salesPlanQuarterActuals(key, period, plan);
       if (!quota) {
-        return { plan, owner: key, quota: null, actual, companyActual, companyGate, individualGate: null, qualified: false, incentive: 0, reason: 'No individual FY26-27 quota mapped' };
+        return { plan, period, owner: key, quota: null, target: null, companyTarget, actual, companyActual, companyGate, individualGate: null, qualified: false, incentive: 0, reason: 'No individual FY26-27 quota mapped' };
       }
-      const individualGate = salesGateStatus(actual, quota, plan.gatePct);
+      const target = isAnnual ? quota : salesPlanQuarterTargets(quota, period, plan);
+      const individualGate = salesGateStatus(actual, target, plan.gatePct);
       const qualified = companyGate.qualified && individualGate.qualified;
       const incentive = qualified ? actual.grossProfit * plan.incentiveRatePct / 100 : 0;
-      const targetIncentive = quota.grossProfit * plan.incentiveRatePct / 100;
+      const targetIncentive = target.grossProfit * plan.incentiveRatePct / 100;
       const reason = !companyGate.qualified ? 'Company gate pending' : (!individualGate.qualified ? 'Individual gate pending' : 'Qualified');
-      return { plan, owner: key, quota, actual, companyActual, companyGate, individualGate, qualified, incentive, targetIncentive, reason };
+      return { plan, period, owner: key, quota, target, companyTarget, actual, companyActual, companyGate, individualGate, qualified, incentive, targetIncentive, reason };
     }
 
     function salesIncentiveForDeal(deal) {
@@ -2508,19 +2507,21 @@
     function renderIndividualSalesIncentiveStatus() {
       const container = document.getElementById('individualSalesIncentiveStatus');
       if (!container) return;
-      const calc = salesIncentiveForOwner(currentUser);
+      const period = document.getElementById('individualIncentivePeriodSelect')?.value || 'annual';
+      const periodLabels = { annual: 'Annual', q1: 'Q1 Apr-Jun', q2: 'Q2 Jul-Sep', q3: 'Q3 Oct-Dec', q4: 'Q4 Jan-Mar' };
+      const calc = salesIncentiveForOwner(currentUser, period);
       const company = calc.companyGate;
       const companyLabel = company.qualified ? 'Company gate qualified' : 'Company gate pending';
       const companyColor = company.qualified ? '#2E7D32' : '#E65100';
       if (!calc.quota) {
         if (String(currentUser || '').toLowerCase() === 'updesh') {
           container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-            <div><div style="font-size:13px;font-weight:900;color:${companyColor}">DQAP target status: ${companyLabel}</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Updesh carries company/DQAP targets, not an individual salesperson quota.</div></div>
+            <div><div style="font-size:13px;font-weight:900;color:${companyColor}">DQAP target status: ${companyLabel}</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Showing ${periodLabels[period]}. Updesh carries company/DQAP targets, not an individual salesperson quota.</div></div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-            ${targetProgressCell(calc.companyActual.sales, calc.plan.company.sales, '#1565C0', 'Booking')}
-            ${targetProgressCell(calc.companyActual.billing, calc.plan.company.billing, '#2E7D32', 'Billing')}
-            ${targetProgressCell(calc.companyActual.grossProfit, calc.plan.company.grossProfit, '#E65100', 'GM')}
+            ${targetProgressCell(calc.companyActual.sales, calc.companyTarget.sales, '#1565C0', 'Booking')}
+            ${targetProgressCell(calc.companyActual.billing, calc.companyTarget.billing, '#2E7D32', 'Billing')}
+            ${targetProgressCell(calc.companyActual.grossProfit, calc.companyTarget.grossProfit, '#E65100', 'GM')}
           </div>`;
         } else {
           container.innerHTML = `<div class="alert warning" style="margin:0"><i class="ti ti-alert-triangle"></i><span>No FY26-27 individual sales quota is mapped for @${escapeHtml(currentUser || '')}. Sales incentive allocation will not apply until a quota is added.</span></div>`;
@@ -2538,7 +2539,7 @@
       container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
           <div>
             <div style="font-size:13px;font-weight:900;color:${calc.qualified ? '#2E7D32' : '#E65100'}">${escapeHtml(calc.reason)}</div>
-            <div style="font-size:11px;color:var(--t2);margin-top:3px">${companyLabel} · ${personalLabel} · Gate ${calc.plan.gatePct}% on Sales, Billing and GP</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:3px">Showing ${periodLabels[period]} · ${companyLabel} · ${personalLabel} · Gate ${calc.plan.gatePct}% on Sales, Billing and GP</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase">Earned Incentive</div>
@@ -2547,10 +2548,10 @@
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-          ${metric('Sales', calc.actual.sales, calc.quota.sales, personal.salesPct, personal.salesPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
-          ${metric('Billing', calc.actual.billing, calc.quota.billing, personal.billingPct, personal.billingPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
-          ${metric('Gross Profit', calc.actual.grossProfit, calc.quota.grossProfit, personal.grossProfitPct, personal.grossProfitPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
-          ${metric('Company Gate', calc.companyActual.grossProfit, calc.plan.company.grossProfit, Math.min(company.salesPct, company.billingPct, company.grossProfitPct), companyColor)}
+          ${metric('Sales', calc.actual.sales, calc.target.sales, personal.salesPct, personal.salesPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
+          ${metric('Billing', calc.actual.billing, calc.target.billing, personal.billingPct, personal.billingPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
+          ${metric('Gross Profit', calc.actual.grossProfit, calc.target.grossProfit, personal.grossProfitPct, personal.grossProfitPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
+          ${metric('Company Gate', calc.companyActual.grossProfit, calc.companyTarget.grossProfit, Math.min(company.salesPct, company.billingPct, company.grossProfitPct), companyColor)}
         </div>
         <div style="font-size:10.5px;color:var(--t2);margin-top:8px">FY26-27 period: ${formatDate(calc.plan.startDate)} to ${formatDate(calc.plan.endDate)}. Incentive rate: ${calc.plan.incentiveRatePct}% of achieved Gross Profit after both gates qualify.</div>`;
     }
@@ -2883,16 +2884,18 @@
       return `DEAL${new Date().getFullYear().toString().slice(-2)}${suffix}`;
     }
 
-    async function ensureDealCodes() {
+    async function ensureDealCodes(persist = true) {
       const missing = Object.values(dealData).filter(deal => !deal.dealCode);
       if (!missing.length) return;
+      missing.forEach(deal => {
+        if (!deal.dealCode) deal.dealCode = generateDealCode(deal.id);
+      });
+      if (!persist) return;
       try {
         for (let start = 0; start < missing.length; start += 400) {
           const batch = db.batch();
           missing.slice(start, start + 400).forEach(deal => {
-            const dealCode = generateDealCode(deal.id);
-            deal.dealCode = dealCode;
-            batch.update(db.collection(CRM_DEALS).doc(deal.id), { dealCode, updatedAt: new Date() });
+            batch.update(db.collection(CRM_DEALS).doc(deal.id), { dealCode: deal.dealCode, updatedAt: new Date() });
           });
           await batch.commit();
         }
@@ -3174,9 +3177,28 @@
       return '₹' + Number(value || 0).toLocaleString('en-IN');
     }
 
-    function renderTenders() {
+    async function loadTenderData() {
+      if (tenderDataLoaded || !canViewTenderManagement()) return;
+      try {
+        const tendersSnap = await db.collection(CRM_TENDERS).get();
+        tenderData = {};
+        tendersSnap.forEach(doc => { tenderData[doc.id] = { id: doc.id, ...doc.data() }; });
+        tenderDataLoaded = true;
+      } catch (tenderLoadError) {
+        tenderDataLoaded = true;
+        console.warn('Tender collection is unavailable; the rest of CRM will continue:', tenderLoadError);
+        showToast('Tender data could not be loaded: ' + tenderLoadError.message, 'error');
+      }
+    }
+
+    async function renderTenders() {
       updateTenderAccessUI();
       if (!canViewTenderManagement()) return;
+      const tenderContainer = document.getElementById('tendersContainer');
+      if (!tenderDataLoaded) {
+        if (tenderContainer) tenderContainer.innerHTML = '<div class="empty" style="padding:25px"><p>Loading tenders...</p></div>';
+        await loadTenderData();
+      }
       const tenders = Object.values(tenderData).sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')));
       const open = tenders.filter(tenderIsOpen);
       const dueSoon = open.filter(t => {
@@ -5194,7 +5216,7 @@
       if (billedOutsideFyValue > 0) {
         alerts += `<div class="alert warning"><i class="ti ti-receipt"></i><strong>Billing date check:</strong> ₹${Number(billedOutsideFyValue).toLocaleString('en-IN')} of Billed-stage value is excluded from FY26-27 Won/Billing because billing date is missing or outside 01-04-2026 to 31-03-2027.</div>`;
       }
-      if (canViewTenderManagement()) {
+      if (canViewTenderManagement() && tenderDataLoaded) {
         const openTenders = Object.values(tenderData).filter(tenderIsOpen);
         const tenderDueSoon = openTenders.filter(tender => {
           const info = tenderDueInfo(tender);
@@ -5276,6 +5298,10 @@
         renderActivityDeals();
         renderActivities();
       }
+      if (tabName === 'leads') renderCustomers();
+      if (tabName === 'deals') renderDeals();
+      if (tabName === 'calendar') renderCalendar();
+      if (tabName === 'targets') renderTargets();
       if (tabName === 'kam') renderKAM();
       if (tabName === 'tenders') renderTenders();
       if (tabName === 'referrals') renderLeadManagement();
