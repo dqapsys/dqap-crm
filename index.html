@@ -987,6 +987,17 @@
       <div id="tenderAlertContainer"></div>
 
       <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>Tender Monitoring</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn primary" onclick="openTenderForm()"><i class="ti ti-plus"></i> Add New Tender</button>
+            <button class="btn" onclick="renderTenders()"><i class="ti ti-refresh"></i> Refresh</button>
+          </div>
+        </div>
+        <div id="tendersContainer"></div>
+      </div>
+
+      <div class="card" id="tenderFormCard" style="display:none">
         <div class="card-header"><span id="tenderFormTitle">Add Tender</span></div>
         <input type="hidden" id="tenderEditId">
         <div class="form-row">
@@ -1004,13 +1015,9 @@
         <div class="form-group"><label>Remarks / Checklist</label><textarea id="tenderRemarks" placeholder="Portal, document list, submission notes, follow-up points"></textarea></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
           <button class="btn" onclick="resetTenderForm()">Reset</button>
+          <button class="btn" onclick="closeTenderForm()">Cancel</button>
           <button class="btn primary" onclick="saveTender()"><i class="ti ti-device-floppy"></i> Save Tender</button>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span>Tender Monitoring</span><button class="btn" onclick="renderTenders()"><i class="ti ti-refresh"></i> Refresh</button></div>
-        <div id="tendersContainer"></div>
       </div>
     </div>
     
@@ -3142,6 +3149,21 @@
       toggleTenderEmdAmount();
     }
 
+    function openTenderForm(tender = null) {
+      const card = document.getElementById('tenderFormCard');
+      if (!card) return;
+      if (!tender) resetTenderForm();
+      card.style.display = 'block';
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => document.getElementById('tenderNo')?.focus(), 150);
+    }
+
+    function closeTenderForm() {
+      resetTenderForm();
+      const card = document.getElementById('tenderFormCard');
+      if (card) card.style.display = 'none';
+    }
+
     function tenderIsOpen(tender) {
       return !['Submitted','Cancelled'].includes(String(tender.status || 'Open'));
     }
@@ -3255,6 +3277,7 @@
       document.getElementById('tenderRemarks').value = tender.remarks || '';
       document.getElementById('tenderFormTitle').textContent = 'Edit Tender';
       toggleTenderEmdAmount();
+      openTenderForm(tender);
       switchTab('tenders');
     }
 
@@ -3294,7 +3317,7 @@
           tenderData[ref.id] = { id: ref.id, ...record };
         }
         await ensureTenderDueNotifications();
-        resetTenderForm();
+        closeTenderForm();
         renderTenders();
         renderDashboard();
         showToast('Tender saved', 'success');
