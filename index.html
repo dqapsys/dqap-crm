@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <!-- DQAP CRM 2026.06.27.8 - GM on billing and searchable sorted mappings -->
 <html lang="en">
@@ -707,6 +708,75 @@
       gap: 5px;
       flex-wrap: wrap;
       margin-top: 9px;
+    }
+
+    .deals-compact-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 12px;
+    }
+
+    .deals-compact-table th {
+      text-align: left;
+      padding: 9px 10px;
+      background: var(--bg);
+      color: var(--t2);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .45px;
+      border-bottom: 1px solid var(--bd);
+    }
+
+    .deals-compact-table td {
+      padding: 8px 10px;
+      border-bottom: .5px solid var(--bd);
+      vertical-align: middle;
+    }
+
+    .deals-compact-table tr:hover td {
+      background: #F8FAFC;
+    }
+
+    .deal-title-link {
+      all: unset;
+      cursor: pointer;
+      color: var(--p);
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .deal-title-link:hover {
+      color: #004F8B;
+    }
+
+    .deal-detail-panel {
+      background: #F8FAFC;
+      border-left: 3px solid var(--p);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      line-height: 1.7;
+    }
+
+    .deal-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 8px 14px;
+    }
+
+    .deal-detail-label {
+      font-size: 9.5px;
+      color: var(--t2);
+      text-transform: uppercase;
+      letter-spacing: .35px;
+      font-weight: 800;
+    }
+
+    .deal-detail-value {
+      font-size: 11.5px;
+      color: var(--t1);
+      font-weight: 700;
     }
     
     .hidden-group {
@@ -3697,6 +3767,12 @@
       }
     }
     
+    function toggleDealDetailRow(id) {
+      const row = document.getElementById('deal-detail-row-' + id);
+      if (!row) return;
+      row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+
     function renderDeals() {
       const container = document.getElementById('dealsContainer');
       const search = document.getElementById('dealsSearchInput')?.value || '';
@@ -3748,6 +3824,71 @@
             || compareSortValues(a.group, b.group, 'text', 'asc');
         });
       }
+
+      const orderedDeals = [];
+      groupStats.forEach(stat => {
+        stat.deals
+          .slice()
+          .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')) || Number(b.value || 0) - Number(a.value || 0))
+          .forEach(deal => orderedDeals.push({ deal, group: stat.group }));
+      });
+      const seenDeals = new Set();
+      const compactRows = orderedDeals.filter(item => {
+        if (seenDeals.has(item.deal.id)) return false;
+        seenDeals.add(item.deal.id);
+        return true;
+      }).map(item => {
+        const d = item.deal;
+        const customer = customerData[d.customerId] || {};
+        const acceptedPartners = acceptedDealPartners(d);
+        const pendingPartners = pendingDealPartners(d);
+        const salesIncentive = salesIncentiveForDeal(d);
+        const gmPercent = Number(d.grossMarginPercent || (Number(d.value || 0) ? Number(d.grossMarginAmount || 0) / Number(d.value || 0) * 100 : 0));
+        const gmColor = gmPercent >= 20 ? '#2E7D32' : '#B71C1C';
+        const stageClass = d.stage === 'Lost' ? 'lost' : (d.stage === 'Billed' ? 'won' : '');
+        const ownerLine = isLeadReviewer() ? `<div style="font-size:10px;color:var(--t2);margin-top:2px">Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}</div>` : '';
+        const partnerLine = (acceptedPartners.length || pendingPartners.length)
+          ? `${acceptedPartners.map(p => escapeHtml(p.name || p.username)).join(', ') || 'None accepted'}${pendingPartners.length ? ` · Pending: ${pendingPartners.map(p => escapeHtml(p.name || p.username)).join(', ')}` : ''}`
+          : '—';
+        const actions = `<div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${canAdministerDeal(d) ? `<button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}
+          ${canDeleteDeal() ? `<button class="btn sm danger" onclick="deleteDeal('${d.id}')"><i class="ti ti-trash"></i></button>` : ''}
+          <button class="btn sm primary" onclick="openLogActivityModal('deal','${d.id}')"><i class="ti ti-plus"></i> Log / Plan</button>
+          <button class="btn sm" onclick="openActivityHistoryModal('deal','${d.id}')"><i class="ti ti-history"></i> Logs</button>
+        </div>`;
+        return `<tr>
+          <td style="font-weight:900;color:#006994;white-space:nowrap">${escapeHtml(d.dealCode || generateDealCode(d.id))}</td>
+          <td style="min-width:220px"><button type="button" class="deal-title-link" onclick="toggleDealDetailRow('${d.id}')">${escapeHtml(d.title || 'Untitled Deal')}</button>${ownerLine}</td>
+          <td>${escapeHtml(customer.name || d.customerCompanyName || '—')}</td>
+          <td><span class="deal-stage ${stageClass}">${escapeHtml(d.stage || 'Lead')}</span></td>
+          <td style="font-weight:900;color:var(--p);white-space:nowrap">₹${formatCurrency(d.value || 0)}</td>
+          <td style="font-weight:900;color:${gmColor};white-space:nowrap">₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} <span style="font-size:10px">(${gmPercent.toFixed(2)}%)</span></td>
+        </tr>
+        <tr id="deal-detail-row-${d.id}" style="display:none">
+          <td colspan="6">
+            <div class="deal-detail-panel">
+              <div class="deal-detail-grid">
+                <div><div class="deal-detail-label">Customer contact</div><div class="deal-detail-value">${escapeHtml(customer.contact || '—')}</div></div>
+                <div><div class="deal-detail-label">Email</div><div class="deal-detail-value">${escapeHtml(customer.email || '—')}</div></div>
+                <div><div class="deal-detail-label">Phone</div><div class="deal-detail-value">${escapeHtml(customer.phone || '—')}</div></div>
+                <div><div class="deal-detail-label">Owner</div><div class="deal-detail-value">${escapeHtml(d.username || '—')}</div></div>
+                <div><div class="deal-detail-label">Probability</div><div class="deal-detail-value">${Number(d.probability || 0)}%</div></div>
+                <div><div class="deal-detail-label">Close date</div><div class="deal-detail-value">${d.closeDate ? formatDate(d.closeDate) : '—'}</div></div>
+                <div><div class="deal-detail-label">Order date</div><div class="deal-detail-value">${d.orderDate ? formatDate(d.orderDate) : '—'}</div></div>
+                <div><div class="deal-detail-label">Billing date</div><div class="deal-detail-value">${d.billingDate ? formatDate(d.billingDate) : '—'}</div></div>
+                <div><div class="deal-detail-label">Partners</div><div class="deal-detail-value">${partnerLine}</div></div>
+                <div><div class="deal-detail-label">Incentive</div><div class="deal-detail-value">${salesIncentive.ownerQualified ? `₹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential ₹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`}</div></div>
+                <div><div class="deal-detail-label">View context</div><div class="deal-detail-value">${escapeHtml(item.group || '—')}</div></div>
+                <div><div class="deal-detail-label">Loss reason</div><div class="deal-detail-value">${d.stage === 'Lost' ? escapeHtml([d.lossReason, d.customLossReason].filter(Boolean).join(' - ') || '—') : '—'}</div></div>
+              </div>
+              ${d.notes ? `<div style="margin-top:10px"><div class="deal-detail-label">Notes</div><div style="font-size:11.5px;color:var(--t2)">${escapeHtml(d.notes)}</div></div>` : ''}
+              <div style="margin-top:10px">${actions}</div>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+      container.innerHTML = `<div style="overflow-x:auto"><table class="deals-compact-table"><thead><tr><th>Deal ID</th><th>Title</th><th>Customer</th><th>Stage</th><th>Value</th><th>GM</th></tr></thead><tbody>${compactRows}</tbody></table></div>`;
+      return;
 
       let html = '<div class="deals-board">';
       groupStats.forEach(stat => {
