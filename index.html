@@ -798,11 +798,11 @@
     <div class="header">
       <div>
         <h1><i class="ti ti-chart-line"></i> Sales CRM</h1>
-        <p>DQAP Systems – Manage Leads, Deals & Targets</p>
+        <p>DQAP Systems â€“ Manage Leads, Deals & Targets</p>
       </div>
       <div class="header-right">
-        <button type="button" id="crmNotificationBadge" onclick="openTaskCenter()" style="display:none;background:#D32F2F;color:#fff;border:0;border-radius:18px;padding:7px 11px;font-weight:700;cursor:pointer;margin-right:8px">🔔 <span id="crmNotificationCount">0</span></button>
-        <div class="user-info" id="userDisplay">Authenticating…</div>
+        <button type="button" id="crmNotificationBadge" onclick="openTaskCenter()" style="display:none;background:#D32F2F;color:#fff;border:0;border-radius:18px;padding:7px 11px;font-weight:700;cursor:pointer;margin-right:8px">ðŸ”” <span id="crmNotificationCount">0</span></button>
+        <div class="user-info" id="userDisplay">Authenticatingâ€¦</div>
         <div class="user-quota" id="userQuota">Wiki session required</div>
       </div>
     </div>
@@ -827,44 +827,44 @@
       
       <div class="stats">
         <div class="stat">
-          <div class="stat-icon">👥</div>
+          <div class="stat-icon">ðŸ‘¥</div>
           <div class="stat-content">
             <div class="stat-value" id="statCustomers">0</div>
             <div class="stat-label">Contacts</div>
           </div>
         </div>
         <div class="stat">
-          <div class="stat-icon">📋</div>
+          <div class="stat-icon">ðŸ“‹</div>
           <div class="stat-content">
             <div class="stat-value" id="statDeals">0</div>
             <div class="stat-label">Active Deals</div>
           </div>
         </div>
         <div class="stat">
-          <div class="stat-icon">📈</div>
+          <div class="stat-icon">ðŸ“ˆ</div>
           <div class="stat-content">
-            <div class="stat-value" id="statPipeline">₹0L</div>
+            <div class="stat-value" id="statPipeline">â‚¹0L</div>
             <div class="stat-label">Pipeline Value</div>
           </div>
         </div>
         <div class="stat">
-          <div class="stat-icon">☎️</div>
+          <div class="stat-icon">â˜Žï¸</div>
           <div class="stat-content">
             <div class="stat-value" id="statMeetingsWeek">0/8</div>
             <div class="stat-label">Meetings This Week</div>
           </div>
         </div>
         <div class="stat">
-          <div class="stat-icon">✅</div>
+          <div class="stat-icon">âœ…</div>
           <div class="stat-content">
             <div class="stat-value" id="statActivitiesMonth">0</div>
             <div class="stat-label">Activities (30 Days)</div>
           </div>
         </div>
         <div class="stat">
-          <div class="stat-icon">🏆</div>
+          <div class="stat-icon">ðŸ†</div>
           <div class="stat-content">
-            <div class="stat-value" id="statWonValue">₹0L</div>
+            <div class="stat-value" id="statWonValue">â‚¹0L</div>
             <div class="stat-label">Won Value</div>
           </div>
         </div>
@@ -919,6 +919,7 @@
         <div class="card-header">
           <span>Deals Pipeline</span>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn" onclick="exportDealsXls()"><i class="ti ti-file-spreadsheet"></i> Export Data</button>
             <button class="btn" onclick="openImportModal('deals')"><i class="ti ti-upload"></i> Import Deals CSV</button>
             <button class="btn primary" onclick="openAddDealModal()"><i class="ti ti-plus"></i> Add Deal</button>
           </div>
@@ -956,7 +957,7 @@
     <div id="tab-targets" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <span>FY26-27 Targets — Salesperson Wise</span>
+          <span>FY26-27 Targets â€” Salesperson Wise</span>
           <select id="targetsPeriodSelect" onchange="renderTargets()" style="border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-weight:800;color:var(--p);background:#fff">
             <option value="annual">Annual</option>
             <option value="q1">Q1 Apr-Jun</option>
@@ -975,7 +976,7 @@
         <div class="stat"><div class="stat-icon"><i class="ti ti-send"></i></div><div class="stat-content"><div class="stat-value" id="leadStatMy">0</div><div class="stat-label">My Leads</div></div></div>
         <div class="stat"><div class="stat-icon"><i class="ti ti-user-check"></i></div><div class="stat-content"><div class="stat-value" id="leadStatQualified">0</div><div class="stat-label">Qualified</div></div></div>
         <div class="stat"><div class="stat-icon"><i class="ti ti-briefcase"></i></div><div class="stat-content"><div class="stat-value" id="leadStatConverted">0</div><div class="stat-label">Converted to Deal</div></div></div>
-        <div class="stat"><div class="stat-icon"><i class="ti ti-currency-rupee"></i></div><div class="stat-content"><div class="stat-value" id="leadStatIncentive">₹0</div><div class="stat-label">My Entitlement</div></div></div>
+        <div class="stat"><div class="stat-icon"><i class="ti ti-currency-rupee"></i></div><div class="stat-content"><div class="stat-value" id="leadStatIncentive">â‚¹0</div><div class="stat-label">My Entitlement</div></div></div>
       </div>
 
       <div class="card">
@@ -988,7 +989,7 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label>Requirement Category</label><select id="leadCategory"><option>Fire Detection & Alarm</option><option>Gas Suppression System</option><option>Plant Communication</option><option>IT Hardware</option><option>Other</option></select></div>
-          <div class="form-group"><label>Estimated Value (₹)</label><input id="leadEstimatedValue" type="number" min="0" placeholder="Optional"></div>
+          <div class="form-group"><label>Estimated Value (â‚¹)</label><input id="leadEstimatedValue" type="number" min="0" placeholder="Optional"></div>
         </div>
         <div class="form-group"><label>Requirement / Opportunity Details *</label><textarea id="leadRequirement" placeholder="Describe the authenticated requirement, application, location and any useful context"></textarea></div>
         <button class="btn primary" onclick="submitCrmLead()"><i class="ti ti-send"></i> Submit Lead</button>
@@ -996,18 +997,18 @@
 
       <div class="card"><div class="card-header">My Leads and Incentives</div><div id="leadMyContainer"></div></div>
       <div class="card" id="leadReviewCard" style="display:none"><div class="card-header">Sales Review Queue</div><div id="leadReviewContainer"></div></div>
-      <div class="card" id="leadApprovalCard" style="display:none"><div class="card-header">Updesh — Incentive Approval and Payment</div><div id="leadApprovalContainer"></div></div>
+      <div class="card" id="leadApprovalCard" style="display:none"><div class="card-header">Updesh â€” Incentive Approval and Payment</div><div id="leadApprovalContainer"></div></div>
       <div class="card"><div class="card-header">Lead Referral Leaderboard</div><div id="leadLeaderboardContainer"></div></div>
     </div>
 
     <!-- UPDESH-ONLY INCENTIVE SETTINGS TAB -->
     <div id="tab-lead-settings" class="tab-content">
       <div class="card" id="leadSettingsCard" style="display:none">
-        <div class="card-header">Updesh — Lead and Deal Conversion Incentive Settings</div>
+        <div class="card-header">Updesh â€” Lead and Deal Conversion Incentive Settings</div>
         <div class="alert"><i class="ti ti-info-circle"></i><span>These are total milestone entitlements, not cumulative amounts. Deal Conversion must be at least the Qualified Lead amount.</span></div>
         <div class="form-row" style="display:none" aria-hidden="true">
-          <div class="form-group"><label>Qualified Lead Incentive (₹)</label><input id="leadQualifiedIncentive" type="number" min="0"></div>
-          <div class="form-group"><label>Converted Deal Incentive (₹)</label><input id="leadConvertedIncentive" type="number" min="0"></div>
+          <div class="form-group"><label>Qualified Lead Incentive (â‚¹)</label><input id="leadQualifiedIncentive" type="number" min="0"></div>
+          <div class="form-group"><label>Converted Deal Incentive (â‚¹)</label><input id="leadConvertedIncentive" type="number" min="0"></div>
           <div class="form-group"><label>Effective From</label><input id="leadIncentiveEffectiveFrom" type="date"></div>
         </div>
         <div id="leadSettingsHistory" style="margin-top:12px"></div>
@@ -1028,7 +1029,7 @@
           <div class="form-group"><label>Excellent Rate (% of GP)</label><input id="salesRateExcellent" type="number" min="0" step="0.1"></div>
         </div>
         <div class="form-row" style="display:none" aria-hidden="true">
-          <div class="form-group"><label>Maximum Incentive per Deal (₹)</label><input id="salesPerDealCap" type="number" min="0"></div>
+          <div class="form-group"><label>Maximum Incentive per Deal (â‚¹)</label><input id="salesPerDealCap" type="number" min="0"></div>
           <div class="form-group"><label>Order Stage Payment Weight (%)</label><input id="salesOrderStageWeight" type="number" min="0" max="100"></div>
           <div class="form-group"><label>Annual Pool Guideline (% of GP)</label><input id="salesAnnualPoolCapPct" type="number" min="0" step="0.1"></div>
         </div>
@@ -1040,7 +1041,7 @@
     <!-- KEY ACCOUNT MANAGEMENT TAB -->
     <div id="tab-kam" class="tab-content">
       <div class="card">
-        <div class="card-header"><span>Key Account Management — 30-Day Contact Monitoring</span></div>
+        <div class="card-header"><span>Key Account Management â€” 30-Day Contact Monitoring</span></div>
         <div id="kamContainer"></div>
       </div>
     </div>
@@ -1051,7 +1052,7 @@
         <div class="stat"><div class="stat-icon"><i class="ti ti-file-description"></i></div><div class="stat-content"><div class="stat-value" id="tenderStatOpen">0</div><div class="stat-label">Open Tenders</div></div></div>
         <div class="stat"><div class="stat-icon"><i class="ti ti-clock-exclamation"></i></div><div class="stat-content"><div class="stat-value" id="tenderStatDueSoon">0</div><div class="stat-label">Due in 7 Days</div></div></div>
         <div class="stat"><div class="stat-icon"><i class="ti ti-alert-triangle"></i></div><div class="stat-content"><div class="stat-value" id="tenderStatOverdue">0</div><div class="stat-label">Overdue</div></div></div>
-        <div class="stat"><div class="stat-icon"><i class="ti ti-currency-rupee"></i></div><div class="stat-content"><div class="stat-value" id="tenderStatValue">₹0L</div><div class="stat-label">Open Estimate</div></div></div>
+        <div class="stat"><div class="stat-icon"><i class="ti ti-currency-rupee"></i></div><div class="stat-content"><div class="stat-value" id="tenderStatValue">â‚¹0L</div><div class="stat-label">Open Estimate</div></div></div>
       </div>
 
       <div id="tenderAlertContainer"></div>
@@ -1072,13 +1073,13 @@
         <input type="hidden" id="tenderEditId">
         <div class="form-row">
           <div class="form-group"><label>Tender No. *</label><input id="tenderNo" type="text" placeholder="Tender / NIT / GeM bid no."></div>
-          <div class="form-group"><label>Estimated Cost (₹) *</label><input id="tenderEstimatedCost" type="number" min="0" step="1" placeholder="Estimated tender value"></div>
+          <div class="form-group"><label>Estimated Cost (â‚¹) *</label><input id="tenderEstimatedCost" type="number" min="0" step="1" placeholder="Estimated tender value"></div>
           <div class="form-group"><label>Issued By *</label><input id="tenderIssuedBy" type="text" placeholder="Client / department / authority"></div>
           <div class="form-group"><label>Due Date *</label><input id="tenderDueDate" type="date"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>EMD Required *</label><select id="tenderEmdRequired" onchange="toggleTenderEmdAmount()"><option value="No">No</option><option value="Yes">Yes</option></select></div>
-          <div class="form-group" id="tenderEmdAmountGroup" style="display:none"><label>EMD Amount (₹)</label><input id="tenderEmdAmount" type="number" min="0" step="1" placeholder="Required EMD amount"></div>
+          <div class="form-group" id="tenderEmdAmountGroup" style="display:none"><label>EMD Amount (â‚¹)</label><input id="tenderEmdAmount" type="number" min="0" step="1" placeholder="Required EMD amount"></div>
           <div class="form-group"><label>Status</label><select id="tenderStatus"><option>Open</option><option>Under Preparation</option><option>Submitted</option><option>Cancelled</option></select></div>
           <div class="form-group"><label>Submission Owner</label><input id="tenderOwner" type="text" placeholder="Responsible person / team"></div>
         </div>
@@ -1098,7 +1099,7 @@
   <!-- Convert Qualified Lead to CRM Deal -->
   <div id="leadConversionModal" class="modal">
     <div class="modal-content" style="max-width:680px">
-      <div class="modal-header"><span>Convert Qualified Lead to Deal</span><button class="modal-close" onclick="closeModal('leadConversionModal')">✕</button></div>
+      <div class="modal-header"><span>Convert Qualified Lead to Deal</span><button class="modal-close" onclick="closeModal('leadConversionModal')">âœ•</button></div>
       <input type="hidden" id="leadConversionId">
       <div id="leadConversionSummary" class="alert"></div>
       <div class="form-row">
@@ -1106,8 +1107,8 @@
         <div class="form-group"><label>Deal Title *</label><input id="leadDealTitle" type="text"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Deal Value (₹) *</label><input id="leadDealValue" type="number" min="1"></div>
-        <div class="form-group"><label>Gross Margin Amount (₹)</label><input id="leadDealGrossMargin" type="number"></div>
+        <div class="form-group"><label>Deal Value (â‚¹) *</label><input id="leadDealValue" type="number" min="1"></div>
+        <div class="form-group"><label>Gross Margin Amount (â‚¹)</label><input id="leadDealGrossMargin" type="number"></div>
         <div class="form-group"><label>Expected Close Date</label><input id="leadDealCloseDate" type="date"></div>
       </div>
       <div class="modal-footer"><button class="btn" onclick="closeModal('leadConversionModal')">Cancel</button><button class="btn primary" onclick="confirmLeadConversion()">Create CRM Deal</button></div>
@@ -1117,7 +1118,7 @@
   <!-- Mandatory rejection reason -->
   <div id="leadRejectionModal" class="modal">
     <div class="modal-content">
-      <div class="modal-header"><span id="leadRejectionTitle">Reject Lead — Reason Required</span><button class="modal-close" onclick="closeModal('leadRejectionModal')">✕</button></div>
+      <div class="modal-header"><span id="leadRejectionTitle">Reject Lead â€” Reason Required</span><button class="modal-close" onclick="closeModal('leadRejectionModal')">âœ•</button></div>
       <input type="hidden" id="leadRejectionId"><input type="hidden" id="leadRejectionType">
       <div class="form-group"><label>Rejection Reason *</label><textarea id="leadRejectionReason" placeholder="State why the data is invalid, duplicate, irrelevant, or not workable"></textarea></div>
       <div class="modal-footer"><button class="btn" onclick="closeModal('leadRejectionModal')">Cancel</button><button class="btn danger" onclick="confirmLeadRejection()">Reject with Reason</button></div>
@@ -1129,7 +1130,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <span id="customerModalTitle">Add Contact</span>
-        <button class="modal-close" onclick="closeModal('addCustomerModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('addCustomerModal')">âœ•</button>
       </div>
       <input type="hidden" id="customerEditId">
       <div class="form-group">
@@ -1172,7 +1173,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <span id="dealModalTitle">Add Deal</span>
-        <button class="modal-close" onclick="closeModal('addDealModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('addDealModal')">âœ•</button>
       </div>
       <input type="hidden" id="dealEditId">
       <div class="form-group" id="dealOwnerGroup" style="display:none">
@@ -1214,13 +1215,13 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Deal Value (₹)</label>
+        <label>Deal Value (â‚¹)</label>
         <input type="number" id="dealValue" placeholder="100000" min="0" oninput="updateDealGrossMarginPercent()">
       </div>
       <div class="form-group">
-        <label>Gross Margin Amount (₹)</label>
+        <label>Gross Margin Amount (â‚¹)</label>
         <input type="number" id="dealGrossMargin" placeholder="20000" oninput="updateDealGrossMarginPercent()">
-        <div id="dealGrossMarginPercent" style="font-size:10.5px;color:var(--t2);margin-top:4px">Gross Margin: 0.00% of PO value · minimum target 20%</div>
+        <div id="dealGrossMarginPercent" style="font-size:10.5px;color:var(--t2);margin-top:4px">Gross Margin: 0.00% of PO value Â· minimum target 20%</div>
       </div>
       <div class="form-group">
         <label>Deal Partners / Shared Effort</label>
@@ -1297,20 +1298,20 @@
     <div class="modal-content">
       <div class="modal-header">
         <span>Set Targets</span>
-        <button class="modal-close" onclick="closeModal('setTargetModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('setTargetModal')">âœ•</button>
       </div>
       
       <div style="background:var(--pl);padding:12px;border-radius:6px;margin-bottom:14px;border-left:3px solid var(--p)"><strong style="color:var(--p)">Target Year: <span id="targetYearDisplay"></span></strong></div>
       <div style="display:grid;grid-template-columns:55px 1fr 1fr;gap:8px;align-items:center;margin-bottom:12px">
-        <b>Quarter</b><b>Booking Target (₹)</b><b>Billing Target (₹)</b>
+        <b>Quarter</b><b>Booking Target (â‚¹)</b><b>Billing Target (â‚¹)</b>
         <b>Q1</b><input type="number" id="targetQ1Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ1Billing" min="0" oninput="updateTargetTotals()">
         <b>Q2</b><input type="number" id="targetQ2Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ2Billing" min="0" oninput="updateTargetTotals()">
         <b>Q3</b><input type="number" id="targetQ3Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ3Billing" min="0" oninput="updateTargetTotals()">
         <b>Q4</b><input type="number" id="targetQ4Booking" min="0" oninput="updateTargetTotals()"><input type="number" id="targetQ4Billing" min="0" oninput="updateTargetTotals()">
-        <b>Total</b><div id="targetBookingTotal" style="font-weight:800;color:#1565C0">₹0</div><div id="targetBillingTotal" style="font-weight:800;color:#2E7D32">₹0</div>
+        <b>Total</b><div id="targetBookingTotal" style="font-weight:800;color:#1565C0">â‚¹0</div><div id="targetBillingTotal" style="font-weight:800;color:#2E7D32">â‚¹0</div>
       </div>
       <div class="form-group">
-        <label>Gross Margin Target (%) — minimum 20%</label>
+        <label>Gross Margin Target (%) â€” minimum 20%</label>
         <input type="number" id="targetMargin" placeholder="20" min="20" max="100" value="20">
       </div>
       <div class="modal-footer">
@@ -1325,7 +1326,7 @@
     <div class="modal-content" style="max-width:760px">
       <div class="modal-header">
         <span id="activityModalTitle">Log / Plan Activity</span>
-        <button class="modal-close" onclick="closeModal('addActivityModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('addActivityModal')">âœ•</button>
       </div>
       <input type="hidden" id="activityContextType">
       <input type="hidden" id="activityContextId">
@@ -1383,7 +1384,7 @@
           <textarea id="nextActivityDescription" placeholder="Describe the next action required"></textarea>
         </div>
         <div class="form-group" style="margin-bottom:0">
-          <label>Supporting Hands <span style="font-weight:500;font-size:10px">(optional · Ctrl-click to select multiple)</span></label>
+          <label>Supporting Hands <span style="font-weight:500;font-size:10px">(optional Â· Ctrl-click to select multiple)</span></label>
           <select id="activitySupportingHand" multiple size="4">
             <option value="">-- Select Wiki User --</option>
           </select>
@@ -1401,7 +1402,7 @@
     <div class="modal-content" style="max-width:700px">
       <div class="modal-header">
         <span id="activityHistoryTitle">Activity Logs</span>
-        <button class="modal-close" onclick="closeModal('activityHistoryModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('activityHistoryModal')">âœ•</button>
       </div>
       <div id="activityHistorySummary" style="background:var(--pl);border-left:3px solid var(--p);padding:10px 12px;border-radius:6px;margin-bottom:12px"></div>
       <div id="activityHistoryOnlyContainer" style="max-height:60vh;overflow:auto"></div>
@@ -1424,7 +1425,7 @@
     <div class="modal-content" style="max-width:680px">
       <div class="modal-header">
         <span id="importModalTitle">Import CSV</span>
-        <button class="modal-close" onclick="closeModal('importDataModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('importDataModal')">âœ•</button>
       </div>
       <div style="background:var(--pl);border-left:3px solid var(--p);padding:12px;border-radius:6px;margin-bottom:14px">
         <div style="font-weight:600;margin-bottom:6px">Required CSV format</div>
@@ -1448,7 +1449,7 @@
     <div class="modal-content" style="max-width:480px">
       <div class="modal-header">
         <span>Propose New Activity Date</span>
-        <button class="modal-close" onclick="closeModal('extensionRequestModal')">✕</button>
+        <button class="modal-close" onclick="closeModal('extensionRequestModal')">âœ•</button>
       </div>
       <input type="hidden" id="extensionActivityId">
       <div class="form-group">
@@ -1483,9 +1484,9 @@
   </div>
   
   <script>
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // FIREBASE CONFIG & INITIALIZATION
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const firebaseConfig = {
       apiKey: "AIzaSyBV2ZQwfqvgPyzLz75wsSIg9N5gjPHY-R8",
       authDomain: "dqap-wiki.firebaseapp.com",
@@ -1522,7 +1523,10 @@
     let currentCalendarDate = new Date();
     let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
     let contactSortState = { key: 'name', type: 'text', dir: 'asc' };
-    let dealColumnSortState = { key: '', type: 'text', dir: 'asc' };
+    let contactColumnFilters = {};
+    let dealColumnSortState = { key: 'dealCode', type: 'text', dir: 'asc' };
+    let dealColumnFilters = {};
+    let currentDealExportRows = [];
     
     const CRM_CUSTOMERS = 'dqap_crm_customers';
     const CRM_DEALS = 'dqap_crm_deals';
@@ -1570,11 +1574,11 @@
       return d.toISOString().split('T')[0];
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // WIKI SESSION AUTHENTICATION (Following Debt Management Pattern)
     // Uses dqap_users collection for user lookup, username as identifier
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     let currentUserData = null;
     let wikiSession = null;
     let authInitialized = false;
@@ -1640,17 +1644,17 @@
         try {
           wikiSession = JSON.parse(sess);
           if (handoffTab) wikiSession.targetTab = handoffTab;
-          console.log('✅ Session found, calling autoLoginFromWiki');
+          console.log('âœ… Session found, calling autoLoginFromWiki');
           autoLoginFromWiki(wikiSession);
         } catch (e) {
-          console.error('❌ Wiki session parse error:', e);
+          console.error('âŒ Wiki session parse error:', e);
           const headerP = document.querySelector('.header p');
           if (headerP) headerP.textContent = 'Session error. Please login to Wiki.';
           showAccessRequired('Session error. Please return to Wiki and open CRM again.');
         }
       } else {
         // CRM is Wiki-only; direct access is not permitted.
-        console.warn('⚠️ No Wiki session detected');
+        console.warn('âš ï¸ No Wiki session detected');
         const headerP = document.querySelector('.header p');
         if (headerP) headerP.textContent = 'Wiki login required';
         showAccessRequired();
@@ -1670,7 +1674,7 @@
         const username = session.username;
         const displayName = session.fullName || session.displayName || username;
         
-        console.log('🔍 Looking up user:', username);
+        console.log('ðŸ” Looking up user:', username);
         
         // Check if db is initialized
         if (!db) {
@@ -1696,7 +1700,7 @@
         if (userQuery && !userQuery.empty) {
           // Found by username field
           userData = userQuery.docs[0].data();
-          console.log('✅ Found user:', userData.fullName || username);
+          console.log('âœ… Found user:', userData.fullName || username);
         } else {
           console.log('User not found by username, trying legacy doc lookup');
           // Fallback: try document ID (legacy)
@@ -1704,7 +1708,7 @@
             const legacyUserDoc = await usersRef.doc(username).get();
             if (legacyUserDoc.exists) {
               userData = legacyUserDoc.data();
-              console.log('✅ Found user (legacy):', userData.fullName || username);
+              console.log('âœ… Found user (legacy):', userData.fullName || username);
             }
           } catch (e) {
             console.log('No legacy user doc found');
@@ -1744,7 +1748,7 @@
           if (accessScreen) accessScreen.remove();
           if (crmApp) crmApp.style.display = 'block';
           if (userDisplay) userDisplay.textContent = resolvedDisplayName;
-          if (userQuota) userQuota.textContent = `${roleLabel} · @${username}`;
+          if (userQuota) userQuota.textContent = `${roleLabel} Â· @${username}`;
           if (headerP) headerP.textContent = 
             'Professional sales pipeline, activity tracking & target management';
           
@@ -1758,21 +1762,21 @@
             startTaskRefresh();
             const requestedTab = wikiSession?.targetTab || new URLSearchParams(window.location.search).get('tab');
             if (requestedTab && document.getElementById('tab-' + requestedTab)) switchTab(requestedTab);
-            showToast(`✅ Welcome, ${resolvedDisplayName}!`, 'success');
-            console.log('✅ Auto-logged in from Wiki:', username);
+            showToast(`âœ… Welcome, ${resolvedDisplayName}!`, 'success');
+            console.log('âœ… Auto-logged in from Wiki:', username);
           } catch (err) {
             console.error('Load error:', err);
             showToast('Error loading data: ' + err.message, 'error');
           }
         } else {
           const msg = `User "${username}" not found in dqap_users collection`;
-          console.warn('⚠️', msg);
+          console.warn('âš ï¸', msg);
           const headerP = document.querySelector('.header p');
           if (headerP) headerP.textContent = msg;
           showAccessRequired(msg);
         }
       } catch (err) {
-        console.error('❌ Auto-login error:', err);
+        console.error('âŒ Auto-login error:', err);
         console.error('Error stack:', err.stack);
         const headerP = document.querySelector('.header p');
         if (headerP) headerP.textContent = 'Auth error: ' + err.message;
@@ -1791,7 +1795,7 @@
         screen.style.cssText = 'position:fixed;inset:0;background:#F4F6FA;display:flex;align-items:center;justify-content:center;padding:20px;z-index:99999;font-family:DM Sans,Segoe UI,sans-serif';
         screen.innerHTML = `
           <div style="background:#fff;border-radius:14px;padding:34px 30px;max-width:520px;width:100%;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.18)">
-            <div style="font-size:46px;margin-bottom:14px">⚠️</div>
+            <div style="font-size:46px;margin-bottom:14px">âš ï¸</div>
             <h2 style="color:#006994;margin-bottom:10px">Access Required</h2>
             <p id="crmAccessMessage" style="color:#666;line-height:1.6;margin-bottom:22px"></p>
             <button type="button" onclick="location.href='https://dqapsys.github.io/dqap-wiki/'" style="background:#006994;color:#fff;border:0;border-radius:8px;padding:11px 22px;font-weight:600;cursor:pointer">Go to Wiki</button>
@@ -2067,7 +2071,7 @@
 
       const button = document.getElementById('importCsvButton');
       button.disabled = true;
-      message.textContent = 'Validating and importing…';
+      message.textContent = 'Validating and importingâ€¦';
 
       try {
         const rows = parseCsvRows(await file.text());
@@ -2075,7 +2079,7 @@
         const headers = rows[0];
         const normalizedHeaders = new Set(headers.map(header => header.toLowerCase().replace(/[^a-z0-9]/g, '')));
         if (currentImportType === 'contacts' && !normalizedHeaders.has('companyname')) {
-          throw new Error('Contacts CSV must contain the “Company Name” column shown in the sample.');
+          throw new Error('Contacts CSV must contain the â€œCompany Nameâ€ column shown in the sample.');
         }
         if (currentImportType === 'deals') {
           const requiredDealHeaders = ['dealtitle', 'contactcompany', 'dealvalue', 'stage'];
@@ -2163,9 +2167,9 @@
       }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // INTEGRATED LEAD REFERRALS & INCENTIVES
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function isLeadReviewer(username = currentUser) {
       return LEAD_REVIEWERS.includes(String(username || '').toLowerCase());
     }
@@ -2281,7 +2285,7 @@
         await db.collection(CRM_LEADS).doc(id).update(update);
         Object.assign(lead, update);
         await writeLeadLedger(lead, 'Qualified', qualifiedAmount, Math.max(qualifiedAmount - Number(lead.approvedAmount || 0), 0), 'Qualified lead entitlement');
-        await notifyLeadReferrer(lead, 'lead_qualified', `${lead.company} was authenticated and qualified. Incentive entitlement: ₹${qualifiedAmount.toLocaleString('en-IN')} pending Updesh approval.`);
+        await notifyLeadReferrer(lead, 'lead_qualified', `${lead.company} was authenticated and qualified. Incentive entitlement: â‚¹${qualifiedAmount.toLocaleString('en-IN')} pending Updesh approval.`);
         renderLeadManagement();
         showToast('Lead qualified; incentive sent for Updesh approval', 'success');
       } catch (error) { showToast('Could not qualify lead: ' + error.message, 'error'); }
@@ -2292,7 +2296,7 @@
       if (type === 'incentive' && !isLeadIncentiveAuthority()) return;
       document.getElementById('leadRejectionId').value = id;
       document.getElementById('leadRejectionType').value = type;
-      document.getElementById('leadRejectionTitle').textContent = type === 'incentive' ? 'Reject Incentive — Reason Required' : 'Reject Lead — Reason Required';
+      document.getElementById('leadRejectionTitle').textContent = type === 'incentive' ? 'Reject Incentive â€” Reason Required' : 'Reject Lead â€” Reason Required';
       document.getElementById('leadRejectionReason').value = '';
       openModal('leadRejectionModal');
     }
@@ -2324,8 +2328,8 @@
       if (!lead || lead.status !== 'Qualified') return showToast('Only qualified leads can be converted', 'warning');
       populateLeadSalesOwners();
       document.getElementById('leadConversionId').value = id;
-      document.getElementById('leadConversionSummary').innerHTML = `<span><b>${escapeHtml(lead.company)}</b><br>${escapeHtml(lead.contactPerson)} · ${escapeHtml(lead.contactNumber)}<br>${escapeHtml(lead.requirement)}</span>`;
-      document.getElementById('leadDealTitle').value = `${lead.company} — ${lead.category || 'Opportunity'}`;
+      document.getElementById('leadConversionSummary').innerHTML = `<span><b>${escapeHtml(lead.company)}</b><br>${escapeHtml(lead.contactPerson)} Â· ${escapeHtml(lead.contactNumber)}<br>${escapeHtml(lead.requirement)}</span>`;
+      document.getElementById('leadDealTitle').value = `${lead.company} â€” ${lead.category || 'Opportunity'}`;
       document.getElementById('leadDealValue').value = Number(lead.estimatedValue || 0) || '';
       document.getElementById('leadDealGrossMargin').value = '';
       document.getElementById('leadDealCloseDate').value = '';
@@ -2380,9 +2384,9 @@
           dealData[dealRef.id] = { id: dealRef.id, ...dealRecord };
           populateCustomerDropdowns(); renderCustomers(); renderDeals();
         }
-        await notifyLeadReferrer(lead, 'lead_converted', `${lead.company} was converted to a CRM Deal. Total referral entitlement is now ₹${convertedAmount.toLocaleString('en-IN')} (not cumulative), pending Updesh approval.`);
+        await notifyLeadReferrer(lead, 'lead_converted', `${lead.company} was converted to a CRM Deal. Total referral entitlement is now â‚¹${convertedAmount.toLocaleString('en-IN')} (not cumulative), pending Updesh approval.`);
         closeModal('leadConversionModal'); renderLeadManagement(); renderDashboard();
-        showToast(`Lead converted. Total incentive entitlement: ₹${convertedAmount.toLocaleString('en-IN')}`, 'success');
+        showToast(`Lead converted. Total incentive entitlement: â‚¹${convertedAmount.toLocaleString('en-IN')}`, 'success');
       } catch (error) { showToast('Could not convert lead: ' + error.message, 'error'); }
     }
 
@@ -2393,10 +2397,10 @@
       const entitlement = Number(lead.entitlementAmount || 0);
       const previousApproved = Number(lead.approvedAmount || 0);
       if (entitlement <= previousApproved) return showToast('Current entitlement is already approved', 'warning');
-      const update = { approvedAmount: entitlement, incentiveApprovalStatus: Number(lead.paidAmount || 0) >= entitlement ? 'Paid' : 'Approved', incentiveApprovedBy: currentUser, incentiveApprovedAt: new Date(), incentiveRejectionReason: null, updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Approved', `Approved total ₹${entitlement}`)] };
+      const update = { approvedAmount: entitlement, incentiveApprovalStatus: Number(lead.paidAmount || 0) >= entitlement ? 'Paid' : 'Approved', incentiveApprovedBy: currentUser, incentiveApprovedAt: new Date(), incentiveRejectionReason: null, updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Approved', `Approved total â‚¹${entitlement}`)] };
       await db.collection(CRM_LEADS).doc(id).update(update); Object.assign(lead, update);
       await writeLeadLedger(lead, 'Approved', entitlement, entitlement - previousApproved, 'Final payment authority: Updesh');
-      await notifyLeadReferrer(lead, 'lead_incentive_approved', `Updesh approved total incentive of ₹${entitlement.toLocaleString('en-IN')} for ${lead.company}.`);
+      await notifyLeadReferrer(lead, 'lead_incentive_approved', `Updesh approved total incentive of â‚¹${entitlement.toLocaleString('en-IN')} for ${lead.company}.`);
       renderLeadManagement(); showToast('Incentive approved', 'success');
     }
 
@@ -2407,10 +2411,10 @@
       const approved = Number(lead.approvedAmount || 0);
       const previousPaid = Number(lead.paidAmount || 0);
       if (approved <= previousPaid) return showToast('No approved unpaid balance', 'warning');
-      const update = { paidAmount: approved, incentiveApprovalStatus: approved >= Number(lead.entitlementAmount || 0) ? 'Paid' : 'Partially Paid', incentivePaidBy: currentUser, incentivePaidAt: new Date(), updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Paid', `Paid total ₹${approved}`)] };
+      const update = { paidAmount: approved, incentiveApprovalStatus: approved >= Number(lead.entitlementAmount || 0) ? 'Paid' : 'Partially Paid', incentivePaidBy: currentUser, incentivePaidAt: new Date(), updatedAt: new Date(), auditTrail: [...(lead.auditTrail || []), leadAuditEvent('Incentive Paid', `Paid total â‚¹${approved}`)] };
       await db.collection(CRM_LEADS).doc(id).update(update); Object.assign(lead, update);
       await writeLeadLedger(lead, 'Paid', lead.entitlementAmount, approved - previousPaid, 'Payment recorded by Updesh');
-      await notifyLeadReferrer(lead, 'lead_incentive_paid', `Incentive payment of ₹${(approved - previousPaid).toLocaleString('en-IN')} was recorded for ${lead.company}. Total paid: ₹${approved.toLocaleString('en-IN')}.`);
+      await notifyLeadReferrer(lead, 'lead_incentive_paid', `Incentive payment of â‚¹${(approved - previousPaid).toLocaleString('en-IN')} was recorded for ${lead.company}. Total paid: â‚¹${approved.toLocaleString('en-IN')}.`);
       renderLeadManagement(); showToast('Payment recorded', 'success');
     }
 
@@ -2433,7 +2437,7 @@
       if (qualifiedAmount < 0 || convertedAmount < qualifiedAmount || !effectiveFrom) return showToast('Converted Deal incentive must be at least the Qualified Lead incentive, with an effective date', 'error');
       if (effectiveFrom > dateKey(new Date())) return showToast('Future-dated plans are not supported; select today or an earlier date', 'error');
       if (!(salesMarginFloorPct <= salesMarginTargetPct && salesMarginTargetPct <= salesMarginStrongPct && salesMarginStrongPct <= salesMarginExcellentPct)) return showToast('Sales margin thresholds must increase from Floor to Excellent', 'error');
-      if ([salesRateBelowTarget,salesRateTarget,salesRateStrong,salesRateExcellent,salesPerDealCap,salesAnnualPoolCapPct].some(value => value < 0) || salesOrderStageWeight < 0 || salesOrderStageWeight > 100) return showToast('Sales incentive rates/caps must be positive and Order Stage Weight must be 0–100%', 'error');
+      if ([salesRateBelowTarget,salesRateTarget,salesRateStrong,salesRateExcellent,salesPerDealCap,salesAnnualPoolCapPct].some(value => value < 0) || salesOrderStageWeight < 0 || salesOrderStageWeight > 100) return showToast('Sales incentive rates/caps must be positive and Order Stage Weight must be 0â€“100%', 'error');
       if (!(salesRateBelowTarget <= salesRateTarget && salesRateTarget <= salesRateStrong && salesRateStrong <= salesRateExcellent)) return showToast('Sales incentive rates must increase from Below Target to Excellent', 'error');
       const prior = {
         qualifiedAmount: Number(leadIncentiveConfig.qualifiedAmount || 0), convertedAmount: Number(leadIncentiveConfig.convertedAmount || 0), effectiveFrom: leadIncentiveConfig.effectiveFrom || '',
@@ -2564,19 +2568,19 @@
         const status = calc.qualified ? '<span style="color:#2E7D32;font-weight:800">Qualified</span>' : `<span style="color:#B71C1C;font-weight:800">${escapeHtml(calc.reason)}</span>`;
         return `<tr style="border-bottom:.5px solid var(--bd)">
           <td style="padding:8px"><b>${escapeHtml(calc.quota.name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
-          <td style="padding:8px">₹${Math.round(calc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual ₹${Math.round(calc.actual.sales).toLocaleString('en-IN')} · ${calc.individualGate.salesPct.toFixed(0)}%</span></td>
-          <td style="padding:8px">₹${Math.round(calc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual ₹${Math.round(calc.actual.billing).toLocaleString('en-IN')} · ${calc.individualGate.billingPct.toFixed(0)}%</span></td>
-          <td style="padding:8px">₹${Math.round(calc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual ₹${Math.round(calc.actual.grossProfit).toLocaleString('en-IN')} · ${calc.individualGate.grossProfitPct.toFixed(0)}%</span></td>
+          <td style="padding:8px">â‚¹${Math.round(calc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual â‚¹${Math.round(calc.actual.sales).toLocaleString('en-IN')} Â· ${calc.individualGate.salesPct.toFixed(0)}%</span></td>
+          <td style="padding:8px">â‚¹${Math.round(calc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual â‚¹${Math.round(calc.actual.billing).toLocaleString('en-IN')} Â· ${calc.individualGate.billingPct.toFixed(0)}%</span></td>
+          <td style="padding:8px">â‚¹${Math.round(calc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Actual â‚¹${Math.round(calc.actual.grossProfit).toLocaleString('en-IN')} Â· ${calc.individualGate.grossProfitPct.toFixed(0)}%</span></td>
           <td style="padding:8px">${status}</td>
-          <td style="padding:8px;font-weight:800;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(calc.incentive).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Plan ₹${Math.round(calc.targetIncentive).toLocaleString('en-IN')}</span></td>
+          <td style="padding:8px;font-weight:800;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">â‚¹${Math.round(calc.incentive).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Plan â‚¹${Math.round(calc.targetIncentive).toLocaleString('en-IN')}</span></td>
         </tr>`;
       }).join('');
       container.innerHTML = `<div style="font-weight:700;margin-bottom:7px">FY26-27 Sales Incentive Gate ${gateBadge}</div>
         <div style="font-size:11px;color:var(--t2);margin-bottom:8px">Gate entry: company must achieve at least ${plan.gatePct}% of Sales, Billing and Gross Profit. After that, only individuals achieving ${plan.gatePct}% of all three individual quotas earn incentive at ${plan.incentiveRatePct}% of achieved Gross Profit.</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">
-          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company Sales</b><br>₹${Math.round(companyActual.sales).toLocaleString('en-IN')} / ₹${Math.round(plan.company.sales).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.salesPct.toFixed(0)}%</span></div>
-          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company Billing</b><br>₹${Math.round(companyActual.billing).toLocaleString('en-IN')} / ₹${Math.round(plan.company.billing).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.billingPct.toFixed(0)}%</span></div>
-          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company GP</b><br>₹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.grossProfitPct.toFixed(0)}%</span></div>
+          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company Sales</b><br>â‚¹${Math.round(companyActual.sales).toLocaleString('en-IN')} / â‚¹${Math.round(plan.company.sales).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.salesPct.toFixed(0)}%</span></div>
+          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company Billing</b><br>â‚¹${Math.round(companyActual.billing).toLocaleString('en-IN')} / â‚¹${Math.round(plan.company.billing).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.billingPct.toFixed(0)}%</span></div>
+          <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company GP</b><br>â‚¹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')} / â‚¹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.grossProfitPct.toFixed(0)}%</span></div>
         </div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:920px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">Salesperson</th><th style="text-align:left;padding:8px">Sales</th><th style="text-align:left;padding:8px">Billing</th><th style="text-align:left;padding:8px">Gross Profit</th><th style="text-align:left;padding:8px">Gate</th><th style="text-align:left;padding:8px">Incentive</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
@@ -2611,17 +2615,17 @@
       const metric = (label, actual, target, pct, color = 'var(--p)') => `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px">
         <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase;letter-spacing:.04em">${label}</div>
         <div style="font-size:16px;font-weight:900;color:${color};margin-top:4px">${pct.toFixed(0)}%</div>
-        <div style="font-size:11px;color:var(--t2);margin-top:2px">₹${Math.round(actual).toLocaleString('en-IN')} / ₹${Math.round(target).toLocaleString('en-IN')}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">â‚¹${Math.round(actual).toLocaleString('en-IN')} / â‚¹${Math.round(target).toLocaleString('en-IN')}</div>
       </div>`;
       container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
           <div>
             <div style="font-size:13px;font-weight:900;color:${calc.qualified ? '#2E7D32' : '#E65100'}">${escapeHtml(calc.reason)}</div>
-            <div style="font-size:11px;color:var(--t2);margin-top:3px">Showing ${periodLabels[period]} · ${companyLabel} · ${personalLabel} · Gate ${calc.plan.gatePct}% on Sales, Billing and GP</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:3px">Showing ${periodLabels[period]} Â· ${companyLabel} Â· ${personalLabel} Â· Gate ${calc.plan.gatePct}% on Sales, Billing and GP</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase">Earned Incentive</div>
-            <div style="font-size:20px;font-weight:900;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(calc.incentive).toLocaleString('en-IN')}</div>
-            <div style="font-size:10px;color:var(--t2)">Plan ₹${Math.round(calc.targetIncentive || 0).toLocaleString('en-IN')}</div>
+            <div style="font-size:20px;font-weight:900;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">â‚¹${Math.round(calc.incentive).toLocaleString('en-IN')}</div>
+            <div style="font-size:10px;color:var(--t2)">Plan â‚¹${Math.round(calc.targetIncentive || 0).toLocaleString('en-IN')}</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
@@ -2647,11 +2651,11 @@
         if (mode === 'review' && lead.status === 'Submitted') actions = `<button class="btn sm primary" onclick="qualifyCrmLead('${lead.id}')">Qualify</button> <button class="btn sm danger" onclick="openLeadRejection('${lead.id}','lead')">Reject</button>`;
         if (mode === 'review' && lead.status === 'Qualified') actions = `<button class="btn sm primary" onclick="openLeadConversionModal('${lead.id}')">Convert to Deal</button> <button class="btn sm danger" onclick="openLeadRejection('${lead.id}','lead')">Reject</button>`;
         if (mode === 'approval') {
-          if (entitlement > approved) actions += `<button class="btn sm primary" onclick="approveLeadIncentive('${lead.id}')">Approve ₹${entitlement.toLocaleString('en-IN')}</button> `;
-          if (approved > paid) actions += `<button class="btn sm" onclick="markLeadIncentivePaid('${lead.id}')">Mark ₹${(approved-paid).toLocaleString('en-IN')} Paid</button> `;
+          if (entitlement > approved) actions += `<button class="btn sm primary" onclick="approveLeadIncentive('${lead.id}')">Approve â‚¹${entitlement.toLocaleString('en-IN')}</button> `;
+          if (approved > paid) actions += `<button class="btn sm" onclick="markLeadIncentivePaid('${lead.id}')">Mark â‚¹${(approved-paid).toLocaleString('en-IN')} Paid</button> `;
           if (entitlement > paid) actions += `<button class="btn sm danger" onclick="openLeadRejection('${lead.id}','incentive')">Reject Incentive</button>`;
         }
-        return `<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:9px"><b>${escapeHtml(lead.company)}</b><br><span style="font-size:10px;color:var(--t2)">${escapeHtml(lead.contactPerson)} · ${escapeHtml(lead.contactNumber)}</span></td><td style="padding:9px">${escapeHtml(lead.referrerName || lead.referrerUsername)}</td><td style="padding:9px">${leadStatusBadge(lead.status)}${lead.rejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">${escapeHtml(lead.rejectionReason)}</div>` : ''}</td><td style="padding:9px">₹${entitlement.toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Approved ₹${approved.toLocaleString('en-IN')} · Paid ₹${paid.toLocaleString('en-IN')}</span>${lead.incentiveRejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">Rejected: ${escapeHtml(lead.incentiveRejectionReason)}</div>` : ''}</td><td style="padding:9px">${actions || escapeHtml(lead.incentiveApprovalStatus || '—')}</td></tr>`;
+        return `<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:9px"><b>${escapeHtml(lead.company)}</b><br><span style="font-size:10px;color:var(--t2)">${escapeHtml(lead.contactPerson)} Â· ${escapeHtml(lead.contactNumber)}</span></td><td style="padding:9px">${escapeHtml(lead.referrerName || lead.referrerUsername)}</td><td style="padding:9px">${leadStatusBadge(lead.status)}${lead.rejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">${escapeHtml(lead.rejectionReason)}</div>` : ''}</td><td style="padding:9px">â‚¹${entitlement.toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Approved â‚¹${approved.toLocaleString('en-IN')} Â· Paid â‚¹${paid.toLocaleString('en-IN')}</span>${lead.incentiveRejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">Rejected: ${escapeHtml(lead.incentiveRejectionReason)}</div>` : ''}</td><td style="padding:9px">${actions || escapeHtml(lead.incentiveApprovalStatus || 'â€”')}</td></tr>`;
       }).join('');
       return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:760px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:9px">Company / Contact</th><th style="text-align:left;padding:9px">Referrer</th><th style="text-align:left;padding:9px">Lead Status</th><th style="text-align:left;padding:9px">Incentive</th><th style="text-align:left;padding:9px">${mode === 'my' ? 'Approval Status' : 'Actions'}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
@@ -2664,7 +2668,7 @@
       document.getElementById('leadStatMy').textContent = mine.length;
       document.getElementById('leadStatQualified').textContent = mine.filter(lead => lead.status === 'Qualified').length;
       document.getElementById('leadStatConverted').textContent = mine.filter(lead => lead.status === 'Converted to Deal').length;
-      document.getElementById('leadStatIncentive').textContent = '₹' + myEntitlement.toLocaleString('en-IN');
+      document.getElementById('leadStatIncentive').textContent = 'â‚¹' + myEntitlement.toLocaleString('en-IN');
       document.getElementById('leadMyContainer').innerHTML = leadTable(mine, 'my');
       const reviewCard = document.getElementById('leadReviewCard');
       reviewCard.style.display = isLeadReviewer() ? 'block' : 'none';
@@ -2692,7 +2696,7 @@
         document.getElementById('salesOrderStageWeight').value = Number(leadIncentiveConfig.salesOrderStageWeight ?? 50);
         document.getElementById('salesAnnualPoolCapPct').value = Number(leadIncentiveConfig.salesAnnualPoolCapPct ?? 2);
         const history = (leadIncentiveConfig.history || []).slice().reverse();
-        document.getElementById('leadSettingsHistory').innerHTML = history.length ? `<div style="font-size:11px;color:var(--t2)"><b>Recent plan history:</b> ${history.slice(0,5).map(item => `₹${Number(item.qualifiedAmount||0).toLocaleString('en-IN')} qualified / ₹${Number(item.convertedAmount||0).toLocaleString('en-IN')} converted from ${escapeHtml(item.effectiveFrom || '—')}`).join(' · ')}</div>` : '';
+        document.getElementById('leadSettingsHistory').innerHTML = history.length ? `<div style="font-size:11px;color:var(--t2)"><b>Recent plan history:</b> ${history.slice(0,5).map(item => `â‚¹${Number(item.qualifiedAmount||0).toLocaleString('en-IN')} qualified / â‚¹${Number(item.convertedAmount||0).toLocaleString('en-IN')} converted from ${escapeHtml(item.effectiveFrom || 'â€”')}`).join(' Â· ')}</div>` : '';
         renderSalesIncentivePolicySummary();
       }
       const byUser = {};
@@ -2703,12 +2707,12 @@
         item.entitlement += Number(lead.entitlementAmount || 0); item.paid += Number(lead.paidAmount || 0);
       });
       const leaders = Object.values(byUser).sort((a,b) => b.converted-a.converted || b.entitlement-a.entitlement || b.qualified-a.qualified);
-      document.getElementById('leadLeaderboardContainer').innerHTML = leaders.length ? leaders.map((item,index) => `<div style="display:grid;grid-template-columns:35px 1fr auto;gap:10px;padding:10px;border-bottom:.5px solid var(--bd);align-items:center"><b>${index+1}</b><div><b>${escapeHtml(item.name)}</b><div style="font-size:10px;color:var(--t2)">${item.submitted} submitted · ${item.qualified} qualified · ${item.converted} converted</div></div><div style="text-align:right;font-weight:700;color:var(--success)">₹${item.entitlement.toLocaleString('en-IN')}<div style="font-size:9px;color:var(--t2)">Paid ₹${item.paid.toLocaleString('en-IN')}</div></div></div>`).join('') : '<div class="empty"><p>No lead referrals yet.</p></div>';
+      document.getElementById('leadLeaderboardContainer').innerHTML = leaders.length ? leaders.map((item,index) => `<div style="display:grid;grid-template-columns:35px 1fr auto;gap:10px;padding:10px;border-bottom:.5px solid var(--bd);align-items:center"><b>${index+1}</b><div><b>${escapeHtml(item.name)}</b><div style="font-size:10px;color:var(--t2)">${item.submitted} submitted Â· ${item.qualified} qualified Â· ${item.converted} converted</div></div><div style="text-align:right;font-weight:700;color:var(--success)">â‚¹${item.entitlement.toLocaleString('en-IN')}<div style="font-size:9px;color:var(--t2)">Paid â‚¹${item.paid.toLocaleString('en-IN')}</div></div></div>`).join('') : '<div class="empty"><p>No lead referrals yet.</p></div>';
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // CUSTOMERS
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function canAdministerCustomer(customer) {
       return String(currentUser || '').toLowerCase() === 'updesh' || customer?.username === currentUser;
     }
@@ -2899,7 +2903,7 @@
       select.innerHTML = '<option value="">-- Select Contact Person --</option>' +
         (contacts.length
           ? contacts.map(contact => {
-              const label = `${contact.contact || 'Unnamed contact'}${contact.email ? ' · ' + contact.email : ''}${contact.phone ? ' · ' + contact.phone : ''}`;
+              const label = `${contact.contact || 'Unnamed contact'}${contact.email ? ' Â· ' + contact.email : ''}${contact.phone ? ' Â· ' + contact.phone : ''}`;
               return `<option value="${contact.id}">${escapeHtml(label)}</option>`;
             }).join('')
           : '<option value="" disabled>No contact available. Add a new contact below.</option>');
@@ -3032,7 +3036,7 @@
       const today = new Date(); today.setHours(0,0,0,0); base.setHours(0,0,0,0);
       const daysSince = Math.max(0, Math.floor((today - base) / 86400000));
       const state = daysSince > 30 ? 'overdue' : 'on-track';
-      return { lastAddressed, daysSince, state, label: state === 'overdue' ? `${daysSince} days — UNADDRESSED` : `${daysSince} days ago` };
+      return { lastAddressed, daysSince, state, label: state === 'overdue' ? `${daysSince} days â€” UNADDRESSED` : `${daysSince} days ago` };
     }
 
     async function toggleKeyAccount(id, checked, checkbox) {
@@ -3095,12 +3099,74 @@
     }
 
     function sortArrow(state, key) {
-      if (state.key !== key) return '<span style="opacity:.35;margin-left:4px">↕</span>';
-      return `<span style="margin-left:4px;color:var(--p)">${state.dir === 'asc' ? '▲' : '▼'}</span>`;
+      if (state.key !== key) return '<span style="opacity:.35;margin-left:4px">â†•</span>';
+      return `<span style="margin-left:4px;color:var(--p)">${state.dir === 'asc' ? 'â–²' : 'â–¼'}</span>`;
     }
 
     function sortableHeader(label, key, type = 'text', align = 'left') {
       return `<th style="text-align:${align};padding:12px"><button type="button" onclick="setContactSort('${key}','${type}')" style="all:unset;cursor:pointer;font-weight:800;color:inherit">${label}${sortArrow(contactSortState, key)}</button></th>`;
+    }
+
+    function filterInput(scope, key, placeholder = 'Filter') {
+      const filters = scope === 'deal' ? dealColumnFilters : contactColumnFilters;
+      const fn = scope === 'deal' ? 'setDealColumnFilter' : 'setContactColumnFilter';
+      return `<input type="search" value="${escapeHtml(filters[key] || '')}" placeholder="${escapeHtml(placeholder)}" oninput="${fn}('${key}',this.value)" onclick="event.stopPropagation()" style="width:100%;min-width:72px;margin-top:5px;padding:4px 6px;border:1px solid var(--bd);border-radius:5px;font-size:10.5px;font-family:inherit;font-weight:500;background:#fff">`;
+    }
+
+    function contactHeader(label, key, type = 'text', align = 'left') {
+      return `<th style="text-align:${align};padding:8px 10px"><button type="button" onclick="setContactSort('${key}','${type}')" style="all:unset;cursor:pointer;font-weight:800;color:inherit">${label}${sortArrow(contactSortState, key)}</button>${filterInput('contact', key)}</th>`;
+    }
+
+    function dealHeader(label, key, type = 'text', align = 'left') {
+      return `<th style="text-align:${align};padding:8px 10px"><button type="button" onclick="setDealColumnSort('${key}','${type}')" style="all:unset;cursor:pointer;font-weight:800;color:inherit">${label}${sortArrow(dealColumnSortState, key)}</button>${filterInput('deal', key)}</th>`;
+    }
+
+    function setContactColumnFilter(key, value) {
+      contactColumnFilters[key] = value || '';
+      renderCustomers();
+    }
+
+    function setDealColumnFilter(key, value) {
+      dealColumnFilters[key] = value || '';
+      renderDeals();
+    }
+
+    function filterRecordByColumns(record, filters) {
+      return Object.entries(filters || {}).every(([key, value]) => {
+        const needle = String(value || '').trim().toLowerCase();
+        if (!needle) return true;
+        return String(record[key] ?? '').toLowerCase().includes(needle);
+      });
+    }
+
+    function xlsCell(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function exportDealsXls() {
+      if (!currentDealExportRows.length) {
+        renderDeals();
+      }
+      if (!currentDealExportRows.length) return showToast('No deal data available to export', 'warning');
+      const columns = [
+        'Deal ID','Deal Title','Customer','Stage','Value','GM Amount','GM %',
+        'Customer contact','Email','Phone','Owner','Probability','Close date','Order date','Billing date',
+        'Partners','Incentive','View context','Loss reason','Notes'
+      ];
+      const rows = currentDealExportRows.map(row => [
+        row.dealCode,row.title,row.customer,row.stage,row.value,row.gmAmount,row.gmPercent,
+        row.customerContact,row.email,row.phone,row.owner,row.probability,row.closeDate,row.orderDate,row.billingDate,
+        row.partners,row.incentive,row.viewContext,row.lossReason,row.notes
+      ]);
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr>${columns.map(col => `<th>${xlsCell(col)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${xlsCell(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `dqap-crm-deals-${new Date().toISOString().slice(0,10)}.xls`;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 500);
+      showToast(`Exported ${rows.length} deal row(s)`, 'success');
     }
 
     function setContactSort(key, type = 'text') {
@@ -3120,7 +3186,14 @@
       const custs = scopedCusts.filter(customer => crmTextMatch([
         customer.name, customer.contact, customer.email, customer.phone, customer.industry, customer.notes,
         customer.isKeyAccount ? 'key account kam' : ''
-      ], search)).sort((a, b) => {
+      ], search)).filter(customer => filterRecordByColumns({
+        name: customer.name || '',
+        contact: customer.contact || '',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        industry: customer.industry || '',
+        keyAccount: customer.isKeyAccount ? 'yes key account kam' : 'no'
+      }, contactColumnFilters)).sort((a, b) => {
         const key = contactSortState.key;
         const valueFor = customer => {
           if (key === 'keyAccount') return customer.isKeyAccount;
@@ -3133,27 +3206,27 @@
       if (countEl) countEl.textContent = search.trim() ? `${custs.length} of ${scopedCusts.length} contacts` : `${scopedCusts.length} contacts`;
       
       if (scopedCusts.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No contacts yet.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">ðŸ‘¥</div><p>No contacts yet.</p></div>';
         return;
       }
       if (custs.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">🔎</div><p>No contacts match this search.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">ðŸ”Ž</div><p>No contacts match this search.</p></div>';
         return;
       }
       
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-      html += `<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)">${sortableHeader('Company', 'name')}${sortableHeader('Contact', 'contact')}${sortableHeader('Email', 'email')}${sortableHeader('Phone', 'phone', 'number')}${sortableHeader('Industry', 'industry')}${sortableHeader('Key Account', 'keyAccount', 'boolean', 'center')}<th style="text-align:left;padding:12px">Activities</th><th style="text-align:left;padding:12px">Actions</th></tr>`;
+      html += `<tr style="background:var(--bg);border-bottom:.5px solid var(--bd)">${contactHeader('Company', 'name')}${contactHeader('Contact', 'contact')}${contactHeader('Email', 'email')}${contactHeader('Phone', 'phone', 'number')}${contactHeader('Industry', 'industry')}${contactHeader('Key Account', 'keyAccount', 'boolean', 'center')}<th style="text-align:left;padding:12px">Activities</th><th style="text-align:left;padding:12px">Actions</th></tr>`;
       
       custs.forEach(c => {
         html += `<tr style="border-bottom: 0.5px solid var(--bd);">
           <td style="padding: 12px; font-weight: 500;">${c.name}${c.sourceLeadId ? `<div style="font-size:9.5px;color:var(--t2);font-weight:500">Converted Lead</div>` : ''}</td>
-          <td style="padding: 12px;">${c.contact || '—'}</td>
-          <td style="padding:12px">${c.email || '—'}</td>
-          <td style="padding:12px">${c.phone || '—'}</td>
-          <td style="padding:12px">${c.industry || '—'}</td>
+          <td style="padding: 12px;">${c.contact || 'â€”'}</td>
+          <td style="padding:12px">${c.email || 'â€”'}</td>
+          <td style="padding:12px">${c.phone || 'â€”'}</td>
+          <td style="padding:12px">${c.industry || 'â€”'}</td>
           <td style="padding:12px;text-align:center"><input type="checkbox" aria-label="Mark ${escapeHtml(c.name)} as Key Account" ${c.isKeyAccount ? 'checked' : ''} ${canAdministerCustomer(c) ? '' : 'disabled title="Only the contact owner or Updesh can change this"'} onchange="toggleKeyAccount('${c.id}',this.checked,this)"></td>
           <td style="padding:8px 10px"><div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${c.id}')"><i class="ti ti-plus"></i> Log / Plan</button><button class="btn sm" onclick="openActivityHistoryModal('account','${c.id}')"><i class="ti ti-history"></i> Logs</button></div></td>
-          <td style="padding:8px 10px">${canAdministerCustomer(c) || canDeleteCustomer() ? `<div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap">${canAdministerCustomer(c) ? `<button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}${canDeleteCustomer() ? `<button class="btn sm danger" onclick="deleteCustomer('${c.id}')"><i class="ti ti-trash"></i></button>` : ''}</div>` : '—'}</td>
+          <td style="padding:8px 10px">${canAdministerCustomer(c) || canDeleteCustomer() ? `<div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap">${canAdministerCustomer(c) ? `<button class="btn sm" onclick="openEditCustomerModal('${c.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}${canDeleteCustomer() ? `<button class="btn sm danger" onclick="deleteCustomer('${c.id}')"><i class="ti ti-trash"></i></button>` : ''}</div>` : 'â€”'}</td>
         </tr>`;
       });
       
@@ -3166,7 +3239,7 @@
       if (!container) return;
       const accounts = Object.values(customerData).filter(account => account.isKeyAccount === true);
       if (!accounts.length) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>No Key Accounts selected. Mark contacts using the Key Account checkbox on Contacts.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">ðŸ¢</div><p>No Key Accounts selected. Mark contacts using the Key Account checkbox on Contacts.</p></div>';
         return;
       }
       let rows = '';
@@ -3175,7 +3248,7 @@
         const overdue = status.state === 'overdue';
         rows += `<tr style="border-bottom:.5px solid var(--bd);${overdue ? 'background:#FFEBEE' : ''}">
           <td style="padding:12px;font-weight:700">${escapeHtml(account.name)}</td>
-          <td style="padding:12px">${escapeHtml(account.contact || '—')}</td>
+          <td style="padding:12px">${escapeHtml(account.contact || 'â€”')}</td>
           <td style="padding:12px">${status.lastAddressed ? formatDate(status.lastAddressed) : 'Never'}</td>
           <td style="padding:12px;color:${overdue ? 'var(--danger)' : 'var(--success)'};font-weight:800">${escapeHtml(status.label)}</td>
           <td style="padding:12px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" onclick="openLogActivityModal('account','${account.id}')">Log / Plan Activity</button><button class="btn sm" onclick="openActivityHistoryModal('account','${account.id}')">View Activity Logs</button></div></td>
@@ -3184,9 +3257,9 @@
       container.innerHTML = `<div style="margin-bottom:12px;font-size:12px;color:var(--t2)">A Key Account is flagged red when no Meeting or Call has been recorded for more than 30 days.</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:12px">Company</th><th style="text-align:left;padding:12px">Contact</th><th style="text-align:left;padding:12px">Last Meeting / Call</th><th style="text-align:left;padding:12px">30-Day Status</th><th style="text-align:left;padding:12px">Activities</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // DEALS
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TENDER MANAGEMENT
     function canViewTenderManagement(username = currentUser) {
       return TENDER_USERS.includes(String(username || '').toLowerCase());
@@ -3266,7 +3339,7 @@
     }
 
     function tenderMoney(value) {
-      return '₹' + Number(value || 0).toLocaleString('en-IN');
+      return 'â‚¹' + Number(value || 0).toLocaleString('en-IN');
     }
 
     async function loadTenderData() {
@@ -3303,7 +3376,7 @@
       setText('tenderStatOpen', open.length);
       setText('tenderStatDueSoon', dueSoon.length);
       setText('tenderStatOverdue', overdue.length);
-      setText('tenderStatValue', '₹' + formatCurrency(openValue));
+      setText('tenderStatValue', 'â‚¹' + formatCurrency(openValue));
 
       const alertBox = document.getElementById('tenderAlertContainer');
       if (alertBox) {
@@ -3324,8 +3397,8 @@
         <td style="padding:10px">${escapeHtml(t.emdRequired || 'No')}${t.emdRequired === 'Yes' ? `<div style="font-size:10px;color:var(--t2)">${tenderMoney(t.emdAmount)}</div>` : ''}</td>
         <td style="padding:10px">${formatDate(t.dueDate)}</td>
         <td style="padding:10px">${escapeHtml(t.status || 'Open')}<div style="margin-top:4px">${tenderStatusBadge(t)}</div></td>
-        <td style="padding:10px">${escapeHtml(t.owner || '') || '—'}</td>
-        <td style="padding:10px;max-width:260px;font-size:11px;color:var(--t2)">${escapeHtml(t.remarks || '') || '—'}</td>
+        <td style="padding:10px">${escapeHtml(t.owner || '') || 'â€”'}</td>
+        <td style="padding:10px;max-width:260px;font-size:11px;color:var(--t2)">${escapeHtml(t.remarks || '') || 'â€”'}</td>
         <td style="padding:8px;white-space:nowrap"><button class="btn sm" onclick="editTender('${t.id}')"><i class="ti ti-edit"></i> Edit</button> <button class="btn sm danger" onclick="deleteTender('${t.id}')"><i class="ti ti-trash"></i></button></td>
       </tr>`).join('');
       container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1080px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:10px">Tender / Issued By</th><th style="text-align:left;padding:10px">Estimated Cost</th><th style="text-align:left;padding:10px">EMD</th><th style="text-align:left;padding:10px">Due Date</th><th style="text-align:left;padding:10px">Status</th><th style="text-align:left;padding:10px">Owner</th><th style="text-align:left;padding:10px">Remarks</th><th style="text-align:left;padding:10px">Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -3594,7 +3667,7 @@
       const percent = value > 0 ? margin / value * 100 : 0;
       const output = document.getElementById('dealGrossMarginPercent');
       if (output) {
-        output.textContent = `Gross Margin: ${percent.toFixed(2)}% of PO value · minimum target 20%`;
+        output.textContent = `Gross Margin: ${percent.toFixed(2)}% of PO value Â· minimum target 20%`;
         output.style.color = percent >= 20 ? '#2E7D32' : '#B71C1C';
       }
     }
@@ -3789,11 +3862,11 @@
       if (countEl) countEl.textContent = search.trim() ? `${deals.length} of ${scopedDeals.length} deals` : `${scopedDeals.length} deals`;
       
       if (scopedDeals.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No deals yet.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">ðŸ“‹</div><p>No deals yet.</p></div>';
         return;
       }
       if (deals.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">🔎</div><p>No deals match this search.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">ðŸ”Ž</div><p>No deals match this search.</p></div>';
         return;
       }
       
@@ -3832,24 +3905,72 @@
           .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')) || Number(b.value || 0) - Number(a.value || 0))
           .forEach(deal => orderedDeals.push({ deal, group: stat.group }));
       });
-      const seenDeals = new Set();
-      const compactRows = orderedDeals.filter(item => {
-        if (seenDeals.has(item.deal.id)) return false;
-        seenDeals.add(item.deal.id);
-        return true;
-      }).map(item => {
+      const dealRowData = item => {
         const d = item.deal;
         const customer = customerData[d.customerId] || {};
         const acceptedPartners = acceptedDealPartners(d);
         const pendingPartners = pendingDealPartners(d);
         const salesIncentive = salesIncentiveForDeal(d);
         const gmPercent = Number(d.grossMarginPercent || (Number(d.value || 0) ? Number(d.grossMarginAmount || 0) / Number(d.value || 0) * 100 : 0));
+        const partnerLine = (acceptedPartners.length || pendingPartners.length)
+          ? `${acceptedPartners.map(p => p.name || p.username).join(', ') || 'None accepted'}${pendingPartners.length ? ` - Pending: ${pendingPartners.map(p => p.name || p.username).join(', ')}` : ''}`
+          : '-';
+        const incentive = salesIncentive.ownerQualified ? `â‚¹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential â‚¹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`;
+        const lossReason = d.stage === 'Lost' ? [d.lossReason, d.customLossReason].filter(Boolean).join(' - ') : '';
+        const record = {
+          dealCode: d.dealCode || generateDealCode(d.id),
+          title: d.title || 'Untitled Deal',
+          customer: customer.name || d.customerCompanyName || '',
+          stage: d.stage || 'Lead',
+          value: Number(d.value || 0),
+          gmAmount: Number(d.grossMarginAmount || 0),
+          gmPercent: gmPercent.toFixed(2),
+          customerContact: customer.contact || '',
+          email: customer.email || '',
+          phone: customer.phone || '',
+          owner: d.username || '',
+          probability: Number(d.probability || 0),
+          closeDate: d.closeDate ? formatDate(d.closeDate) : '',
+          orderDate: d.orderDate ? formatDate(d.orderDate) : '',
+          billingDate: d.billingDate ? formatDate(d.billingDate) : '',
+          partners: partnerLine,
+          incentive,
+          viewContext: item.group || '',
+          lossReason,
+          notes: d.notes || ''
+        };
+        return { item, d, customer, acceptedPartners, pendingPartners, salesIncentive, gmPercent, partnerLine, record };
+      };
+      const seenDeals = new Set();
+      const dealItems = orderedDeals.filter(item => {
+        if (seenDeals.has(item.deal.id)) return false;
+        seenDeals.add(item.deal.id);
+        return true;
+      }).map(dealRowData).filter(item => filterRecordByColumns({
+        dealCode: item.record.dealCode,
+        title: item.record.title,
+        customer: item.record.customer,
+        stage: item.record.stage,
+        value: item.record.value,
+        gmAmount: item.record.gmAmount,
+        gmPercent: item.record.gmPercent
+      }, dealColumnFilters)).sort((a, b) => {
+        const key = dealColumnSortState.key || 'dealCode';
+        const av = a.record[key] ?? '';
+        const bv = b.record[key] ?? '';
+        return compareSortValues(av, bv, dealColumnSortState.type, dealColumnSortState.dir)
+          || compareSortValues(a.record.title, b.record.title, 'text', 'asc');
+      });
+      currentDealExportRows = dealItems.map(item => item.record);
+      if (!dealItems.length) {
+        container.innerHTML = '<div class="empty"><div class="empty-icon">🔎</div><p>No deals match these column filters.</p></div>';
+        return;
+      }
+      const compactRows = dealItems.map(({ item, d, customer, acceptedPartners, pendingPartners, salesIncentive, gmPercent, partnerLine }) => {
         const gmColor = gmPercent >= 20 ? '#2E7D32' : '#B71C1C';
         const stageClass = d.stage === 'Lost' ? 'lost' : (d.stage === 'Billed' ? 'won' : '');
-        const ownerLine = isLeadReviewer() ? `<div style="font-size:10px;color:var(--t2);margin-top:2px">Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}</div>` : '';
-        const partnerLine = (acceptedPartners.length || pendingPartners.length)
-          ? `${acceptedPartners.map(p => escapeHtml(p.name || p.username)).join(', ') || 'None accepted'}${pendingPartners.length ? ` · Pending: ${pendingPartners.map(p => escapeHtml(p.name || p.username)).join(', ')}` : ''}`
-          : '—';
+        const ownerLine = isLeadReviewer() ? `<div style="font-size:10px;color:var(--t2);margin-top:2px">Owner: ${escapeHtml(d.username || 'â€”')}${d.sourceLeadId ? ' Â· Converted Lead' : ''}</div>` : '';
+        const safePartnerLine = escapeHtml(partnerLine || '-');
         const actions = `<div style="display:flex;gap:6px;flex-wrap:wrap">
           ${canAdministerDeal(d) ? `<button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}
           ${canDeleteDeal() ? `<button class="btn sm danger" onclick="deleteDeal('${d.id}')"><i class="ti ti-trash"></i></button>` : ''}
@@ -3859,27 +3980,27 @@
         return `<tr>
           <td style="font-weight:900;color:#006994;white-space:nowrap">${escapeHtml(d.dealCode || generateDealCode(d.id))}</td>
           <td style="min-width:220px"><button type="button" class="deal-title-link" onclick="toggleDealDetailRow('${d.id}')">${escapeHtml(d.title || 'Untitled Deal')}</button>${ownerLine}</td>
-          <td>${escapeHtml(customer.name || d.customerCompanyName || '—')}</td>
+          <td>${escapeHtml(customer.name || d.customerCompanyName || 'â€”')}</td>
           <td><span class="deal-stage ${stageClass}">${escapeHtml(d.stage || 'Lead')}</span></td>
-          <td style="font-weight:900;color:var(--p);white-space:nowrap">₹${formatCurrency(d.value || 0)}</td>
-          <td style="font-weight:900;color:${gmColor};white-space:nowrap">₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} <span style="font-size:10px">(${gmPercent.toFixed(2)}%)</span></td>
+          <td style="font-weight:900;color:var(--p);white-space:nowrap">â‚¹${formatCurrency(d.value || 0)}</td>
+          <td style="font-weight:900;color:${gmColor};white-space:nowrap">â‚¹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} <span style="font-size:10px">(${gmPercent.toFixed(2)}%)</span></td>
         </tr>
         <tr id="deal-detail-row-${d.id}" style="display:none">
           <td colspan="6">
             <div class="deal-detail-panel">
               <div class="deal-detail-grid">
-                <div><div class="deal-detail-label">Customer contact</div><div class="deal-detail-value">${escapeHtml(customer.contact || '—')}</div></div>
-                <div><div class="deal-detail-label">Email</div><div class="deal-detail-value">${escapeHtml(customer.email || '—')}</div></div>
-                <div><div class="deal-detail-label">Phone</div><div class="deal-detail-value">${escapeHtml(customer.phone || '—')}</div></div>
-                <div><div class="deal-detail-label">Owner</div><div class="deal-detail-value">${escapeHtml(d.username || '—')}</div></div>
+                <div><div class="deal-detail-label">Customer contact</div><div class="deal-detail-value">${escapeHtml(customer.contact || 'â€”')}</div></div>
+                <div><div class="deal-detail-label">Email</div><div class="deal-detail-value">${escapeHtml(customer.email || 'â€”')}</div></div>
+                <div><div class="deal-detail-label">Phone</div><div class="deal-detail-value">${escapeHtml(customer.phone || 'â€”')}</div></div>
+                <div><div class="deal-detail-label">Owner</div><div class="deal-detail-value">${escapeHtml(d.username || 'â€”')}</div></div>
                 <div><div class="deal-detail-label">Probability</div><div class="deal-detail-value">${Number(d.probability || 0)}%</div></div>
-                <div><div class="deal-detail-label">Close date</div><div class="deal-detail-value">${d.closeDate ? formatDate(d.closeDate) : '—'}</div></div>
-                <div><div class="deal-detail-label">Order date</div><div class="deal-detail-value">${d.orderDate ? formatDate(d.orderDate) : '—'}</div></div>
-                <div><div class="deal-detail-label">Billing date</div><div class="deal-detail-value">${d.billingDate ? formatDate(d.billingDate) : '—'}</div></div>
-                <div><div class="deal-detail-label">Partners</div><div class="deal-detail-value">${partnerLine}</div></div>
-                <div><div class="deal-detail-label">Incentive</div><div class="deal-detail-value">${salesIncentive.ownerQualified ? `₹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential ₹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`}</div></div>
-                <div><div class="deal-detail-label">View context</div><div class="deal-detail-value">${escapeHtml(item.group || '—')}</div></div>
-                <div><div class="deal-detail-label">Loss reason</div><div class="deal-detail-value">${d.stage === 'Lost' ? escapeHtml([d.lossReason, d.customLossReason].filter(Boolean).join(' - ') || '—') : '—'}</div></div>
+                <div><div class="deal-detail-label">Close date</div><div class="deal-detail-value">${d.closeDate ? formatDate(d.closeDate) : 'â€”'}</div></div>
+                <div><div class="deal-detail-label">Order date</div><div class="deal-detail-value">${d.orderDate ? formatDate(d.orderDate) : 'â€”'}</div></div>
+                <div><div class="deal-detail-label">Billing date</div><div class="deal-detail-value">${d.billingDate ? formatDate(d.billingDate) : 'â€”'}</div></div>
+                <div><div class="deal-detail-label">Partners</div><div class="deal-detail-value">${safePartnerLine}</div></div>
+                <div><div class="deal-detail-label">Incentive</div><div class="deal-detail-value">${salesIncentive.ownerQualified ? `â‚¹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential â‚¹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`}</div></div>
+                <div><div class="deal-detail-label">View context</div><div class="deal-detail-value">${escapeHtml(item.group || 'â€”')}</div></div>
+                <div><div class="deal-detail-label">Loss reason</div><div class="deal-detail-value">${d.stage === 'Lost' ? escapeHtml([d.lossReason, d.customLossReason].filter(Boolean).join(' - ') || 'â€”') : 'â€”'}</div></div>
               </div>
               ${d.notes ? `<div style="margin-top:10px"><div class="deal-detail-label">Notes</div><div style="font-size:11.5px;color:var(--t2)">${escapeHtml(d.notes)}</div></div>` : ''}
               <div style="margin-top:10px">${actions}</div>
@@ -3887,7 +4008,7 @@
           </td>
         </tr>`;
       }).join('');
-      container.innerHTML = `<div style="overflow-x:auto"><table class="deals-compact-table"><thead><tr><th>Deal ID</th><th>Title</th><th>Customer</th><th>Stage</th><th>Value</th><th>GM</th></tr></thead><tbody>${compactRows}</tbody></table></div>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table class="deals-compact-table"><thead><tr>${dealHeader('Deal ID','dealCode')}${dealHeader('Title','title')}${dealHeader('Customer','customer')}${dealHeader('Stage','stage')}${dealHeader('Value','value','number')}${dealHeader('GM','gmAmount','number')}</tr></thead><tbody>${compactRows}</tbody></table></div>`;
       return;
 
       let html = '<div class="deals-board">';
@@ -3905,8 +4026,8 @@
               <button type="button" onclick="setDealColumnSort('group','text')" style="all:unset;cursor:pointer">${escapeHtml(group)}${sortArrow(dealColumnSortState, 'group')}</button>
               <button type="button" onclick="setDealColumnSort('count','number')" style="all:unset;cursor:pointer">${groupDeals.length}${sortArrow(dealColumnSortState, 'count')}</button>
             </div>
-            <div class="deals-column-total">₹${formatCurrency(total)}</div>
-            <div class="deals-column-meta"><span>Gross Margin</span><span>₹${formatCurrency(gmTotal)} (${gmPercent.toFixed(2)}%)</span></div>
+            <div class="deals-column-total">â‚¹${formatCurrency(total)}</div>
+            <div class="deals-column-meta"><span>Gross Margin</span><span>â‚¹${formatCurrency(gmTotal)} (${gmPercent.toFixed(2)}%)</span></div>
             <div class="deals-column-meta" style="margin-top:4px">
               <button type="button" onclick="setDealColumnSort('total','number')" style="all:unset;cursor:pointer;color:#2E7D32;font-weight:800">Sort Value${sortArrow(dealColumnSortState, 'total')}</button>
               <button type="button" onclick="setDealColumnSort('gmTotal','number')" style="all:unset;cursor:pointer;color:#006994;font-weight:800">Sort GM${sortArrow(dealColumnSortState, 'gmTotal')}</button>
@@ -3927,18 +4048,18 @@
           html += `<article class="deal-kanban-card" style="border-left-color:${borderColor}">
             <div style="font-size:10px;color:#006994;font-weight:900;margin-bottom:3px">${escapeHtml(d.dealCode || generateDealCode(d.id))}</div>
             <div class="deal-kanban-title">${escapeHtml(d.title || 'Untitled Deal')}</div>
-            <div class="deal-kanban-customer">${escapeHtml(customer?.name || '—')}${isLeadReviewer() ? `<br>Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}` : ''}</div>
+            <div class="deal-kanban-customer">${escapeHtml(customer?.name || 'â€”')}${isLeadReviewer() ? `<br>Owner: ${escapeHtml(d.username || 'â€”')}${d.sourceLeadId ? ' Â· Converted Lead' : ''}` : ''}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-              <span class="deal-kanban-value">₹${formatCurrency(d.value || 0)}</span>
+              <span class="deal-kanban-value">â‚¹${formatCurrency(d.value || 0)}</span>
               <span class="deal-stage ${stageClass}">${escapeHtml(d.stage || 'Lead')}</span>
             </div>
-            <div style="font-size:10.5px;color:var(--t2);margin-top:6px">Probability: ${Number(d.probability || 0)}%${d.closeDate ? ` · Close: ${formatDate(d.closeDate)}` : ''}</div>
-            ${(acceptedPartners.length || pendingPartners.length) ? `<div style="font-size:10px;color:#006994;margin-top:5px"><b>Partners:</b> ${acceptedPartners.map(p => escapeHtml(p.name || p.username)).join(', ') || 'None accepted'}${pendingPartners.length ? ` · Pending: ${pendingPartners.map(p => escapeHtml(p.name || p.username)).join(', ')}` : ''}${shareCount > 1 ? ` · Share each: ${(100 / shareCount).toFixed(0)}%` : ''}</div>` : ''}
+            <div style="font-size:10.5px;color:var(--t2);margin-top:6px">Probability: ${Number(d.probability || 0)}%${d.closeDate ? ` Â· Close: ${formatDate(d.closeDate)}` : ''}</div>
+            ${(acceptedPartners.length || pendingPartners.length) ? `<div style="font-size:10px;color:#006994;margin-top:5px"><b>Partners:</b> ${acceptedPartners.map(p => escapeHtml(p.name || p.username)).join(', ') || 'None accepted'}${pendingPartners.length ? ` Â· Pending: ${pendingPartners.map(p => escapeHtml(p.name || p.username)).join(', ')}` : ''}${shareCount > 1 ? ` Â· Share each: ${(100 / shareCount).toFixed(0)}%` : ''}</div>` : ''}
             ${d.orderDate ? `<div style="font-size:10.5px;color:#1565C0;font-weight:700;margin-top:3px">Order: ${formatDate(d.orderDate)}</div>` : ''}
             ${d.billingDate ? `<div style="font-size:10.5px;color:#2E7D32;font-weight:700;margin-top:3px">Billed: ${formatDate(d.billingDate)}</div>` : ''}
-            <div class="deal-kanban-gm" style="color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'}">GM ₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
+            <div class="deal-kanban-gm" style="color:${Number(d.grossMarginPercent || 0) >= 20 ? '#2E7D32' : '#B71C1C'}">GM â‚¹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} (${Number(d.grossMarginPercent || 0).toFixed(2)}%)</div>
             ${d.stage === 'Lost' ? `<div style="font-size:10px;color:var(--danger);margin-top:5px"><b>Loss:</b> ${escapeHtml(d.lossReason || '')}${d.customLossReason ? ' - ' + escapeHtml(d.customLossReason) : ''}</div>` : ''}
-            <div style="font-size:10px;color:${salesIncentive.ownerQualified ? '#6A1B9A' : 'var(--t2)'};font-weight:700;margin-top:5px">Incentive: ${salesIncentive.ownerQualified ? `₹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential ₹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`}</div>
+            <div style="font-size:10px;color:${salesIncentive.ownerQualified ? '#6A1B9A' : 'var(--t2)'};font-weight:700;margin-top:5px">Incentive: ${salesIncentive.ownerQualified ? `â‚¹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential â‚¹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`}</div>
             <div class="deal-kanban-actions">
               ${canAdministerDeal(d) ? `<button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}
               ${canDeleteDeal() ? `<button class="btn sm danger" onclick="deleteDeal('${d.id}')"><i class="ti ti-trash"></i></button>` : ''}
@@ -3953,9 +4074,9 @@
       container.innerHTML = html;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // CALENDAR WITH DAY DETAILS
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function calendarMeetingsForDate(dateStr) {
       const events = [];
       Object.values(activityData).forEach(activity => {
@@ -4034,20 +4155,20 @@
       const dayName = `${date.toLocaleDateString('en-IN', { weekday: 'long' })}, ${formatDate(dateStr)}`;
       
       let html = `<div style="background: var(--pl); border-left: 3px solid var(--p); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-        <strong style="color: var(--p);">📅 ${dayName}</strong> – ${dayActivities.length} meeting(s)
+        <strong style="color: var(--p);">ðŸ“… ${dayName}</strong> â€“ ${dayActivities.length} meeting(s)
       </div>`;
       
       if (dayActivities.length === 0) {
         html += '<div class="empty" style="padding: 20px;"><p>No meetings scheduled for this day.</p></div>';
       } else {
         dayActivities.forEach(a => {
-          const dealInfo = dealData[a.dealId] ? ` – ${dealData[a.dealId].title}` : ` – ${customerData[getActivityAccountId(a)]?.name || 'Contact'}`;
+          const dealInfo = dealData[a.dealId] ? ` â€“ ${dealData[a.dealId].title}` : ` â€“ ${customerData[getActivityAccountId(a)]?.name || 'Contact'}`;
           html += `<div class="meeting-detail">
             <div style="display: flex; justify-content: space-between; align-items: start;">
               <div>
                 <strong>${a.calendarPlanned ? 'Planned Meeting' : a.activityType}</strong>${dealInfo}
                 <div style="margin-top: 6px; color: var(--t1);">${a.description || 'No details'}</div>
-                ${!a.calendarPlanned && a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">📌 Next: ${escapeHtml(a.nextActivityType || 'Activity')} · ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` — ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>` : ''}
+                ${!a.calendarPlanned && a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">ðŸ“Œ Next: ${escapeHtml(a.nextActivityType || 'Activity')} Â· ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` â€” ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>` : ''}
               </div>
             </div>
           </div>`;
@@ -4069,9 +4190,9 @@
       document.getElementById('calendarDayDetailsContainer').innerHTML = '';
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TARGETS (Quarterly + Annual)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function getQuarter(date = new Date()) {
       const month = date.getMonth() + 1;
       return Math.ceil(month / 3);
@@ -4096,8 +4217,8 @@
       const quarters = readQuarterTargets();
       const booking = Object.values(quarters).reduce((sum, q) => sum + q.booking, 0);
       const billing = Object.values(quarters).reduce((sum, q) => sum + q.billing, 0);
-      document.getElementById('targetBookingTotal').textContent = `₹${booking.toLocaleString('en-IN')}`;
-      document.getElementById('targetBillingTotal').textContent = `₹${billing.toLocaleString('en-IN')}`;
+      document.getElementById('targetBookingTotal').textContent = `â‚¹${booking.toLocaleString('en-IN')}`;
+      document.getElementById('targetBillingTotal').textContent = `â‚¹${billing.toLocaleString('en-IN')}`;
     }
 
     async function saveTargets() {
@@ -4151,7 +4272,7 @@
       const year = new Date().getFullYear();
       const target = annualTargetFor(year);
       if (!target) {
-        container.innerHTML = `<div class="empty" style="padding:40px"><div class="empty-icon">🎯</div><p>No quarterly Booking and Billing targets set for ${year}.</p><button class="btn primary" onclick="openSetTargetModal()" style="margin-top:12px">Set Targets Now</button></div>`;
+        container.innerHTML = `<div class="empty" style="padding:40px"><div class="empty-icon">ðŸŽ¯</div><p>No quarterly Booking and Billing targets set for ${year}.</p><button class="btn primary" onclick="openSetTargetModal()" style="margin-top:12px">Set Targets Now</button></div>`;
         return;
       }
       const actuals = targetActualsByQuarter(year);
@@ -4163,22 +4284,22 @@
         const grossMarginTarget = plan.booking * Math.max(20, Number(target.marginTarget || 20)) / 100;
         const grossMarginPercent = actual.booking ? actual.grossMargin / actual.booking * 100 : 0;
         totalBookingTarget += plan.booking; totalBillingTarget += plan.billing; totalBookingActual += actual.booking; totalBillingActual += actual.billing; totalGrossMarginTarget += grossMarginTarget; totalGrossMarginActual += actual.grossMargin;
-        rows += `<tr><td style="padding:10px;font-weight:700">Q${q}</td><td>₹${Number(plan.booking).toLocaleString('en-IN')}</td><td style="color:#1565C0;font-weight:600">₹${actual.booking.toLocaleString('en-IN')}</td><td>${targetPct(actual.booking,plan.booking)}%</td><td>₹${Number(plan.billing).toLocaleString('en-IN')}</td><td style="color:#2E7D32;font-weight:600">₹${actual.billing.toLocaleString('en-IN')}</td><td>${targetPct(actual.billing,plan.billing)}%</td><td>₹${grossMarginTarget.toLocaleString('en-IN')}</td><td style="color:${grossMarginPercent >= Math.max(20, Number(target.marginTarget || 20)) ? '#2E7D32' : '#B71C1C'};font-weight:600">₹${actual.grossMargin.toLocaleString('en-IN')}</td><td>${grossMarginPercent.toFixed(2)}%</td></tr>`;
+        rows += `<tr><td style="padding:10px;font-weight:700">Q${q}</td><td>â‚¹${Number(plan.booking).toLocaleString('en-IN')}</td><td style="color:#1565C0;font-weight:600">â‚¹${actual.booking.toLocaleString('en-IN')}</td><td>${targetPct(actual.booking,plan.booking)}%</td><td>â‚¹${Number(plan.billing).toLocaleString('en-IN')}</td><td style="color:#2E7D32;font-weight:600">â‚¹${actual.billing.toLocaleString('en-IN')}</td><td>${targetPct(actual.billing,plan.billing)}%</td><td>â‚¹${grossMarginTarget.toLocaleString('en-IN')}</td><td style="color:${grossMarginPercent >= Math.max(20, Number(target.marginTarget || 20)) ? '#2E7D32' : '#B71C1C'};font-weight:600">â‚¹${actual.grossMargin.toLocaleString('en-IN')}</td><td>${grossMarginPercent.toFixed(2)}%</td></tr>`;
       }
       const totalMarginPercent = totalBookingActual ? totalGrossMarginActual / totalBookingActual * 100 : 0;
-      rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>₹${totalBookingTarget.toLocaleString('en-IN')}</td><td>₹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>₹${totalBillingTarget.toLocaleString('en-IN')}</td><td>₹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td><td>₹${totalGrossMarginTarget.toLocaleString('en-IN')}</td><td>₹${totalGrossMarginActual.toLocaleString('en-IN')}</td><td>${totalMarginPercent.toFixed(2)}%</td></tr>`;
+      rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>â‚¹${totalBookingTarget.toLocaleString('en-IN')}</td><td>â‚¹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>â‚¹${totalBillingTarget.toLocaleString('en-IN')}</td><td>â‚¹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td><td>â‚¹${totalGrossMarginTarget.toLocaleString('en-IN')}</td><td>â‚¹${totalGrossMarginActual.toLocaleString('en-IN')}</td><td>${totalMarginPercent.toFixed(2)}%</td></tr>`;
       const incentiveCalc = salesIncentiveForOwner(currentUser);
       const incentivePanel = `<div style="margin:14px 0;padding:12px;border:1px solid var(--bd);border-radius:10px;background:${incentiveCalc.qualified ? '#E8F5E9' : '#FFF8E1'}">
         <div style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : '#E65100'}">FY26-27 Sales Incentive: ${escapeHtml(incentiveCalc.reason)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:5px">Company and individual gate require ${incentiveCalc.plan.gatePct}% achievement in Sales, Billing and Gross Profit. Incentive rate: ${incentiveCalc.plan.incentiveRatePct}% of achieved GP after qualification.</div>
         ${incentiveCalc.quota ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px">
-          <div><b>Sales</b><br>₹${Math.round(incentiveCalc.actual.sales).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.salesPct.toFixed(0)}%</span></div>
-          <div><b>Billing</b><br>₹${Math.round(incentiveCalc.actual.billing).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.billingPct.toFixed(0)}%</span></div>
-          <div><b>Gross Profit</b><br>₹${Math.round(incentiveCalc.actual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.grossProfitPct.toFixed(0)}%</span></div>
-          <div><b>Earned Incentive</b><br><span style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(incentiveCalc.incentive).toLocaleString('en-IN')}</span><br><span style="font-size:10px">Plan ₹${Math.round(incentiveCalc.targetIncentive || 0).toLocaleString('en-IN')}</span></div>
+          <div><b>Sales</b><br>â‚¹${Math.round(incentiveCalc.actual.sales).toLocaleString('en-IN')} / â‚¹${Math.round(incentiveCalc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.salesPct.toFixed(0)}%</span></div>
+          <div><b>Billing</b><br>â‚¹${Math.round(incentiveCalc.actual.billing).toLocaleString('en-IN')} / â‚¹${Math.round(incentiveCalc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.billingPct.toFixed(0)}%</span></div>
+          <div><b>Gross Profit</b><br>â‚¹${Math.round(incentiveCalc.actual.grossProfit).toLocaleString('en-IN')} / â‚¹${Math.round(incentiveCalc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.grossProfitPct.toFixed(0)}%</span></div>
+          <div><b>Earned Incentive</b><br><span style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : 'var(--t2)'}">â‚¹${Math.round(incentiveCalc.incentive).toLocaleString('en-IN')}</span><br><span style="font-size:10px">Plan â‚¹${Math.round(incentiveCalc.targetIncentive || 0).toLocaleString('en-IN')}</span></div>
         </div>` : `<div style="font-size:11px;color:var(--danger);margin-top:8px">No individual quota is mapped for @${escapeHtml(currentUser || '')}; no salesperson incentive will be allocated.</div>`}
       </div>`;
-      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking Â· Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
     }
 
     function targetProgressCell(actual, target, accent = 'var(--p)', label = '') {
@@ -4186,8 +4307,8 @@
       return `<div style="min-width:170px">
         ${label ? `<div style="font-size:10px;color:var(--t2);font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${escapeHtml(label)}</div>` : ''}
         <div style="display:grid;grid-template-columns:82px 82px 46px;gap:8px;align-items:center;font-size:11px">
-          <b style="color:var(--t1)">₹${Math.round(actual).toLocaleString('en-IN')}</b>
-          <span style="color:var(--t2)">₹${Math.round(target).toLocaleString('en-IN')}</span>
+          <b style="color:var(--t1)">â‚¹${Math.round(actual).toLocaleString('en-IN')}</b>
+          <span style="color:var(--t2)">â‚¹${Math.round(target).toLocaleString('en-IN')}</span>
           <span style="color:${pct >= 75 ? '#2E7D32' : pct >= 50 ? '#E65100' : '#B71C1C'};font-weight:900">${pct.toFixed(0)}%</span>
         </div>
         <div style="height:7px;background:#EDF2F7;border-radius:999px;overflow:hidden;margin-top:5px"><div style="height:100%;width:${Math.min(pct,100)}%;background:${accent};border-radius:999px"></div></div>
@@ -4246,7 +4367,7 @@
         const labels = { sales:'Sales', billing:'Billing', grossProfit:'GM' };
         const colors = idx === 1 ? ['#E8F5E9','#2E7D32'] : ['#E3F2FD','#1565C0'];
         const pct = pctOf(companyActual[key], companyTarget[key]);
-        return `<div style="background:${colors[0]};color:${colors[1]};border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900">${labels[key]}: ₹${Math.round(companyActual[key]).toLocaleString('en-IN')} / ₹${Math.round(companyTarget[key]).toLocaleString('en-IN')} · ${pct.toFixed(0)}%</div>`;
+        return `<div style="background:${colors[0]};color:${colors[1]};border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900">${labels[key]}: â‚¹${Math.round(companyActual[key]).toLocaleString('en-IN')} / â‚¹${Math.round(companyTarget[key]).toLocaleString('en-IN')} Â· ${pct.toFixed(0)}%</div>`;
       }).join('');
       const rows = Object.keys(plan.users).map(owner => {
         const quota = plan.users[owner];
@@ -4268,7 +4389,7 @@
         <div style="font-weight:900;color:${myCalc.qualified ? '#2E7D32' : '#E65100'}">My incentive gate: ${escapeHtml(myCalc.reason)}</div>
         <div style="font-size:11px;color:var(--t2);margin-top:4px">Gate requires ${plan.gatePct}% achievement in all three parameters: Sales, Billing and GM.</div>
       </div>` : '';
-      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} · Showing ${periodLabels[period]}. Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date; GM uses deal Gross Margin Amount declared on the deal.</div>
+      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Targets loaded from SalesPlan_FY26-27 for ${escapeHtml(plan.label)} Â· Showing ${periodLabels[period]}. Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date; GM uses deal Gross Margin Amount declared on the deal.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${companyChips}</div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px">
           <thead><tr style="background:#EAF3FB;color:var(--p);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:9px">Salesperson</th><th style="text-align:left;padding:9px">Sales<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Billing<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">GM<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Gate</th></tr></thead>
@@ -4289,9 +4410,9 @@
       updateTargetTotals(); openModal('setTargetModal');
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // ACTIVITIES
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function populateResponsibleUsers() {
       const select = document.getElementById('activitySupportingHand');
       if (!select) return;
@@ -4352,7 +4473,7 @@
           <div style="display:flex;justify-content:space-between;gap:10px"><b>${escapeHtml(activity.activityType || 'Activity')}</b><span style="font-size:11px;color:var(--t2)">${formatDate(activity.activityDate)}</span></div>
           ${deal ? `<div style="font-size:10.5px;color:var(--p);margin-top:3px">Deal: ${escapeHtml(deal.title)}</div>` : '<div style="font-size:10.5px;color:var(--p);margin-top:3px">Contact activity</div>'}
           ${activity.description ? `<div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.description)}</div>` : ''}
-          ${activity.nextActivityDate ? `<div style="font-size:10.5px;color:#1565C0;margin-top:4px">Next ${escapeHtml(activity.nextActivityType || 'Activity')}: ${formatDate(activity.nextActivityDate)}${activity.nextActivityDescription ? ` — ${escapeHtml(activity.nextActivityDescription)}` : ''}</div>` : ''}
+          ${activity.nextActivityDate ? `<div style="font-size:10.5px;color:#1565C0;margin-top:4px">Next ${escapeHtml(activity.nextActivityType || 'Activity')}: ${formatDate(activity.nextActivityDate)}${activity.nextActivityDescription ? ` â€” ${escapeHtml(activity.nextActivityDescription)}` : ''}</div>` : ''}
         </div>`;
       }).join('');
     }
@@ -4372,9 +4493,9 @@
       openAddActivityModal(contextType === 'deal' ? contextId : '', accountId);
       document.getElementById('activityContextType').value = contextType;
       document.getElementById('activityContextId').value = contextId;
-      document.getElementById('activityModalTitle').textContent = `Log / Plan Activity — ${deal?.title || account.name}`;
+      document.getElementById('activityModalTitle').textContent = `Log / Plan Activity â€” ${deal?.title || account.name}`;
       document.getElementById('activityContextSummary').innerHTML = deal
-        ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br><span style="font-size:11px">Contact: ${escapeHtml(account.name)} · Stage: ${escapeHtml(deal.stage || '—')}</span>`
+        ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br><span style="font-size:11px">Contact: ${escapeHtml(account.name)} Â· Stage: ${escapeHtml(deal.stage || 'â€”')}</span>`
         : `<b>Contact:</b> ${escapeHtml(account.name)}<br><span style="font-size:11px">Log an existing activity and optionally plan the next activity.</span>`;
       document.getElementById('activityDeal').disabled = contextType === 'deal';
       document.getElementById('activityKeyAccount').disabled = true;
@@ -4392,10 +4513,10 @@
       const context = getActivityContext(contextType, contextId);
       if (!context) return showToast('CRM record unavailable', 'error');
       const { deal, account } = context;
-      document.getElementById('activityHistoryTitle').textContent = `Activity Logs — ${deal?.title || account.name}`;
+      document.getElementById('activityHistoryTitle').textContent = `Activity Logs â€” ${deal?.title || account.name}`;
       document.getElementById('activityHistorySummary').innerHTML = deal
-        ? `<b>Deal:</b> ${escapeHtml(deal.title)} · Contact: ${escapeHtml(account.name)}`
-        : `<b>Contact:</b> ${escapeHtml(account.name)}${account.isKeyAccount ? ' · Key Account' : ''}`;
+        ? `<b>Deal:</b> ${escapeHtml(deal.title)} Â· Contact: ${escapeHtml(account.name)}`
+        : `<b>Contact:</b> ${escapeHtml(account.name)}${account.isKeyAccount ? ' Â· Key Account' : ''}`;
       renderActivityHistory(contextType, contextId);
       openModal('activityHistoryModal');
     }
@@ -4493,7 +4614,7 @@
 
         const deal = dealData[dealId] || {};
         const customer = customerData[keyAccountId] || {};
-        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Contact: ${customer.name || '—'}; Activity: ${type}${desc ? ` — ${desc}` : ''}; Next activity: ${nextType} — ${nextDescription}; Date: ${formatDate(nextDate)}.`;
+        const detailMessage = `${activityRecord.creatorName} created a Next Activity Plan. ${dealId ? `Deal: ${deal.title || 'Untitled'}; ` : ''}Contact: ${customer.name || 'â€”'}; Activity: ${type}${desc ? ` â€” ${desc}` : ''}; Next activity: ${nextType} â€” ${nextDescription}; Date: ${formatDate(nextDate)}.`;
         const notificationRecipients = hasNextPlan ? [...new Set([...supportingUsernames, 'updesh'].filter(Boolean))] : [];
         const notificationResults = await Promise.allSettled(notificationRecipients.map(recipientUsername => createCrmNotification({
           recipientUsername,
@@ -4605,10 +4726,10 @@
       document.getElementById('dueActivityId').value = activity.id;
       document.getElementById('dueActivityDetails').innerHTML = `
         <div style="background:#FFEBEE;border-left:4px solid #D32F2F;padding:13px;border-radius:7px;color:#B71C1C;margin-bottom:12px">
-          <div style="font-size:15px;font-weight:800">${overdue ? 'OVERDUE' : 'DUE TODAY'} · ${formatDate(activity.nextActivityDate)}</div>
+          <div style="font-size:15px;font-weight:800">${overdue ? 'OVERDUE' : 'DUE TODAY'} Â· ${formatDate(activity.nextActivityDate)}</div>
           <div style="font-size:12px;margin-top:5px">Please acknowledge this planned activity.</div>
         </div>
-        <div style="line-height:1.75;font-size:12px"><b>Contact:</b> ${escapeHtml(account?.name || '—')}<br>${deal ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br>` : ''}<b>Planned activity:</b> ${escapeHtml(activity.nextActivityType || 'Activity')} — ${escapeHtml(activity.nextActivityDescription || '—')}<br><b>Supporting hands:</b> ${escapeHtml(supportingHandsLabel(activity))}<br><b>Planned by:</b> ${escapeHtml(activity.creatorName || activity.username || '—')}</div>`;
+        <div style="line-height:1.75;font-size:12px"><b>Contact:</b> ${escapeHtml(account?.name || 'â€”')}<br>${deal ? `<b>Deal:</b> ${escapeHtml(deal.title)}<br>` : ''}<b>Planned activity:</b> ${escapeHtml(activity.nextActivityType || 'Activity')} â€” ${escapeHtml(activity.nextActivityDescription || 'â€”')}<br><b>Supporting hands:</b> ${escapeHtml(supportingHandsLabel(activity))}<br><b>Planned by:</b> ${escapeHtml(activity.creatorName || activity.username || 'â€”')}</div>`;
       modal.classList.add('active');
     }
 
@@ -4825,15 +4946,15 @@
       return `<div style="border:1px solid #90CAF9;border-radius:8px;overflow:hidden;background:#F8FBFF">
         <div style="padding:10px 12px;background:#E3F2FD;color:#0D47A1;font-size:13px;font-weight:800">${escapeHtml(deal.title || customer.name || 'CRM Activity')}</div>
         <div style="padding:11px 12px;font-size:11px;line-height:1.7;color:#37474F">
-          Contact: <b>${escapeHtml(customer.name || '—')}</b>${activity.dealId ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
-          Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hands: <b>${escapeHtml(supportingHandsLabel(activity))}</b><br>
-          Logged activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
+          Contact: <b>${escapeHtml(customer.name || 'â€”')}</b>${activity.dealId ? ` Â· Stage: <b>${escapeHtml(deal.stage || 'â€”')}</b> Â· Value: <b>â‚¹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' Â· No specific deal'}<br>
+          Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || 'â€”')}</b> Â· Supporting Hands: <b>${escapeHtml(supportingHandsLabel(activity))}</b><br>
+          Logged activity: <b>${escapeHtml(activity.activityType || 'â€”')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` â€” ${escapeHtml(activity.description)}` : ''}
         </div>
         <div style="margin:0 12px 12px;padding:10px;background:#1565C0;color:#fff;border-radius:6px">
-          <div style="font-size:9.5px;font-weight:800;letter-spacing:.8px">NEXT ACTIVITY PLAN · ${escapeHtml(activity.nextActivityType || 'Activity')} · ${formatDate(activity.nextActivityDate)}</div>
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.8px">NEXT ACTIVITY PLAN Â· ${escapeHtml(activity.nextActivityType || 'Activity')} Â· ${formatDate(activity.nextActivityDate)}</div>
           <div style="font-size:12px;margin-top:5px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
         </div>
-        ${activity.proposedNextActivityDate ? `<div style="margin:0 12px 12px;padding:10px;background:#FFF3E0;border:1px solid #FFB74D;color:#E65100;border-radius:6px"><b>Proposed date: ${formatDate(activity.proposedNextActivityDate)}</b><br><span style="font-size:11px">Reason: ${escapeHtml(activity.dateProposalReason || '—')}</span></div>` : ''}
+        ${activity.proposedNextActivityDate ? `<div style="margin:0 12px 12px;padding:10px;background:#FFF3E0;border:1px solid #FFB74D;color:#E65100;border-radius:6px"><b>Proposed date: ${formatDate(activity.proposedNextActivityDate)}</b><br><span style="font-size:11px">Reason: ${escapeHtml(activity.dateProposalReason || 'â€”')}</span></div>` : ''}
       </div>`;
     }
 
@@ -4854,7 +4975,7 @@
       const buttons = document.getElementById('forcedActionButtons');
       const palette = action === 'support-response' ? ['#1565C0', 'Supporting Hand Response Required']
         : action === 'sales-review' ? ['#EF6C00', 'Salesperson Decision Required']
-        : action === 'updesh-review' ? ['#6A1B9A', 'Escalation — Final Decision Required']
+        : action === 'updesh-review' ? ['#6A1B9A', 'Escalation â€” Final Decision Required']
         : ['#2E7D32', 'Final Decision Acknowledgement'];
       header.style.background = palette[0];
       title.textContent = palette[1];
@@ -4983,7 +5104,7 @@
       }
 
       panel.style.display = 'block';
-      let html = '<div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;padding:12px"><div style="font-weight:700;margin-bottom:10px">🔔 Task Notifications</div>';
+      let html = '<div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;padding:12px"><div style="font-weight:700;margin-bottom:10px">ðŸ”” Task Notifications</div>';
       unread.forEach(item => {
         const activity = activityData[item.activityId];
         const deal = activity ? dealData[activity.dealId] : (item.dealId ? dealData[item.dealId] : null);
@@ -5000,20 +5121,20 @@
         };
         const palette = notificationPalette[item.type] || ['#B71C1C','#FFF8F8'];
         html += `<div style="background:${palette[1]};border:1px solid ${palette[0]}55;border-radius:7px;padding:12px;margin-bottom:8px;border-left:5px solid ${palette[0]}">
-          ${requiresAction ? '<div style="font-size:11px;font-weight:800;color:#B71C1C;margin-bottom:8px">ACTION REQUIRED — Accept the plan or propose a new date</div>' : ''}
+          ${requiresAction ? '<div style="font-size:11px;font-weight:800;color:#B71C1C;margin-bottom:8px">ACTION REQUIRED â€” Accept the plan or propose a new date</div>' : ''}
           ${isPartnerInvite ? `<div style="font-size:11px;font-weight:800;color:#006994;margin-bottom:8px">DEAL PARTNER INVITE</div>
             <div style="font-size:13px;font-weight:800;color:#006994;margin-bottom:5px">${escapeHtml(deal.title || 'Untitled Deal')}</div>
-            <div style="font-size:11px;color:var(--t2);line-height:1.6">Contact: <b>${escapeHtml(customer?.name || '—')}</b> · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b><br>${escapeHtml(item.message || '')}</div>
+            <div style="font-size:11px;color:var(--t2);line-height:1.6">Contact: <b>${escapeHtml(customer?.name || 'â€”')}</b> Â· Stage: <b>${escapeHtml(deal.stage || 'â€”')}</b> Â· Value: <b>â‚¹${Number(deal.value || 0).toLocaleString('en-IN')}</b><br>${escapeHtml(item.message || '')}</div>
             <div style="display:flex;gap:7px;margin-top:10px"><button class="btn sm primary" onclick="respondDealPartnerInvite('${deal.id}','${item.id}','accepted')">Accept Partner Invite</button><button class="btn sm" onclick="respondDealPartnerInvite('${deal.id}','${item.id}','rejected')">Reject</button></div>` : ''}
           ${isPlanNotification ? `
             <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || customer?.name || 'CRM Activity')}</div>
             <div style="font-size:10.5px;color:var(--t2);line-height:1.6">
-              Contact: <b>${escapeHtml(customer?.name || '—')}</b>${deal ? ` · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' · No specific deal'}<br>
-              Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || '—')}</b> · Supporting Hands: <b>${escapeHtml(supportingHandsLabel(activity))}</b><br>
-              Activity: <b>${escapeHtml(activity.activityType || '—')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` — ${escapeHtml(activity.description)}` : ''}
+              Contact: <b>${escapeHtml(customer?.name || 'â€”')}</b>${deal ? ` Â· Stage: <b>${escapeHtml(deal.stage || 'â€”')}</b> Â· Value: <b>â‚¹${Number(deal.value || 0).toLocaleString('en-IN')}</b>` : ' Â· No specific deal'}<br>
+              Salesperson: <b>${escapeHtml(activity.creatorName || activity.username || 'â€”')}</b> Â· Supporting Hands: <b>${escapeHtml(supportingHandsLabel(activity))}</b><br>
+              Activity: <b>${escapeHtml(activity.activityType || 'â€”')}</b> on ${formatDate(activity.activityDate)}${activity.description ? ` â€” ${escapeHtml(activity.description)}` : ''}
             </div>
             <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
-              <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN · ${escapeHtml(activity.nextActivityType || 'Activity')} · ${formatDate(activity.nextActivityDate)}</div>
+              <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN Â· ${escapeHtml(activity.nextActivityType || 'Activity')} Â· ${formatDate(activity.nextActivityDate)}</div>
               <div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
             </div>` : (!isPartnerInvite ? `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>` : '')}
           ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : (!isPartnerInvite ? `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>` : '')}
@@ -5023,7 +5144,7 @@
         const deal = dealData[activity.dealId];
         html += `<div style="background:#fff;border-radius:6px;padding:10px;margin-bottom:8px;border-left:3px solid #F57C00">
           <div style="font-size:12px;font-weight:600">Extension approval: ${escapeHtml(deal?.title || 'CRM activity')}</div>
-          <div style="font-size:11px;margin-top:4px">${escapeHtml(activity.extensionRequestedBy || supportingHandsLabel(activity))} requested ${formatDate(activity.requestedExtensionDate)}${activity.extensionReason ? ` — ${escapeHtml(activity.extensionReason)}` : ''}</div>
+          <div style="font-size:11px;margin-top:4px">${escapeHtml(activity.extensionRequestedBy || supportingHandsLabel(activity))} requested ${formatDate(activity.requestedExtensionDate)}${activity.extensionReason ? ` â€” ${escapeHtml(activity.extensionReason)}` : ''}</div>
           <div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm primary" onclick="reviewExtension('${activity.id}','approved')">Approve</button><button class="btn sm" onclick="reviewExtension('${activity.id}','rejected')">Reject</button></div>
         </div>`;
       });
@@ -5045,7 +5166,7 @@
         const contact = customerData[deal.customerId];
         html += `<div style="border:1px solid var(--bd);border-radius:7px;padding:10px;background:#fff">
           <div style="font-weight:600">${escapeHtml(deal.title)}</div>
-          <div style="font-size:10.5px;color:var(--t2);margin:4px 0">${escapeHtml(contact?.name || '')} · ${escapeHtml(deal.stage || '')}</div>
+          <div style="font-size:10.5px;color:var(--t2);margin:4px 0">${escapeHtml(contact?.name || '')} Â· ${escapeHtml(deal.stage || '')}</div>
           <button class="btn sm primary" onclick="openAddActivityModal('${deal.id}')">Log Activity</button>
         </div>`;
       });
@@ -5201,7 +5322,7 @@
       });
       
       if (activities.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No activities logged yet.</p></div>';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">ðŸ“</div><p>No activities logged yet.</p></div>';
         return;
       }
       
@@ -5224,19 +5345,19 @@
           <div style="font-size:10.5px;color:var(--t2);margin-bottom:4px">Created by: ${escapeHtml(a.creatorName || a.username || '')}</div>
           <div style="font-size:10.5px;color:var(--t2);margin-bottom:6px">Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>
           <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
-            <div style="font-size:10px;font-weight:700">NEXT ACTIVITY PLAN · ${escapeHtml(a.nextActivityType || 'Activity')}</div>
-            ${a.nextActivityDate ? `<div style="font-size:10.5px;margin-top:4px">📌 ${formatDate(a.nextActivityDate)}${overdue ? ' · OVERDUE' : ''}</div>` : ''}
+            <div style="font-size:10px;font-weight:700">NEXT ACTIVITY PLAN Â· ${escapeHtml(a.nextActivityType || 'Activity')}</div>
+            ${a.nextActivityDate ? `<div style="font-size:10.5px;margin-top:4px">ðŸ“Œ ${formatDate(a.nextActivityDate)}${overdue ? ' Â· OVERDUE' : ''}</div>` : ''}
             ${a.nextActivityDescription ? `<div style="font-size:11px;margin-top:4px">${escapeHtml(a.nextActivityDescription)}</div>` : ''}
           </div>
-          ${planStatus === 'accepted' ? `<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:6px">✓ PLAN ACCEPTED by ${escapeHtml(a.planRespondedBy || '')}</div>` : ''}
-          ${['date-proposed','sales-review'].includes(planStatus) ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">Awaiting salesperson decision · Proposed: ${formatDate(a.proposedNextActivityDate)} — ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
+          ${planStatus === 'accepted' ? `<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:6px">âœ“ PLAN ACCEPTED by ${escapeHtml(a.planRespondedBy || '')}</div>` : ''}
+          ${['date-proposed','sales-review'].includes(planStatus) ? `<div style="font-size:10px;color:#F57C00;margin-top:6px">Awaiting salesperson decision Â· Proposed: ${formatDate(a.proposedNextActivityDate)} â€” ${escapeHtml(a.dateProposalReason || '')}</div>` : ''}
           ${planStatus === 'updesh-review' ? `<div style="font-size:10px;color:#6A1B9A;margin-top:6px;font-weight:700">Escalated to Updesh for final decision</div>` : ''}
-          ${planStatus === 'sales-approved-final' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">Revised date approved by salesperson · Supporting Hand acknowledgement pending</div>` : ''}
-          ${planStatus === 'final-decision' || planStatus === 'final-acknowledged' ? `<div style="font-size:10px;color:${a.finalDecision === 'rejected' ? '#B71C1C' : '#2E7D32'};margin-top:6px;font-weight:700">Updesh final decision: ${escapeHtml(String(a.finalDecision || 'approved').toUpperCase())} · informational only</div>` : ''}
+          ${planStatus === 'sales-approved-final' ? `<div style="font-size:10px;color:#2E7D32;margin-top:6px;font-weight:700">Revised date approved by salesperson Â· Supporting Hand acknowledgement pending</div>` : ''}
+          ${planStatus === 'final-decision' || planStatus === 'final-acknowledged' ? `<div style="font-size:10px;color:${a.finalDecision === 'rejected' ? '#B71C1C' : '#2E7D32'};margin-top:6px;font-weight:700">Updesh final decision: ${escapeHtml(String(a.finalDecision || 'approved').toUpperCase())} Â· informational only</div>` : ''}
           ${a.extensionStatus === 'pending' ? `<div style="font-size:10px;color:#F57C00;margin-top:5px">Extension requested: ${formatDate(a.requestedExtensionDate)}</div>` : ''}
           ${a.extensionStatus === 'approved' ? `<div style="font-size:10px;color:#2E7D32;margin-top:5px">Extension approved by ${escapeHtml(a.extensionReviewedBy || '')}</div>` : ''}
           ${a.extensionStatus === 'rejected' ? `<div style="font-size:10px;color:#D32F2F;margin-top:5px">Extension rejected${a.extensionReviewRemarks ? `: ${escapeHtml(a.extensionReviewRemarks)}` : ''}</div>` : ''}
-          ${completed ? '<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:7px">✓ COMPLETED</div>' : ''}
+          ${completed ? '<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:7px">âœ“ COMPLETED</div>' : ''}
           ${assignedToMe && !completed && planStatus === 'accepted' ? `<div style="margin-top:9px"><button class="btn sm primary" onclick="completeAssignedActivity('${a.id}')">Complete Task</button></div>` : ''}
         </div>`;
       });
@@ -5245,9 +5366,9 @@
       container.innerHTML = html;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // DASHBOARD & RECENT ACTIVITIES
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function renderRecentActivities() {
       const container = document.getElementById('recentActivitiesContainer');
       const recent = Object.values(activityData)
@@ -5267,7 +5388,7 @@
           <div style="width: 8px; background: var(--p); border-radius: 2px;"></div>
           <div style="flex: 1;">
             <div style="font-weight: 500;">${a.activityType}</div>
-            <div style="font-size: 11px; color: var(--t2);">${deal?.title || account?.name || '—'} · ${formatDate(a.activityDate)}</div>
+            <div style="font-size: 11px; color: var(--t2);">${deal?.title || account?.name || 'â€”'} Â· ${formatDate(a.activityDate)}</div>
             ${a.description ? `<div style="font-size: 11px; margin-top: 4px;">${a.description}</div>` : ''}
           </div>
         </div>`;
@@ -5285,7 +5406,7 @@
       const pipelineValue = Object.values(dealData)
         .filter(d => d.stage !== 'Billed' && d.stage !== 'Lost')
         .reduce((sum, d) => sum + (d.value * d.probability / 100), 0);
-      document.getElementById('statPipeline').textContent = '₹' + formatCurrency(pipelineValue);
+      document.getElementById('statPipeline').textContent = 'â‚¹' + formatCurrency(pipelineValue);
       
       const quotaStatus = getMeetingQuotaStatus();
       document.getElementById('statMeetingsWeek').textContent = `${quotaStatus.new + quotaStatus.existing}/4`;
@@ -5305,7 +5426,7 @@
         .filter(d => d.stage === 'Billed')
         .reduce((sum, d) => sum + Number(d.value || 0), 0);
       const billedOutsideFyValue = Math.max(0, allBilledValue - wonValue);
-      document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
+      document.getElementById('statWonValue').textContent = 'â‚¹' + formatCurrency(wonValue);
       renderIndividualSalesIncentiveStatus();
       
       // Pipeline chart
@@ -5323,7 +5444,7 @@
         data: {
           labels: stages,
           datasets: [{
-            label: 'Deal Value (₹)',
+            label: 'Deal Value (â‚¹)',
             data: stageValues,
             backgroundColor: ['#1565C0', '#F57F17', '#2196F3', '#FF6F00', '#2E7D32'],
             borderRadius: 6,
@@ -5337,7 +5458,7 @@
           scales: {
             y: {
               beginAtZero: true,
-              ticks: { callback: v => '₹' + formatCurrency(v) }
+              ticks: { callback: v => 'â‚¹' + formatCurrency(v) }
             }
           }
         }
@@ -5378,7 +5499,7 @@
         alerts += `<div class="alert danger"><i class="ti ti-building"></i><strong>KAM Alert:</strong> ${keyAccountsDue.length} Key Account(s) have had no recorded Meeting or Call for more than 30 days. Open KAM to review.</div>`;
       }
       if (billedOutsideFyValue > 0) {
-        alerts += `<div class="alert warning"><i class="ti ti-receipt"></i><strong>Billing date check:</strong> ₹${Number(billedOutsideFyValue).toLocaleString('en-IN')} of Billed-stage value is excluded from FY26-27 Won/Billing because billing date is missing or outside 01-04-2026 to 31-03-2027.</div>`;
+        alerts += `<div class="alert warning"><i class="ti ti-receipt"></i><strong>Billing date check:</strong> â‚¹${Number(billedOutsideFyValue).toLocaleString('en-IN')} of Billed-stage value is excluded from FY26-27 Won/Billing because billing date is missing or outside 01-04-2026 to 31-03-2027.</div>`;
       }
       if (canViewTenderManagement() && tenderDataLoaded) {
         const openTenders = Object.values(tenderData).filter(tenderIsOpen);
@@ -5397,9 +5518,9 @@
       alertsContainer.innerHTML = alerts || '';
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // MEETING QUOTA TRACKING (2 new + 2 existing customers per week)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function updateMeetingQuota() {
       const weekStart = getWeekStart();
       
@@ -5445,9 +5566,9 @@
       };
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // UTILITIES
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function switchTab(tabName) {
       if (tabName === 'tenders' && !canViewTenderManagement()) {
         showToast('Tender Management access is restricted', 'error');
@@ -5523,13 +5644,13 @@
     
     function formatDate(dateStr) {
       const d = toDateObject(dateStr);
-      if (!d) return '—';
+      if (!d) return 'â€”';
       return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // INITIALIZATION
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     window.addEventListener('DOMContentLoaded', initializeAuth);
     window.addEventListener('load', initializeAuth);
   </script>
