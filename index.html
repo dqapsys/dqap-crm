@@ -2,7 +2,7 @@
 
 
 <!DOCTYPE html>
-<!-- DQAP CRM 2026.06.27.8 - GM on billing and searchable sorted mappings -->
+<!-- DQAP CRM 2026.07.03.1 - deferred KAM history load and faster first render -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1889,13 +1889,8 @@
           .where('supportingUsernames', 'array-contains', currentUser).get();
         multiAssignedActivitiesSnap.forEach(doc => { activityData[doc.id] = { id: doc.id, ...doc.data() }; });
 
-        // Load the contact history required to calculate company-wide KAM recency.
-        const keyAccountIds = Object.values(customerData).filter(customer => customer.isKeyAccount === true).map(customer => customer.id);
-        for (let start = 0; start < keyAccountIds.length; start += 10) {
-          const ids = keyAccountIds.slice(start, start + 10);
-          const kamActivitiesSnap = await db.collection(CRM_ACTIVITIES).where('keyAccountId', 'in', ids).get();
-          kamActivitiesSnap.forEach(doc => { kamActivityData[doc.id] = { id: doc.id, ...doc.data() }; });
-        }
+        // Defer company-wide KAM recency history. It can be large and should not block CRM first render.
+        setTimeout(loadKamActivityHistory, 250);
 
         if (isExtensionApprover()) {
           const approvalSnap = await db.collection(CRM_ACTIVITIES)
@@ -1960,6 +1955,21 @@
         populateLeadSalesOwners();
       } catch (err) {
         console.error('Load error:', err);
+      }
+    }
+
+    async function loadKamActivityHistory() {
+      try {
+        const keyAccountIds = Object.values(customerData).filter(customer => customer.isKeyAccount === true).map(customer => customer.id);
+        for (let start = 0; start < keyAccountIds.length; start += 10) {
+          const ids = keyAccountIds.slice(start, start + 10);
+          if (!ids.length) continue;
+          const kamActivitiesSnap = await db.collection(CRM_ACTIVITIES).where('keyAccountId', 'in', ids).get();
+          kamActivitiesSnap.forEach(doc => { kamActivityData[doc.id] = { id: doc.id, ...doc.data() }; });
+        }
+        renderKAM();
+      } catch (error) {
+        console.warn('KAM activity history deferred load failed:', error);
       }
     }
 
