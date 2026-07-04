@@ -807,7 +807,7 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="ti ti-home"></i> Dashboard</button>
-      <button class="tab-btn" onclick="switchTab('referrals')"><i class="ti ti-bulb"></i> Leads & Incentives</button>
+      <button class="tab-btn" onclick="switchTab('referrals')"><i class="ti ti-bulb"></i> Referral Leads</button>
       <button class="tab-btn" onclick="switchTab('leads')"><i class="ti ti-users"></i> Contacts</button>
       <button class="tab-btn" onclick="switchTab('deals')"><i class="ti ti-briefcase"></i> Deals</button>
       <button class="tab-btn" onclick="switchTab('calendar')"><i class="ti ti-calendar"></i> Meeting Calendar</button>
@@ -955,6 +955,10 @@
       <div class="card">
         <div class="card-header">
           <span>FY26-27 Targets — Salesperson Wise</span>
+          <select id="targetsModeSelect" onchange="renderTargets()" style="border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-weight:800;color:var(--p);background:#fff;margin-right:8px">
+            <option value="targets">Targets</option>
+            <option value="incentives">Incentives</option>
+          </select>
           <select id="targetsPeriodSelect" onchange="renderTargets()" style="border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-weight:800;color:var(--p);background:#fff">
             <option value="annual">Annual</option>
             <option value="q1">Q1 Apr-Jun</option>
@@ -1012,7 +1016,35 @@
         <div id="leadSettingsHistory" style="margin-top:12px"></div>
         <div style="border-top:2px solid var(--p);margin:22px 0 14px;padding-top:14px">
           <div style="font-size:14px;font-weight:800;color:var(--p)">FY26-27 Sales Incentive Rule</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">Salesperson incentive is governed by the annual gate plan: company must qualify at 75% on Sales, Billing and Gross Profit; individual allocation is paid only to users who also qualify at 75% on all three individual quotas.</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:4px">Salesperson incentive is governed by the annual gate plan below: company must qualify on Sales, Billing and Gross Profit at the Qualification Gate %; individual allocation is paid only to users who also qualify at that same gate on all three individual quotas.</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Qualification Gate % (Sales/Billing/GM must each reach this % of target)</label><input id="salesQualificationGatePct" type="number" min="0" max="100" step="1"></div>
+          <div class="form-group"><label>Incentive Rate % (of qualifying Gross Profit)</label><input id="salesIncentiveRatePct" type="number" min="0" step="0.1"></div>
+        </div>
+        <div style="margin-top:16px">
+          <div style="font-weight:800;font-size:12.5px;color:var(--p)">Company Annual Targets (₹)</div>
+          <div class="form-row" style="margin-top:6px">
+            <div class="form-group"><label>Sales</label><input id="planCompanySales" type="number" min="0"></div>
+            <div class="form-group"><label>Billing</label><input id="planCompanyBilling" type="number" min="0"></div>
+            <div class="form-group"><label>Gross Profit</label><input id="planCompanyGP" type="number" min="0"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-weight:800;font-size:12.5px;color:var(--p)">Quarter Weighting (should total 1.00)</div>
+          <div class="form-row" style="margin-top:6px">
+            <div class="form-group"><label>Q1 (Apr-Jun)</label><input id="planQ1Weight" type="number" min="0" max="1" step="0.01"></div>
+            <div class="form-group"><label>Q2 (Jul-Sep)</label><input id="planQ2Weight" type="number" min="0" max="1" step="0.01"></div>
+            <div class="form-group"><label>Q3 (Oct-Dec)</label><input id="planQ3Weight" type="number" min="0" max="1" step="0.01"></div>
+            <div class="form-group"><label>Q4 (Jan-Mar)</label><input id="planQ4Weight" type="number" min="0" max="1" step="0.01"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-weight:800;font-size:12.5px;color:var(--p);display:flex;align-items:center;gap:8px">Individual Salesperson Quotas <button type="button" class="btn sm" onclick="addSalesQuotaRow()"><i class="ti ti-plus"></i> Add</button></div>
+          <div style="display:grid;grid-template-columns:1fr 1.2fr 1fr 1fr 1fr 32px;gap:8px;margin-top:8px;font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase">
+            <div>Username</div><div>Display Name</div><div>Sales Target</div><div>Billing Target</div><div>GP Target</div><div></div>
+          </div>
+          <div id="salesQuotaRows" style="margin-top:4px"></div>
         </div>
         <div class="form-row" style="display:none" aria-hidden="true">
           <div class="form-group"><label>Floor Margin % (below = no incentive)</label><input id="salesMarginFloorPct" type="number" min="0" step="0.5"></div>
@@ -2442,11 +2474,27 @@
       const salesPerDealCap = Number(document.getElementById('salesPerDealCap').value);
       const salesOrderStageWeight = Number(document.getElementById('salesOrderStageWeight').value);
       const salesAnnualPoolCapPct = Number(document.getElementById('salesAnnualPoolCapPct').value);
+      const salesQualificationGatePct = Number(document.getElementById('salesQualificationGatePct').value);
+      const salesIncentiveRatePct = Number(document.getElementById('salesIncentiveRatePct').value);
+      const planCompanySales = Number(document.getElementById('planCompanySales').value);
+      const planCompanyBilling = Number(document.getElementById('planCompanyBilling').value);
+      const planCompanyGP = Number(document.getElementById('planCompanyGP').value);
+      const planQ1Weight = Number(document.getElementById('planQ1Weight').value);
+      const planQ2Weight = Number(document.getElementById('planQ2Weight').value);
+      const planQ3Weight = Number(document.getElementById('planQ3Weight').value);
+      const planQ4Weight = Number(document.getElementById('planQ4Weight').value);
+      const salesUsers = collectSalesQuotaRows();
+      if ([planCompanySales, planCompanyBilling, planCompanyGP].some(v => v < 0)) return showToast('Company targets must be positive', 'error');
+      const weightSum = planQ1Weight + planQ2Weight + planQ3Weight + planQ4Weight;
+      if (Math.abs(weightSum - 1) > 0.02) return showToast(`Quarter weights should total 1.00 (currently ${weightSum.toFixed(2)})`, 'error');
+      if (!Object.keys(salesUsers).length) return showToast('Add at least one salesperson quota row', 'error');
       if (qualifiedAmount < 0 || convertedAmount < qualifiedAmount || !effectiveFrom) return showToast('Converted Deal incentive must be at least the Qualified Lead incentive, with an effective date', 'error');
       if (effectiveFrom > dateKey(new Date())) return showToast('Future-dated plans are not supported; select today or an earlier date', 'error');
       if (!(salesMarginFloorPct <= salesMarginTargetPct && salesMarginTargetPct <= salesMarginStrongPct && salesMarginStrongPct <= salesMarginExcellentPct)) return showToast('Sales margin thresholds must increase from Floor to Excellent', 'error');
       if ([salesRateBelowTarget,salesRateTarget,salesRateStrong,salesRateExcellent,salesPerDealCap,salesAnnualPoolCapPct].some(value => value < 0) || salesOrderStageWeight < 0 || salesOrderStageWeight > 100) return showToast('Sales incentive rates/caps must be positive and Order Stage Weight must be 0–100%', 'error');
       if (!(salesRateBelowTarget <= salesRateTarget && salesRateTarget <= salesRateStrong && salesRateStrong <= salesRateExcellent)) return showToast('Sales incentive rates must increase from Below Target to Excellent', 'error');
+      if (salesQualificationGatePct < 0 || salesQualificationGatePct > 100) return showToast('Qualification Gate % must be between 0 and 100', 'error');
+      if (salesIncentiveRatePct < 0) return showToast('Incentive Rate % must be positive', 'error');
       const prior = {
         qualifiedAmount: Number(leadIncentiveConfig.qualifiedAmount || 0), convertedAmount: Number(leadIncentiveConfig.convertedAmount || 0), effectiveFrom: leadIncentiveConfig.effectiveFrom || '',
         salesMarginFloorPct: Number(leadIncentiveConfig.salesMarginFloorPct || 0), salesMarginTargetPct: Number(leadIncentiveConfig.salesMarginTargetPct || 0), salesMarginStrongPct: Number(leadIncentiveConfig.salesMarginStrongPct || 0), salesMarginExcellentPct: Number(leadIncentiveConfig.salesMarginExcellentPct || 0),
@@ -2456,16 +2504,61 @@
         replacedAt: new Date(), replacedBy: currentUser
       };
       const history = [...(leadIncentiveConfig.history || []), prior].slice(-20);
-      const record = { qualifiedAmount, convertedAmount, effectiveFrom, salesMarginFloorPct, salesMarginTargetPct, salesMarginStrongPct, salesMarginExcellentPct, salesRateBelowTarget, salesRateTarget, salesRateStrong, salesRateExcellent, salesPerDealCap, salesOrderStageWeight, salesAnnualPoolCapPct, salesQualificationGatePct: Number(leadIncentiveConfig.salesQualificationGatePct || 75), salesIncentiveRatePct: Number(leadIncentiveConfig.salesIncentiveRatePct || 3), updatedBy: currentUser, updatedAt: new Date(), history };
+      const salesPlanOverrides = {
+        company: { sales: planCompanySales, billing: planCompanyBilling, grossProfit: planCompanyGP },
+        quarterWeights: { q1: planQ1Weight, q2: planQ2Weight, q3: planQ3Weight, q4: planQ4Weight },
+        users: salesUsers
+      };
+      const record = { qualifiedAmount, convertedAmount, effectiveFrom, salesMarginFloorPct, salesMarginTargetPct, salesMarginStrongPct, salesMarginExcellentPct, salesRateBelowTarget, salesRateTarget, salesRateStrong, salesRateExcellent, salesPerDealCap, salesOrderStageWeight, salesAnnualPoolCapPct, salesQualificationGatePct, salesIncentiveRatePct, salesPlanOverrides, updatedBy: currentUser, updatedAt: new Date(), history };
       await db.collection(CRM_LEAD_CONFIG).doc('current').set(record);
-      leadIncentiveConfig = record; renderLeadManagement(); renderDeals(); showToast('Lead and salesperson incentive policies updated', 'success');
+      leadIncentiveConfig = record; renderLeadManagement(); renderDeals(); renderTargets(); showToast('Lead and salesperson incentive policies updated', 'success');
+    }
+
+    function salesQuotaRowHtml(username, quota) {
+      return `<div class="sales-quota-row" style="display:grid;grid-template-columns:1fr 1.2fr 1fr 1fr 1fr 32px;gap:8px;margin-bottom:6px;align-items:center">
+        <input class="sq-username" placeholder="username" value="${escapeHtml(username||'')}">
+        <input class="sq-name" placeholder="Display name" value="${escapeHtml(quota?.name||'')}">
+        <input class="sq-sales" type="number" min="0" placeholder="Sales target" value="${Number(quota?.sales||0)}">
+        <input class="sq-billing" type="number" min="0" placeholder="Billing target" value="${Number(quota?.billing||0)}">
+        <input class="sq-gp" type="number" min="0" placeholder="GP target" value="${Number(quota?.grossProfit||0)}">
+        <button type="button" class="btn sm danger" onclick="this.closest('.sales-quota-row').remove()"><i class="ti ti-trash"></i></button>
+      </div>`;
+    }
+    function renderSalesQuotaRows() {
+      const container = document.getElementById('salesQuotaRows');
+      if (!container) return;
+      const plan = activeSalesIncentivePlan();
+      container.innerHTML = Object.keys(plan.users).map(username => salesQuotaRowHtml(username, plan.users[username])).join('');
+    }
+    function addSalesQuotaRow() {
+      const container = document.getElementById('salesQuotaRows');
+      if (!container) return;
+      container.insertAdjacentHTML('beforeend', salesQuotaRowHtml('', { name: '', sales: 0, billing: 0, grossProfit: 0 }));
+    }
+    function collectSalesQuotaRows() {
+      const users = {};
+      document.querySelectorAll('.sales-quota-row').forEach(row => {
+        const username = String(row.querySelector('.sq-username').value || '').trim().toLowerCase();
+        if (!username) return;
+        users[username] = {
+          name: row.querySelector('.sq-name').value.trim() || username,
+          sales: Number(row.querySelector('.sq-sales').value || 0),
+          billing: Number(row.querySelector('.sq-billing').value || 0),
+          grossProfit: Number(row.querySelector('.sq-gp').value || 0)
+        };
+      });
+      return users;
     }
 
     function activeSalesIncentivePlan() {
+      const overrides = leadIncentiveConfig.salesPlanOverrides || {};
       return {
         ...FY26_27_SALES_INCENTIVE_PLAN,
         gatePct: Number(leadIncentiveConfig.salesQualificationGatePct || FY26_27_SALES_INCENTIVE_PLAN.gatePct),
-        incentiveRatePct: Number(leadIncentiveConfig.salesIncentiveRatePct || FY26_27_SALES_INCENTIVE_PLAN.incentiveRatePct)
+        incentiveRatePct: Number(leadIncentiveConfig.salesIncentiveRatePct || FY26_27_SALES_INCENTIVE_PLAN.incentiveRatePct),
+        company: overrides.company || FY26_27_SALES_INCENTIVE_PLAN.company,
+        quarterWeights: overrides.quarterWeights || FY26_27_SALES_INCENTIVE_PLAN.quarterWeights,
+        users: overrides.users || FY26_27_SALES_INCENTIVE_PLAN.users
       };
     }
 
@@ -2738,6 +2831,17 @@
         document.getElementById('salesPerDealCap').value = Number(leadIncentiveConfig.salesPerDealCap ?? 150000);
         document.getElementById('salesOrderStageWeight').value = Number(leadIncentiveConfig.salesOrderStageWeight ?? 50);
         document.getElementById('salesAnnualPoolCapPct').value = Number(leadIncentiveConfig.salesAnnualPoolCapPct ?? 2);
+        document.getElementById('salesQualificationGatePct').value = Number(leadIncentiveConfig.salesQualificationGatePct ?? 75);
+        document.getElementById('salesIncentiveRatePct').value = Number(leadIncentiveConfig.salesIncentiveRatePct ?? 3);
+        const activePlan = activeSalesIncentivePlan();
+        document.getElementById('planCompanySales').value = Number(activePlan.company?.sales || 0);
+        document.getElementById('planCompanyBilling').value = Number(activePlan.company?.billing || 0);
+        document.getElementById('planCompanyGP').value = Number(activePlan.company?.grossProfit || 0);
+        document.getElementById('planQ1Weight').value = Number(activePlan.quarterWeights?.q1 || 0);
+        document.getElementById('planQ2Weight').value = Number(activePlan.quarterWeights?.q2 || 0);
+        document.getElementById('planQ3Weight').value = Number(activePlan.quarterWeights?.q3 || 0);
+        document.getElementById('planQ4Weight').value = Number(activePlan.quarterWeights?.q4 || 0);
+        renderSalesQuotaRows();
         const history = (leadIncentiveConfig.history || []).slice().reverse();
         document.getElementById('leadSettingsHistory').innerHTML = history.length ? `<div style="font-size:11px;color:var(--t2)"><b>Recent plan history:</b> ${history.slice(0,5).map(item => `₹${Number(item.qualifiedAmount||0).toLocaleString('en-IN')} qualified / ₹${Number(item.convertedAmount||0).toLocaleString('en-IN')} converted from ${escapeHtml(item.effectiveFrom || '—')}`).join(' · ')}</div>` : '';
         renderSalesIncentivePolicySummary();
@@ -4399,6 +4503,8 @@
     function renderTargets() {
       const container = document.getElementById('targetsContainer');
       if (!container) return;
+      const mode = document.getElementById('targetsModeSelect')?.value || 'targets';
+      if (mode === 'incentives') { renderTargetsIncentivesView(container); return; }
       const plan = activeSalesIncentivePlan();
       const period = document.getElementById('targetsPeriodSelect')?.value || 'annual';
       const isAnnual = period === 'annual';
@@ -4438,6 +4544,33 @@
           <thead><tr style="background:#EAF3FB;color:var(--p);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:9px">Salesperson</th><th style="text-align:left;padding:9px">Sales<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Billing<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">GM<br><span style="font-size:9px;color:var(--t2)">Achieved / Target / %</span></th><th style="text-align:left;padding:9px">Gate</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>${myPanel}`;
+    }
+
+    function renderTargetsIncentivesView(container) {
+      const period = document.getElementById('targetsPeriodSelect')?.value || 'annual';
+      const periodLabels = { annual: 'Annual', q1: 'Q1 Apr-Jun', q2: 'Q2 Jul-Sep', q3: 'Q3 Oct-Dec', q4: 'Q4 Jan-Mar' };
+      const plan = activeSalesIncentivePlan();
+      const rows = Object.keys(plan.users).map(owner => {
+        const calc = salesIncentiveForOwner(owner, period);
+        const gate = calc.individualGate;
+        const minPct = gate ? Math.min(gate.salesPct, gate.billingPct, gate.grossProfitPct) : 0;
+        const gateColor = calc.qualified ? '#2E7D32' : (minPct >= 50 ? '#E65100' : '#B71C1C');
+        return `<tr style="border-bottom:.5px solid var(--bd)">
+          <td style="padding:9px"><b>${escapeHtml(plan.users[owner].name)}</b><br><span style="font-size:10px;color:var(--t2)">@${escapeHtml(owner)}</span></td>
+          <td style="padding:9px"><span style="font-weight:900;color:${gateColor}">${minPct.toFixed(0)}%</span></td>
+          <td style="padding:9px">${calc.qualified ? `<span style="color:#2E7D32;font-weight:800">Qualified</span>` : `<span style="color:var(--t2)">${escapeHtml(calc.reason || 'Pending')}</span>`}</td>
+          <td style="padding:9px;font-weight:900;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(calc.incentive||0).toLocaleString('en-IN')}</td>
+          <td style="padding:9px;color:var(--t2)">₹${Math.round(calc.targetIncentive||0).toLocaleString('en-IN')}</td>
+        </tr>`;
+      }).join('');
+      const totalEarned = Object.keys(plan.users).reduce((s,owner) => s + Number(salesIncentiveForOwner(owner, period).incentive || 0), 0);
+      container.innerHTML = `<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Sales incentive earned vs plan, ${escapeHtml(periodLabels[period] || period)}. Rate: ${Number(plan.incentiveRatePct||0)}% of qualifying gross margin, gated at ${Number(plan.gatePct||0)}% of target across Sales/Billing/GM. Edit these in Referral Leads → Incentive Settings.</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:760px">
+          <thead><tr style="background:#EAF3FB;color:var(--p);border-bottom:.5px solid var(--bd)"><th style="text-align:left;padding:9px">Salesperson</th><th style="text-align:left;padding:9px">Gate %</th><th style="text-align:left;padding:9px">Status</th><th style="text-align:left;padding:9px">Incentive Earned</th><th style="text-align:left;padding:9px">Plan Incentive (at 100%)</th></tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="background:var(--pl);font-weight:900"><td colspan="3" style="padding:9px">TOTAL EARNED</td><td style="padding:9px;color:#2E7D32">₹${Math.round(totalEarned).toLocaleString('en-IN')}</td><td></td></tr></tfoot>
+        </table></div>
+        <div style="margin-top:10px;font-size:11px;color:var(--t2)">Referral (lead) incentives are tracked separately - see the Referral Leads tab.</div>`;
     }
 
     function openSetTargetModal() {
