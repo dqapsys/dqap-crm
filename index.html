@@ -887,7 +887,7 @@
       <div class="card" id="dqapSalesSynopsisCard">
         <div class="card-header">DQAP Sales Synopsis</div>
         <div style="font-size:10.5px;color:var(--t2);margin:-4px 0 10px">Order value uses each deal's Close Date; Billing value uses each deal's Billing Date (Billed stage only). Figures in ₹ Lakh.</div>
-        <canvas id="salesSynopsisChart" height="80"></canvas>
+        <div id="salesSynopsisBlocks"></div>
       </div>
       
       <div class="card">
@@ -1584,7 +1584,6 @@
     let taskRefreshTimer = null;
     let taskUnsubscribers = [];
     let pipelineChart = null;
-    let salesSynopsisChart = null;
     let currentCalendarDate = new Date();
     let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
     let contactSortState = { key: 'name', type: 'text', dir: 'asc' };
@@ -5753,59 +5752,26 @@
     // DQAP Sales Synopsis - Order value uses Close Date (any non-Lost stage,
     // since an order can be "closing" before it reaches Billed); Billing value
     // uses Billing Date and only counts deals actually in the Billed stage.
-    function renderSalesSynopsisChart() {
-      const canvas = document.getElementById('salesSynopsisChart');
-      if (!canvas) return;
+    // Shown as plain metric blocks (no graph), matching the previous
+    // "My FY26-27 Sales Incentive Status" card's layout.
+    function renderSalesSynopsis() {
+      const container = document.getElementById('salesSynopsisBlocks');
+      if (!container) return;
       const deals = Object.values(dealData);
       const orderMonth = deals.filter(d => d.stage !== 'Lost' && isInCurrentCalendarMonth(d.closeDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
       const orderQuarter = deals.filter(d => d.stage !== 'Lost' && isInCurrentFyQuarter(d.closeDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
       const billingMonth = deals.filter(d => d.stage === 'Billed' && isInCurrentCalendarMonth(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
       const billingQuarter = deals.filter(d => d.stage === 'Billed' && isInCurrentFyQuarter(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
-      const labels = ['Order - This Month', 'Order - This Quarter', 'Billing - This Month', 'Billing - This Quarter'];
-      const values = [orderMonth, orderQuarter, billingMonth, billingQuarter].map(v => Number((v / 100000).toFixed(2)));
-      const ctx = canvas.getContext('2d');
-      if (salesSynopsisChart) salesSynopsisChart.destroy();
-      salesSynopsisChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: '₹ Lakh',
-            data: values,
-            backgroundColor: ['#1565C0', '#0D47A1', '#2E7D32', '#1B5E20'],
-            borderRadius: 6,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          layout: { padding: { top: 22 } },
-          plugins: { legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { callback: v => '₹' + v + 'L' }
-            }
-          }
-        },
-        plugins: [{
-          id: 'synopsisValueLabels',
-          afterDatasetsDraw(chart) {
-            const { ctx } = chart;
-            chart.data.datasets.forEach((dataset, i) => {
-              chart.getDatasetMeta(i).data.forEach((bar, idx) => {
-                ctx.save();
-                ctx.fillStyle = '#111';
-                ctx.font = '700 12px inherit';
-                ctx.textAlign = 'center';
-                ctx.fillText('₹' + dataset.data[idx] + 'L', bar.x, bar.y - 8);
-                ctx.restore();
-              });
-            });
-          }
-        }]
-      });
+      const block = (label, value, color) => `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px">
+        <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase;letter-spacing:.04em">${label}</div>
+        <div style="font-size:18px;font-weight:900;color:${color};margin-top:4px">₹${(value / 100000).toFixed(2)}L</div>
+      </div>`;
+      container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+        ${block('Order - This Month', orderMonth, '#1565C0')}
+        ${block('Order - This Quarter', orderQuarter, '#0D47A1')}
+        ${block('Billing - This Month', billingMonth, '#2E7D32')}
+        ${block('Billing - This Quarter', billingQuarter, '#1B5E20')}
+      </div>`;
     }
 
     function populatePipelineSalespersonSelect() {
@@ -5861,6 +5827,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          layout: { padding: { top: 22 } },
           plugins: { legend: { display: false } },
           scales: {
             y: {
@@ -5868,7 +5835,23 @@
               ticks: { callback: v => '₹' + formatCurrency(v) }
             }
           }
-        }
+        },
+        plugins: [{
+          id: 'pipelineValueLabels',
+          afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            chart.getDatasetMeta(0).data.forEach((bar, idx) => {
+              const value = chart.data.datasets[0].data[idx];
+              if (!value) return;
+              ctx.save();
+              ctx.fillStyle = '#111';
+              ctx.font = '700 11px inherit';
+              ctx.textAlign = 'center';
+              ctx.fillText('₹' + formatCurrency(value), bar.x, bar.y - 6);
+              ctx.restore();
+            });
+          }
+        }]
       });
     }
 
@@ -5902,7 +5885,7 @@
         .reduce((sum, d) => sum + Number(d.value || 0), 0);
       const billedOutsideFyValue = Math.max(0, allBilledValue - wonValue);
       document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
-      renderSalesSynopsisChart();
+      renderSalesSynopsis();
       
       renderPipelineChart();
       
