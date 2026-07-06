@@ -886,7 +886,7 @@
       
       <div class="card" id="dqapSalesSynopsisCard">
         <div class="card-header">DQAP Sales Synopsis</div>
-        <div style="font-size:10.5px;color:var(--t2);margin:-4px 0 10px">Order value uses each deal's Close Date; Billing value uses each deal's Billing Date (Billed stage only). Figures in ₹ Lakh.</div>
+        <div style="font-size:10.5px;color:var(--t2);margin:-4px 0 10px">Order value uses each deal's Close Date (any open stage). Billing value uses each deal's Billing Date - counted as soon as it's committed at Order, through to actual at Billed. Figures in ₹ Lakh.</div>
         <div id="salesSynopsisBlocks"></div>
       </div>
       
@@ -5782,8 +5782,11 @@
       return inPlanDate(dateValue, plan) && fyQuarterKey(dateValue) === fyQuarterKey(new Date());
     }
     // DQAP Sales Synopsis - Order value uses Close Date (any non-Lost stage,
-    // since an order can be "closing" before it reaches Billed); Billing value
-    // uses Billing Date and only counts deals actually in the Billed stage.
+    // since an order can be "closing" before it reaches Billed); Billing
+    // value uses Billing Date for any deal that has one committed (Order,
+    // Engineering Approvals or Billed) - a committed billing date counts the
+    // same way a committed/expected close date already does for Order, so
+    // the figure reflects what's coming, not only what's already invoiced.
     // Shown as plain metric blocks (no graph), matching the previous
     // "My FY26-27 Sales Incentive Status" card's layout.
     function renderSalesSynopsis() {
@@ -5792,8 +5795,8 @@
       const deals = Object.values(dealData);
       const orderMonth = deals.filter(d => d.stage !== 'Lost' && isInCurrentCalendarMonth(d.closeDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
       const orderQuarter = deals.filter(d => d.stage !== 'Lost' && isInCurrentFyQuarter(d.closeDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
-      const billingMonth = deals.filter(d => d.stage === 'Billed' && isInCurrentCalendarMonth(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
-      const billingQuarter = deals.filter(d => d.stage === 'Billed' && isInCurrentFyQuarter(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const billingMonth = deals.filter(d => SALES_ORDERING_STAGES.includes(d.stage) && isInCurrentCalendarMonth(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const billingQuarter = deals.filter(d => SALES_ORDERING_STAGES.includes(d.stage) && isInCurrentFyQuarter(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
       const block = (label, value, color) => `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px">
         <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase;letter-spacing:.04em">${label}</div>
         <div style="font-size:18px;font-weight:900;color:${color};margin-top:4px">₹${(value / 100000).toFixed(2)}L</div>
