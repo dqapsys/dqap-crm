@@ -587,6 +587,23 @@
       color: var(--success);
     }
 
+    .multi-filter-dropdown { position: relative; }
+    .multi-filter-dropdown summary { list-style: none; cursor: pointer; user-select: none; }
+    .multi-filter-dropdown summary::-webkit-details-marker { display: none; }
+    .multi-filter-dropdown[open] summary { border-color: var(--p); color: var(--p); }
+    .multi-filter-panel {
+      position: absolute; top: calc(100% + 4px); left: 0; z-index: 40;
+      background: #fff; border: 1px solid var(--bd); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 8px; min-width: 210px;
+      max-height: 260px; overflow-y: auto;
+    }
+    .multi-filter-panel label {
+      display: flex; align-items: center; gap: 7px; padding: 5px 6px;
+      font-size: 12.5px; border-radius: 5px; cursor: pointer;
+    }
+    .multi-filter-panel label:hover { background: var(--bg); }
+    .multi-filter-panel .empty-note { font-size: 11.5px; color: var(--t2); padding: 6px; }
+
     .deals-board {
       display: flex;
       gap: 12px;
@@ -882,7 +899,23 @@
       </div>
       
       <div class="card">
-        <div class="card-header">Pipeline by Stage</div>
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>Pipeline by Stage</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="pipelineSalespersonSelect" onchange="renderPipelineChart()" style="padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--p);font-weight:800;font-family:inherit">
+              <option value="">All salespeople</option>
+            </select>
+            <select id="pipelinePeriodSelect" onchange="renderPipelineChart()" style="padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--p);font-weight:800;font-family:inherit">
+              <option value="">All time</option>
+              <option value="annual">FY26-27 Annual</option>
+              <option value="q1">Q1 Apr-Jun</option>
+              <option value="q2">Q2 Jul-Sep</option>
+              <option value="q3">Q3 Oct-Dec</option>
+              <option value="q4">Q4 Jan-Mar</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:10.5px;color:var(--t2);margin:-4px 0 10px">Values are weighted 50/50 between deal owner and any accepted partner when a specific salesperson is selected. Period filters by each deal's expected close date.</div>
         <canvas id="pipelineChart" height="80"></canvas>
       </div>
       
@@ -928,6 +961,15 @@
               <option value="stage">View stage wise</option>
               <option value="salesperson">View salesperson wise</option>
             </select>
+            <details class="multi-filter-dropdown">
+              <summary class="btn" id="dealStageFilterSummary">Filter: Stage</summary>
+              <div class="multi-filter-panel" id="dealStageFilterPanel"></div>
+            </details>
+            <details class="multi-filter-dropdown">
+              <summary class="btn" id="dealSalespersonFilterSummary">Filter: Salesperson</summary>
+              <div class="multi-filter-panel" id="dealSalespersonFilterPanel"></div>
+            </details>
+            <button class="btn sm" id="dealMultiFilterClearBtn" onclick="clearDealMultiFilters()" style="display:none"><i class="ti ti-filter-x"></i> Clear</button>
           </div>
           <span id="dealsSearchCount" style="font-size:11px;color:var(--t2)"></span>
         </div>
@@ -1556,6 +1598,7 @@
     let contactColumnFilters = {};
     let dealColumnSortState = { key: 'dealCode', type: 'text', dir: 'asc' };
     let dealColumnFilters = {};
+    let dealMultiFilters = { stage: new Set(), salesperson: new Set() };
     let currentDealExportRows = [];
     
     const CRM_CUSTOMERS = 'dqap_crm_customers';
@@ -3993,14 +4036,54 @@
       row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
     }
 
+    function dealMatchesMultiFilters(deal) {
+      if (dealMultiFilters.stage.size && !dealMultiFilters.stage.has(deal.stage || 'Lead')) return false;
+      if (dealMultiFilters.salesperson.size && !dealMultiFilters.salesperson.has(deal.username || 'Unassigned')) return false;
+      return true;
+    }
+    function toggleDealMultiFilterValue(dimension, value, checked) {
+      const set = dealMultiFilters[dimension];
+      if (!set) return;
+      if (checked) set.add(value); else set.delete(value);
+      renderDeals();
+    }
+    function clearDealMultiFilters() {
+      dealMultiFilters.stage.clear();
+      dealMultiFilters.salesperson.clear();
+      renderDeals();
+    }
+    function renderDealMultiFilterPanels(availableStages, availableSalespeople) {
+      const stagePanel = document.getElementById('dealStageFilterPanel');
+      const spPanel = document.getElementById('dealSalespersonFilterPanel');
+      const stageSummary = document.getElementById('dealStageFilterSummary');
+      const spSummary = document.getElementById('dealSalespersonFilterSummary');
+      const clearBtn = document.getElementById('dealMultiFilterClearBtn');
+      if (stagePanel) {
+        stagePanel.innerHTML = availableStages.length ? availableStages.map(stage => `
+          <label><input type="checkbox" ${dealMultiFilters.stage.has(stage) ? 'checked' : ''} onchange="toggleDealMultiFilterValue('stage','${escapeHtml(stage)}',this.checked)"> ${escapeHtml(stage)}</label>
+        `).join('') : '<div class="empty-note">No stages available</div>';
+      }
+      if (spPanel) {
+        spPanel.innerHTML = availableSalespeople.length ? availableSalespeople.map(sp => `
+          <label><input type="checkbox" ${dealMultiFilters.salesperson.has(sp) ? 'checked' : ''} onchange="toggleDealMultiFilterValue('salesperson','${escapeHtml(sp)}',this.checked)"> ${escapeHtml(sp)}</label>
+        `).join('') : '<div class="empty-note">No salespeople available</div>';
+      }
+      if (stageSummary) stageSummary.textContent = dealMultiFilters.stage.size ? `Stage (${dealMultiFilters.stage.size})` : 'Filter: Stage';
+      if (spSummary) spSummary.textContent = dealMultiFilters.salesperson.size ? `Salesperson (${dealMultiFilters.salesperson.size})` : 'Filter: Salesperson';
+      if (clearBtn) clearBtn.style.display = (dealMultiFilters.stage.size || dealMultiFilters.salesperson.size) ? 'inline-flex' : 'none';
+    }
     function renderDeals() {
       const container = document.getElementById('dealsContainer');
       const search = document.getElementById('dealsSearchInput')?.value || '';
       const groupBy = document.getElementById('dealsGroupBySelect')?.value || 'stage';
       const scopedDeals = Object.values(dealData).filter(deal => isLeadReviewer() || dealParticipantUsernames(deal, true).includes(String(currentUser || '').toLowerCase()));
+      renderDealMultiFilterPanels(
+        [...new Set(scopedDeals.map(deal => deal.stage || 'Lead'))].sort((a, b) => a.localeCompare(b)),
+        [...new Set(scopedDeals.map(deal => deal.username || 'Unassigned'))].sort((a, b) => a.localeCompare(b))
+      );
       const deals = scopedDeals.filter(deal => {
         const customer = customerData[deal.customerId];
-        return crmTextMatch([
+        return dealMatchesMultiFilters(deal) && crmTextMatch([
           deal.dealCode, deal.title, deal.stage, deal.value, deal.probability, deal.closeDate, deal.orderDate, deal.billingDate,
           deal.notes, deal.lossReason, deal.customLossReason, deal.username, customer?.name, customer?.contact, customer?.email
         ], search);
@@ -4019,20 +4102,22 @@
       
       const stages = ['Lead', 'Suspect', 'Prospect', 'Tender Submission', 'Bid Submission', 'Technical Evaluation', 'Negotiations', 'Close', 'Order', 'Lost', 'Engineering Approvals', 'Billed'];
       const stageGroups = [...stages, ...[...new Set(deals.map(deal => deal.stage || 'Lead'))].filter(stage => !stages.includes(stage))];
+      const participantsForGrouping = deal => dealParticipantUsernames(deal, false).length ? dealParticipantUsernames(deal, false) : ['Unassigned'];
       const groups = groupBy === 'salesperson'
-        ? [...new Set(deals.map(deal => deal.username || 'Unassigned'))].sort((a, b) => String(a).localeCompare(String(b)))
+        ? [...new Set(deals.flatMap(participantsForGrouping))].sort((a, b) => String(a).localeCompare(String(b)))
         : stageGroups.filter(stage => deals.some(deal => (deal.stage || 'Lead') === stage));
       const maxTotal = Math.max(...groups.map(group => deals
-        .filter(deal => groupBy === 'salesperson' ? (deal.username || 'Unassigned') === group : (deal.stage || 'Lead') === group)
-        .reduce((sum, deal) => sum + Number(deal.value || 0), 0)), 1);
+        .filter(deal => groupBy === 'salesperson' ? participantsForGrouping(deal).includes(group) : (deal.stage || 'Lead') === group)
+        .reduce((sum, deal) => sum + Number(deal.value || 0) * (groupBy === 'salesperson' ? dealShareForUser(deal, group) : 1), 0)), 1);
       const groupStats = groups.map(group => {
-        const groupDeals = deals.filter(deal => groupBy === 'salesperson' ? (deal.username || 'Unassigned') === group : (deal.stage || 'Lead') === group);
+        const groupDeals = deals.filter(deal => groupBy === 'salesperson' ? participantsForGrouping(deal).includes(group) : (deal.stage || 'Lead') === group);
+        const shareFor = deal => groupBy === 'salesperson' ? (dealShareForUser(deal, group) || 1) : 1;
         return {
           group,
           deals: groupDeals,
           count: groupDeals.length,
-          total: groupDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0),
-          gmTotal: groupDeals.reduce((sum, deal) => sum + Number(deal.grossMarginAmount || 0), 0)
+          total: groupDeals.reduce((sum, deal) => sum + Number(deal.value || 0) * shareFor(deal), 0),
+          gmTotal: groupDeals.reduce((sum, deal) => sum + Number(deal.grossMarginAmount || 0) * shareFor(deal), 0)
         };
       });
       if (dealColumnSortState.key) {
@@ -4062,6 +4147,7 @@
         const partnerLine = (acceptedPartners.length || pendingPartners.length)
           ? `${acceptedPartners.map(p => p.name || p.username).join(', ') || 'None accepted'}${pendingPartners.length ? ` - Pending: ${pendingPartners.map(p => p.name || p.username).join(', ')}` : ''}`
           : '-';
+        const partnerManagement = partnerManagementHtml(d, acceptedPartners, pendingPartners);
         const incentive = salesIncentive.ownerQualified ? `₹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential ₹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`;
         const lossReason = d.stage === 'Lost' ? [d.lossReason, d.customLossReason].filter(Boolean).join(' - ') : '';
         const record = {
@@ -4086,7 +4172,7 @@
           lossReason,
           notes: d.notes || ''
         };
-        return { item, d, customer, acceptedPartners, pendingPartners, salesIncentive, gmPercent, partnerLine, record };
+        return { item, d, customer, acceptedPartners, pendingPartners, salesIncentive, gmPercent, partnerLine, partnerManagement, record };
       };
       const seenDeals = new Set();
       const dealItems = orderedDeals.filter(item => {
@@ -4113,11 +4199,10 @@
         container.innerHTML = '<div class="empty"><div class="empty-icon">🔎</div><p>No deals match these column filters.</p></div>';
         return;
       }
-      const compactRows = dealItems.map(({ item, d, customer, acceptedPartners, pendingPartners, salesIncentive, gmPercent, partnerLine }) => {
+      const compactRows = dealItems.map(({ item, d, customer, acceptedPartners, pendingPartners, salesIncentive, gmPercent, partnerLine, partnerManagement }) => {
         const gmColor = gmPercent >= 20 ? '#2E7D32' : '#B71C1C';
         const stageClass = d.stage === 'Lost' ? 'lost' : (d.stage === 'Billed' ? 'won' : '');
-        const ownerLine = isLeadReviewer() ? `<div style="font-size:10px;color:var(--t2);margin-top:2px">Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}</div>` : '';
-        const safePartnerLine = escapeHtml(partnerLine || '-');
+        const ownerLine = d.sourceLeadId ? `<div style="font-size:10px;color:var(--t2);margin-top:2px">Converted Lead</div>` : '';
         const actions = `<div style="display:flex;gap:6px;flex-wrap:wrap">
           ${canAdministerDeal(d) ? `<button class="btn sm" onclick="openEditDealModal('${d.id}')"><i class="ti ti-edit"></i> Edit</button>` : ''}
           ${canDeleteDeal() ? `<button class="btn sm danger" onclick="deleteDeal('${d.id}')"><i class="ti ti-trash"></i></button>` : ''}
@@ -4128,12 +4213,13 @@
           <td style="font-weight:900;color:#006994;white-space:nowrap">${escapeHtml(d.dealCode || generateDealCode(d.id))}</td>
           <td style="min-width:220px"><button type="button" class="deal-title-link" onclick="toggleDealDetailRow('${d.id}')">${escapeHtml(d.title || 'Untitled Deal')}</button>${ownerLine}</td>
           <td>${escapeHtml(customer.name || d.customerCompanyName || '—')}</td>
+          <td style="white-space:nowrap">${escapeHtml(d.username || '—')}</td>
           <td><span class="deal-stage ${stageClass}">${escapeHtml(d.stage || 'Lead')}</span></td>
           <td style="font-weight:900;color:var(--p);white-space:nowrap">₹${formatCurrency(d.value || 0)}</td>
           <td style="font-weight:900;color:${gmColor};white-space:nowrap">₹${Number(d.grossMarginAmount || 0).toLocaleString('en-IN')} <span style="font-size:10px">(${gmPercent.toFixed(2)}%)</span></td>
         </tr>
         <tr id="deal-detail-row-${d.id}" style="display:none">
-          <td colspan="6">
+          <td colspan="7">
             <div class="deal-detail-panel">
               <div class="deal-detail-grid">
                 <div><div class="deal-detail-label">Customer contact</div><div class="deal-detail-value">${escapeHtml(customer.contact || '—')}</div></div>
@@ -4144,7 +4230,7 @@
                 <div><div class="deal-detail-label">Close date</div><div class="deal-detail-value">${d.closeDate ? formatDate(d.closeDate) : '—'}</div></div>
                 <div><div class="deal-detail-label">Order date</div><div class="deal-detail-value">${d.orderDate ? formatDate(d.orderDate) : '—'}</div></div>
                 <div><div class="deal-detail-label">Billing date</div><div class="deal-detail-value">${d.billingDate ? formatDate(d.billingDate) : '—'}</div></div>
-                <div><div class="deal-detail-label">Partners</div><div class="deal-detail-value">${safePartnerLine}</div></div>
+                <div><div class="deal-detail-label">Partners</div><div class="deal-detail-value">${partnerManagement}</div></div>
                 <div><div class="deal-detail-label">Incentive</div><div class="deal-detail-value">${salesIncentive.ownerQualified ? `₹${Math.round(salesIncentive.target).toLocaleString('en-IN')}` : `Potential ₹${Math.round(salesIncentive.potential).toLocaleString('en-IN')}`}</div></div>
                 <div><div class="deal-detail-label">View context</div><div class="deal-detail-value">${escapeHtml(item.group || '—')}</div></div>
                 <div><div class="deal-detail-label">Loss reason</div><div class="deal-detail-value">${d.stage === 'Lost' ? escapeHtml([d.lossReason, d.customLossReason].filter(Boolean).join(' - ') || '—') : '—'}</div></div>
@@ -4155,7 +4241,7 @@
           </td>
         </tr>`;
       }).join('');
-      container.innerHTML = `<div style="overflow-x:auto"><table class="deals-compact-table"><thead><tr>${dealHeader('Deal ID','dealCode')}${dealHeader('Title','title')}${dealHeader('Customer','customer')}${dealHeader('Stage','stage')}${dealHeader('Value','value','number')}${dealHeader('GM','gmAmount','number')}</tr></thead><tbody>${compactRows}</tbody></table></div>`;
+      container.innerHTML = `<div style="overflow-x:auto"><table class="deals-compact-table"><thead><tr>${dealHeader('Deal ID','dealCode')}${dealHeader('Title','title')}${dealHeader('Customer','customer')}${dealHeader('Salesperson','owner')}${dealHeader('Stage','stage')}${dealHeader('Value','value','number')}${dealHeader('GM','gmAmount','number')}</tr></thead><tbody>${compactRows}</tbody></table></div>`;
       return;
 
       let html = '<div class="deals-board">';
@@ -4413,41 +4499,6 @@
     }
 
     function targetPct(actual, target) { return target ? Math.round(actual / target * 100) : 0; }
-
-    function renderTargets() {
-      const container = document.getElementById('targetsContainer');
-      const year = new Date().getFullYear();
-      const target = annualTargetFor(year);
-      if (!target) {
-        container.innerHTML = `<div class="empty" style="padding:40px"><div class="empty-icon">??</div><p>No quarterly Booking and Billing targets set for ${year}.</p><button class="btn primary" onclick="openSetTargetModal()" style="margin-top:12px">Set Targets Now</button></div>`;
-        return;
-      }
-      const actuals = targetActualsByQuarter(year);
-      let totalBookingTarget=0,totalBillingTarget=0,totalBookingActual=0,totalBillingActual=0,totalGrossMarginTarget=0,totalGrossMarginActual=0;
-      let rows = '';
-      for (let q=1;q<=4;q++) {
-        const plan = target.quarterTargets?.[`q${q}`] || {booking:0,billing:0};
-        const actual = actuals[`q${q}`];
-        const grossMarginTarget = plan.booking * Math.max(20, Number(target.marginTarget || 20)) / 100;
-        const grossMarginPercent = actual.booking ? actual.grossMargin / actual.booking * 100 : 0;
-        totalBookingTarget += plan.booking; totalBillingTarget += plan.billing; totalBookingActual += actual.booking; totalBillingActual += actual.billing; totalGrossMarginTarget += grossMarginTarget; totalGrossMarginActual += actual.grossMargin;
-        rows += `<tr><td style="padding:10px;font-weight:700">Q${q}</td><td>₹${Number(plan.booking).toLocaleString('en-IN')}</td><td style="color:#1565C0;font-weight:600">₹${actual.booking.toLocaleString('en-IN')}</td><td>${targetPct(actual.booking,plan.booking)}%</td><td>₹${Number(plan.billing).toLocaleString('en-IN')}</td><td style="color:#2E7D32;font-weight:600">₹${actual.billing.toLocaleString('en-IN')}</td><td>${targetPct(actual.billing,plan.billing)}%</td><td>₹${grossMarginTarget.toLocaleString('en-IN')}</td><td style="color:${grossMarginPercent >= Math.max(20, Number(target.marginTarget || 20)) ? '#2E7D32' : '#B71C1C'};font-weight:600">₹${actual.grossMargin.toLocaleString('en-IN')}</td><td>${grossMarginPercent.toFixed(2)}%</td></tr>`;
-      }
-      const totalMarginPercent = totalBookingActual ? totalGrossMarginActual / totalBookingActual * 100 : 0;
-      rows += `<tr style="background:var(--pl);font-weight:800"><td style="padding:10px">TOTAL</td><td>₹${totalBookingTarget.toLocaleString('en-IN')}</td><td>₹${totalBookingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBookingActual,totalBookingTarget)}%</td><td>₹${totalBillingTarget.toLocaleString('en-IN')}</td><td>₹${totalBillingActual.toLocaleString('en-IN')}</td><td>${targetPct(totalBillingActual,totalBillingTarget)}%</td><td>₹${totalGrossMarginTarget.toLocaleString('en-IN')}</td><td>₹${totalGrossMarginActual.toLocaleString('en-IN')}</td><td>${totalMarginPercent.toFixed(2)}%</td></tr>`;
-      const incentiveCalc = salesIncentiveForOwner(currentUser);
-      const incentivePanel = `<div style="margin:14px 0;padding:12px;border:1px solid var(--bd);border-radius:10px;background:${incentiveCalc.qualified ? '#E8F5E9' : '#FFF8E1'}">
-        <div style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : '#E65100'}">FY26-27 Sales Incentive: ${escapeHtml(incentiveCalc.reason)}</div>
-        <div style="font-size:11px;color:var(--t2);margin-top:5px">Company and individual gate require ${incentiveCalc.plan.gatePct}% achievement in Sales, Billing and Gross Profit. Incentive rate: ${incentiveCalc.plan.incentiveRatePct}% of achieved GP after qualification.</div>
-        ${incentiveCalc.quota ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px">
-          <div><b>Sales</b><br>₹${Math.round(incentiveCalc.actual.sales).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.sales).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.salesPct.toFixed(0)}%</span></div>
-          <div><b>Billing</b><br>₹${Math.round(incentiveCalc.actual.billing).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.billing).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.billingPct.toFixed(0)}%</span></div>
-          <div><b>Gross Profit</b><br>₹${Math.round(incentiveCalc.actual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(incentiveCalc.quota.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px">${incentiveCalc.individualGate.grossProfitPct.toFixed(0)}%</span></div>
-          <div><b>Earned Incentive</b><br><span style="font-weight:800;color:${incentiveCalc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(incentiveCalc.incentive).toLocaleString('en-IN')}</span><br><span style="font-size:10px">Plan ₹${Math.round(incentiveCalc.targetIncentive || 0).toLocaleString('en-IN')}</span></div>
-        </div>` : `<div style="font-size:11px;color:var(--danger);margin-top:8px">No individual quota is mapped for @${escapeHtml(currentUser || '')}; no salesperson incentive will be allocated.</div>`}
-      </div>`;
-      container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr style="background:#263F65;color:#fff"><th style="padding:10px">Quarter</th><th>Booking Target</th><th>Booking Actual</th><th>Achieved</th><th>Billing Target</th><th>Billing Actual</th><th>Achieved</th><th>Gross Margin Target</th><th>Gross Margin Achieved</th><th>GM % of Booking</th></tr></thead><tbody>${rows}</tbody></table></div>${incentivePanel}<div style="margin:12px 0;font-size:11px;color:var(--t2)"><b>Gross Margin Target:</b> minimum ${Math.max(20, Number(target.marginTarget || 20))}% of Booking · Booking/Sales counts Order, Engineering Approvals and Billed stages by Order Date; Billing and GM use Billing Date.</div><button class="btn primary" onclick="openSetTargetModal()"><i class="ti ti-edit"></i> Update Targets</button>`;
-    }
 
     function targetProgressCell(actual, target, accent = 'var(--p)', label = '') {
       const pct = pctOf(actual, target);
@@ -4853,7 +4904,7 @@
       return toDateObject(value)?.getTime() || 0;
     }
 
-    async function createCrmNotification({ recipientUsername, type, activityId, dealId, leadId, dueDate, message }) {
+    async function createCrmNotification({ recipientUsername, type, activityId, dealId, leadId, dueDate, message, partnerUsername }) {
       if (!recipientUsername) return;
       const ref = db.collection(CRM_NOTIFICATIONS).doc();
       const record = {
@@ -4864,6 +4915,7 @@
         dealId: dealId || null,
         leadId: leadId || null,
         dueDate: dueDate || null,
+        partnerUsername: partnerUsername || null,
         message,
         read: false,
         createdAt: new Date()
@@ -5035,6 +5087,14 @@
         showToast('Please accept or reject the deal partner invite', 'warning');
         return;
       }
+      if (notification.type === 'deal_partner_removal_request') {
+        showToast('Please accept the removal or escalate to Updesh', 'warning');
+        return;
+      }
+      if (notification.type === 'deal_partner_removal_conflict') {
+        showToast('Please resolve this partner removal dispute', 'warning');
+        return;
+      }
       if (notification.type === 'next_activity_plan' && isSupportingHand(activity) && (activity?.planResponseStatus || 'pending') === 'pending') {
         showToast('Please accept the plan or propose a new date', 'warning');
         return;
@@ -5084,6 +5144,158 @@
         showToast('Could not update partner invite: ' + error.message, 'error');
       }
     }
+
+    // ── PARTNER REMOVAL WORKFLOW ──────────────────────────────────────────
+    // Removing an accepted partner is never immediate/silent - it's a request
+    // that the partner themselves must approve, or escalate to Updesh if they
+    // disagree. This mirrors the existing invite/accept/reject pattern above.
+    function partnerManagementHtml(deal, acceptedPartners, pendingPartners) {
+      if (!acceptedPartners.length && !pendingPartners.length) return '-';
+      const acceptedHtml = acceptedPartners.map(partner => {
+        const removal = partner.removal;
+        const name = escapeHtml(partner.name || partner.username);
+        if (removal?.status === 'requested') {
+          const isTarget = String(partner.username || '').toLowerCase() === String(currentUser || '').toLowerCase();
+          return `<div style="margin-bottom:4px">${name} <span style="font-size:10px;color:#E65100;font-weight:700">- removal requested by ${escapeHtml(removal.requestedBy)}${isTarget ? ' (see Task Notifications to respond)' : ', awaiting their response'}</span></div>`;
+        }
+        if (removal?.status === 'escalated') {
+          return `<div style="margin-bottom:4px">${name} <span style="font-size:10px;color:#B71C1C;font-weight:700">- removal disputed, escalated to Updesh for a decision</span></div>`;
+        }
+        return `<div style="margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${name}<button class="btn sm" style="padding:2px 7px;font-size:10px" onclick="requestPartnerRemoval('${deal.id}','${escapeHtml(partner.username)}')">Request removal</button></div>`;
+      }).join('');
+      const pendingHtml = pendingPartners.length ? `<div style="font-size:10.5px;color:var(--t2);margin-top:4px">Pending: ${pendingPartners.map(partner => escapeHtml(partner.name || partner.username)).join(', ')}</div>` : '';
+      return (acceptedHtml || '<div style="color:var(--t2)">None accepted</div>') + pendingHtml;
+    }
+
+    async function requestPartnerRemoval(dealId, partnerUsername) {
+      const deal = dealData[dealId];
+      if (!deal) return showToast('Deal unavailable. Please refresh CRM and try again.', 'error');
+      const partners = dealPartnerRecords(deal);
+      const target = partners.find(partner => String(partner.username || '').toLowerCase() === String(partnerUsername || '').toLowerCase());
+      if (!target || target.status !== 'accepted') return showToast('This partner is not currently active on the deal', 'error');
+      if (target.removal?.status === 'requested' || target.removal?.status === 'escalated') return showToast('A removal request is already in progress for this partner', 'warning');
+      const reason = (prompt(`Why are you requesting to remove ${target.name || target.username} from "${deal.title || 'this deal'}"? (optional)`) || '').trim();
+      const updatedPartners = partners.map(partner => String(partner.username || '').toLowerCase() === String(partnerUsername || '').toLowerCase()
+        ? { ...partner, removal: { status: 'requested', requestedBy: currentUser, requestedByName: currentUserName(), requestedAt: new Date(), reason } }
+        : partner);
+      try {
+        await db.collection(CRM_DEALS).doc(dealId).update({ dealPartners: updatedPartners, updatedAt: new Date() });
+        Object.assign(deal, { dealPartners: updatedPartners, updatedAt: new Date() });
+        await createCrmNotification({
+          recipientUsername: partnerUsername,
+          type: 'deal_partner_removal_request',
+          dealId,
+          partnerUsername,
+          message: `${currentUserName()} requested to remove you as a partner on deal "${deal.title || 'Untitled Deal'}"${reason ? `: ${reason}` : '.'}`
+        });
+        renderDeals();
+        renderTaskCenter();
+        showToast('Removal request sent to the partner', 'success');
+      } catch (error) {
+        showToast('Could not send removal request: ' + error.message, 'error');
+      }
+    }
+
+    async function respondPartnerRemoval(dealId, notificationId, decision) {
+      const deal = dealData[dealId];
+      if (!deal) return showToast('Deal unavailable. Please refresh CRM and try again.', 'error');
+      const partners = dealPartnerRecords(deal);
+      const me = String(currentUser || '').toLowerCase();
+      const target = partners.find(partner => String(partner.username || '').toLowerCase() === me);
+      if (!target || !target.removal) return showToast('No removal request found for you on this deal', 'error');
+
+      if (decision === 'approved') {
+        const remaining = partners.filter(partner => String(partner.username || '').toLowerCase() !== me);
+        const partnerUsernames = remaining.filter(partner => partner.status !== 'rejected').map(partner => String(partner.username || '').toLowerCase());
+        try {
+          await db.collection(CRM_DEALS).doc(dealId).update({
+            dealPartners: remaining,
+            dealPartnerUsernames: [...new Set(partnerUsernames)],
+            updatedAt: new Date()
+          });
+          Object.assign(deal, { dealPartners: remaining, dealPartnerUsernames: [...new Set(partnerUsernames)], updatedAt: new Date() });
+          await createCrmNotification({
+            recipientUsername: target.removal.requestedBy,
+            type: 'deal_partner_removal_approved',
+            dealId,
+            message: `${currentUserName()} approved being removed as a partner from deal "${deal.title || 'Untitled Deal'}".`
+          });
+          if (notificationId) await markCrmNotificationDone(notificationId, 'approved');
+          renderDeals(); renderTargets(); renderTaskCenter();
+          showToast('You have been removed from this deal', 'success');
+        } catch (error) {
+          showToast('Could not process removal: ' + error.message, 'error');
+        }
+        return;
+      }
+
+      // Escalate: partner disagrees with being removed - Updesh arbitrates.
+      const escalationReason = (prompt('Why do you disagree with this removal? This will be sent to Updesh.') || '').trim();
+      if (!escalationReason) return showToast('Please describe why you disagree before escalating', 'error');
+      const updatedPartners = partners.map(partner => String(partner.username || '').toLowerCase() === me
+        ? { ...partner, removal: { ...partner.removal, status: 'escalated', escalatedAt: new Date(), escalationReason } }
+        : partner);
+      try {
+        await db.collection(CRM_DEALS).doc(dealId).update({ dealPartners: updatedPartners, updatedAt: new Date() });
+        Object.assign(deal, { dealPartners: updatedPartners, updatedAt: new Date() });
+        await createCrmNotification({
+          recipientUsername: 'updesh',
+          type: 'deal_partner_removal_conflict',
+          dealId,
+          partnerUsername: target.username,
+          message: `Partner removal dispute on deal "${deal.title || 'Untitled Deal'}": ${target.removal.requestedByName || target.removal.requestedBy} wants to remove ${currentUserName()}. Partner's objection: ${escalationReason}`
+        });
+        if (notificationId) await markCrmNotificationDone(notificationId, 'escalated');
+        renderDeals(); renderTaskCenter();
+        showToast('Escalated to Updesh for a decision', 'warning');
+      } catch (error) {
+        showToast('Could not escalate: ' + error.message, 'error');
+      }
+    }
+
+    async function resolvePartnerRemovalConflict(dealId, notificationId, partnerUsername, decision) {
+      if (String(currentUser || '').toLowerCase() !== 'updesh') return showToast('Only Updesh can resolve a partner removal dispute', 'error');
+      const deal = dealData[dealId];
+      if (!deal) return showToast('Deal unavailable. Please refresh CRM and try again.', 'error');
+      const partners = dealPartnerRecords(deal);
+      const target = partners.find(partner => String(partner.username || '').toLowerCase() === String(partnerUsername || '').toLowerCase());
+      if (!target) return showToast('Partner record not found', 'error');
+      try {
+        if (decision === 'remove') {
+          const remaining = partners.filter(partner => String(partner.username || '').toLowerCase() !== String(partnerUsername || '').toLowerCase());
+          const partnerUsernames = remaining.filter(partner => partner.status !== 'rejected').map(partner => String(partner.username || '').toLowerCase());
+          await db.collection(CRM_DEALS).doc(dealId).update({ dealPartners: remaining, dealPartnerUsernames: [...new Set(partnerUsernames)], updatedAt: new Date() });
+          Object.assign(deal, { dealPartners: remaining, dealPartnerUsernames: [...new Set(partnerUsernames)], updatedAt: new Date() });
+        } else {
+          const updatedPartners = partners.map(partner => String(partner.username || '').toLowerCase() === String(partnerUsername || '').toLowerCase()
+            ? { ...partner, removal: null }
+            : partner);
+          await db.collection(CRM_DEALS).doc(dealId).update({ dealPartners: updatedPartners, updatedAt: new Date() });
+          Object.assign(deal, { dealPartners: updatedPartners, updatedAt: new Date() });
+        }
+        const resultText = decision === 'remove' ? 'removed the partner' : 'decided the partner stays on the deal';
+        await Promise.all([target.removal?.requestedBy, partnerUsername].filter(Boolean).map(recipient => createCrmNotification({
+          recipientUsername: recipient,
+          type: 'deal_partner_removal_resolved',
+          dealId,
+          message: `Updesh reviewed the partner dispute on deal "${deal.title || 'Untitled Deal'}" and ${resultText}.`
+        })));
+        if (notificationId) await markCrmNotificationDone(notificationId, decision);
+        renderDeals(); renderTargets(); renderTaskCenter();
+        showToast(`Dispute resolved - ${resultText}`, 'success');
+      } catch (error) {
+        showToast('Could not resolve dispute: ' + error.message, 'error');
+      }
+    }
+
+    async function markCrmNotificationDone(notificationId, decision) {
+      if (!notificationId || !notificationData[notificationId]) return;
+      await db.collection(CRM_NOTIFICATIONS).doc(notificationId).update({ read: true, readAt: new Date(), decision });
+      notificationData[notificationId].read = true;
+      notificationData[notificationId].decision = decision;
+    }
+
+
 
     async function markActivityNotificationsRead(activityId) {
       const matches = Object.values(notificationData)
@@ -5288,12 +5500,18 @@
         const requiresAction = item.type === 'next_activity_plan' && isSupportingHand(activity) && (activity?.planResponseStatus || 'pending') === 'pending';
         const isPlanNotification = item.type === 'next_activity_plan' && !!activity;
         const isPartnerInvite = item.type === 'deal_partner_invite' && !!deal;
+        const isRemovalRequest = item.type === 'deal_partner_removal_request' && !!deal;
+        const isRemovalConflict = item.type === 'deal_partner_removal_conflict' && !!deal;
+        const isRemovalInfo = ['deal_partner_removal_approved', 'deal_partner_removal_resolved'].includes(item.type);
+        const isCustomHandled = isPartnerInvite || isRemovalRequest || isRemovalConflict;
         const notificationPalette = {
           next_activity_plan: ['#1565C0','#EAF3FF'], next_activity_date_proposed: ['#EF6C00','#FFF3E0'],
           proposal_escalated: ['#6A1B9A','#F3E5F5'], proposal_final_decision: ['#2E7D32','#E8F5E9'],
           salesperson_approved_proposal: ['#00838F','#E0F7FA'], next_activity_accepted: ['#2E7D32','#E8F5E9'],
           activity_completed: ['#2E7D32','#E8F5E9'], deal_partner_invite: ['#006994','#E3F2FD'],
-          deal_partner_accepted: ['#2E7D32','#E8F5E9'], deal_partner_rejected: ['#B71C1C','#FFEBEE']
+          deal_partner_accepted: ['#2E7D32','#E8F5E9'], deal_partner_rejected: ['#B71C1C','#FFEBEE'],
+          deal_partner_removal_request: ['#E65100','#FFF3E0'], deal_partner_removal_conflict: ['#B71C1C','#FFEBEE'],
+          deal_partner_removal_approved: ['#2E7D32','#E8F5E9'], deal_partner_removal_resolved: ['#006994','#E3F2FD']
         };
         const palette = notificationPalette[item.type] || ['#B71C1C','#FFF8F8'];
         html += `<div style="background:${palette[1]};border:1px solid ${palette[0]}55;border-radius:7px;padding:12px;margin-bottom:8px;border-left:5px solid ${palette[0]}">
@@ -5302,6 +5520,14 @@
             <div style="font-size:13px;font-weight:800;color:#006994;margin-bottom:5px">${escapeHtml(deal.title || 'Untitled Deal')}</div>
             <div style="font-size:11px;color:var(--t2);line-height:1.6">Contact: <b>${escapeHtml(customer?.name || '—')}</b> · Stage: <b>${escapeHtml(deal.stage || '—')}</b> · Value: <b>₹${Number(deal.value || 0).toLocaleString('en-IN')}</b><br>${escapeHtml(item.message || '')}</div>
             <div style="display:flex;gap:7px;margin-top:10px"><button class="btn sm primary" onclick="respondDealPartnerInvite('${deal.id}','${item.id}','accepted')">Accept Partner Invite</button><button class="btn sm" onclick="respondDealPartnerInvite('${deal.id}','${item.id}','rejected')">Reject</button></div>` : ''}
+          ${isRemovalRequest ? `<div style="font-size:11px;font-weight:800;color:#E65100;margin-bottom:8px">PARTNER REMOVAL REQUEST</div>
+            <div style="font-size:13px;font-weight:800;color:#E65100;margin-bottom:5px">${escapeHtml(deal.title || 'Untitled Deal')}</div>
+            <div style="font-size:11px;color:var(--t2);line-height:1.6">${escapeHtml(item.message || '')}</div>
+            <div style="display:flex;gap:7px;margin-top:10px"><button class="btn sm primary" onclick="respondPartnerRemoval('${deal.id}','${item.id}','approved')">Accept removal</button><button class="btn sm" onclick="respondPartnerRemoval('${deal.id}','${item.id}','escalated')">Disagree - escalate to Updesh</button></div>` : ''}
+          ${isRemovalConflict ? `<div style="font-size:11px;font-weight:800;color:#B71C1C;margin-bottom:8px">PARTNER REMOVAL DISPUTE — YOUR DECISION NEEDED</div>
+            <div style="font-size:13px;font-weight:800;color:#B71C1C;margin-bottom:5px">${escapeHtml(deal.title || 'Untitled Deal')}</div>
+            <div style="font-size:11px;color:var(--t2);line-height:1.6">${escapeHtml(item.message || '')}</div>
+            <div style="display:flex;gap:7px;margin-top:10px"><button class="btn sm primary" onclick="resolvePartnerRemovalConflict('${deal.id}','${item.id}','${escapeHtml(item.partnerUsername || '')}','remove')">Remove partner</button><button class="btn sm" onclick="resolvePartnerRemovalConflict('${deal.id}','${item.id}','${escapeHtml(item.partnerUsername || '')}','keep')">Keep partner on deal</button></div>` : ''}
           ${isPlanNotification ? `
             <div style="font-size:13px;font-weight:700;color:#1565C0;margin-bottom:6px">${escapeHtml(deal?.title || customer?.name || 'CRM Activity')}</div>
             <div style="font-size:10.5px;color:var(--t2);line-height:1.6">
@@ -5312,8 +5538,8 @@
             <div style="background:#EAF3FF;border-left:3px solid #1565C0;border-radius:5px;padding:8px;margin-top:8px;color:#1565C0">
               <div style="font-size:10px;font-weight:800">NEXT ACTIVITY PLAN · ${escapeHtml(activity.nextActivityType || 'Activity')} · ${formatDate(activity.nextActivityDate)}</div>
               <div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
-            </div>` : (!isPartnerInvite ? `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>` : '')}
-          ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : (!isPartnerInvite ? `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>` : '')}
+            </div>` : (!isCustomHandled ? `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>` : '')}
+          ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : (!isCustomHandled ? `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>` : '')}
         </div>`;
       });
       approvals.forEach(activity => {
@@ -5573,6 +5799,70 @@
       container.innerHTML = html;
     }
     
+    function populatePipelineSalespersonSelect() {
+      const select = document.getElementById('pipelineSalespersonSelect');
+      if (!select) return;
+      const current = select.value;
+      const people = [...new Set(Object.values(dealData).flatMap(deal => dealParticipantUsernames(deal, false)))].sort((a, b) => a.localeCompare(b));
+      select.innerHTML = '<option value="">All salespeople</option>' + people.map(username => {
+        const user = wikiUsers.find(w => String(w.username || '').toLowerCase() === username);
+        const label = user ? `${user.fullName || user.username} (${user.username})` : username;
+        return `<option value="${escapeHtml(username)}">${escapeHtml(label)}</option>`;
+      }).join('');
+      if (people.includes(current)) select.value = current;
+    }
+
+    // Pipeline by Stage - filterable by salesperson and quarter (expected close
+    // date). When a specific salesperson is selected, each deal's value is
+    // weighted by dealShareForUser (50/50 split with an accepted partner),
+    // consistent with how the same split is already applied for sales
+    // incentive actuals elsewhere in this app.
+    function renderPipelineChart() {
+      populatePipelineSalespersonSelect();
+      const selectedPerson = document.getElementById('pipelineSalespersonSelect')?.value || '';
+      const selectedPeriod = document.getElementById('pipelinePeriodSelect')?.value || '';
+      const plan = activeSalesIncentivePlan();
+      const stages = ['Lead', 'Prospect', 'Bid Submission', 'Negotiations', 'Billed'];
+      const dealsForChart = Object.values(dealData).filter(deal => {
+        if (selectedPerson && dealShareForUser(deal, selectedPerson) <= 0) return false;
+        if (!selectedPeriod) return true;
+        if (selectedPeriod === 'annual') return inPlanDate(deal.closeDate, plan);
+        return inPlanDate(deal.closeDate, plan) && fyQuarterKey(deal.closeDate) === selectedPeriod;
+      });
+      const stageValues = stages.map(stage =>
+        dealsForChart.filter(deal => deal.stage === stage)
+          .reduce((sum, deal) => sum + Number(deal.value || 0) * (selectedPerson ? dealShareForUser(deal, selectedPerson) : 1), 0)
+      );
+      const canvas = document.getElementById('pipelineChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (pipelineChart) pipelineChart.destroy();
+      pipelineChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: stages,
+          datasets: [{
+            label: 'Deal Value (₹)',
+            data: stageValues,
+            backgroundColor: ['#1565C0', '#F57F17', '#2196F3', '#FF6F00', '#2E7D32'],
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: v => '₹' + formatCurrency(v) }
+            }
+          }
+        }
+      });
+    }
+
     function renderDashboard() {
       document.getElementById('statCustomers').textContent = Object.keys(customerData).length;
       
@@ -5605,40 +5895,7 @@
       document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
       renderIndividualSalesIncentiveStatus();
       
-      // Pipeline chart
-      const stages = ['Lead', 'Prospect', 'Bid Submission', 'Negotiations', 'Billed'];
-      const stageValues = stages.map(s => 
-        Object.values(dealData)
-          .filter(d => d.stage === s)
-          .reduce((sum, d) => sum + d.value, 0)
-      );
-      
-      const ctx = document.getElementById('pipelineChart').getContext('2d');
-      if (pipelineChart) pipelineChart.destroy();
-      pipelineChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: stages,
-          datasets: [{
-            label: 'Deal Value (₹)',
-            data: stageValues,
-            backgroundColor: ['#1565C0', '#F57F17', '#2196F3', '#FF6F00', '#2E7D32'],
-            borderRadius: 6,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { callback: v => '₹' + formatCurrency(v) }
-            }
-          }
-        }
-      });
+      renderPipelineChart();
       
       renderRecentActivities();
       
