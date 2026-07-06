@@ -1311,14 +1311,16 @@
       </div>
       <div id="orderDateGroup" class="hidden-group">
         <div class="form-group">
-          <label>Order Date *</label>
+          <label id="orderDateLabel">Committed Order Date *</label>
           <input type="date" id="dealOrderDate">
+          <div style="font-size:10px;color:var(--t2);margin-top:3px">Entered as your committed date at Close; becomes the actual received date at Order, then locks.</div>
         </div>
       </div>
       <div id="billingDateGroup" class="hidden-group">
         <div class="form-group">
-          <label>Billing Date *</label>
+          <label id="billingDateLabel">Committed Billing Date *</label>
           <input type="date" id="dealBillingDate">
+          <div style="font-size:10px;color:var(--t2);margin-top:3px">Entered as your committed date once the order is received; becomes the actual invoiced date at Billed.</div>
         </div>
       </div>
       <div id="lossReasonGroup" class="hidden-group">
@@ -1343,8 +1345,9 @@
         <input type="number" id="dealProbability" placeholder="50" min="0" max="100">
       </div>
       <div class="form-group">
-        <label>Expected Close Date</label>
+        <label>Expected Close Date *</label>
         <input type="date" id="dealCloseDate">
+        <div style="font-size:10px;color:var(--t2);margin-top:3px">Required through the Close stage. Locks automatically once the deal reaches Order - the date stays visible but Order Date and Billing Date take over from there.</div>
       </div>
       <div class="form-group">
         <label>Notes</label>
@@ -1649,6 +1652,16 @@
     let authInitialized = false;
     const CRM_BUILD = '20260627.8';
     const SALES_ORDERING_STAGES = ['Order', 'Engineering Approvals', 'Billed'];
+    // Order Date is a committed (forecast) date entered at Close, then refined
+    // to the actual received date at Order - editable across both. It locks
+    // (stays visible, stops being editable) once the deal moves past Order.
+    const ORDER_DATE_EDITABLE_STAGES = ['Close', 'Order'];
+    const ORDER_DATE_LOCKED_STAGES = ['Engineering Approvals', 'Billed'];
+    // Order Date must exist (committed or actual) for every stage from Close
+    // onward, regardless of which stage a deal is saved at directly - this
+    // closes the gap where jumping straight to a later stage could skip the
+    // commitment step entirely.
+    const ORDER_DATE_REQUIRED_STAGES = ['Close', ...SALES_ORDERING_STAGES];
     
     function initializeAuth() {
       // Prevent double initialization
@@ -3803,8 +3816,23 @@
     }
 
     function toggleDealStageDateFields(stage) {
-      document.getElementById('orderDateGroup')?.classList.toggle('visible', SALES_ORDERING_STAGES.includes(stage));
-      document.getElementById('billingDateGroup')?.classList.toggle('visible', stage === 'Billed');
+      const orderVisible = ORDER_DATE_EDITABLE_STAGES.includes(stage) || ORDER_DATE_LOCKED_STAGES.includes(stage);
+      document.getElementById('orderDateGroup')?.classList.toggle('visible', orderVisible);
+      const orderInput = document.getElementById('dealOrderDate');
+      if (orderInput) orderInput.disabled = ORDER_DATE_LOCKED_STAGES.includes(stage);
+      const orderLabel = document.getElementById('orderDateLabel');
+      if (orderLabel) orderLabel.textContent = stage === 'Close' ? 'Committed Order Date *' : 'Order Date (Actual) *';
+
+      document.getElementById('billingDateGroup')?.classList.toggle('visible', SALES_ORDERING_STAGES.includes(stage));
+      const billingLabel = document.getElementById('billingDateLabel');
+      if (billingLabel) billingLabel.textContent = stage === 'Billed' ? 'Billing Date (Actual) *' : 'Committed Billing Date *';
+
+      // Close Date is a forecast field, mandatory from Lead through Close.
+      // Once the deal actually reaches Order (or later), the expected date is
+      // superseded by the real Order/Billing dates, so it locks - visible for
+      // reference, but no longer editable.
+      const closeDateInput = document.getElementById('dealCloseDate');
+      if (closeDateInput) closeDateInput.disabled = SALES_ORDERING_STAGES.includes(stage);
     }
     
     // Handle loss reason visibility
@@ -3875,12 +3903,16 @@
         showToast('Gross Margin amount cannot be greater than the Deal Value', 'error');
         return;
       }
-      if (SALES_ORDERING_STAGES.includes(stage) && !orderDate) {
-        showToast('Order Date is required for Order, Engineering Approvals and Billed stages', 'error');
+      if (!SALES_ORDERING_STAGES.includes(stage) && stage !== 'Lost' && !closeDate) {
+        showToast('Expected Close Date is required until the deal reaches the Order stage', 'error');
         return;
       }
-      if (stage === 'Billed' && !billingDate) {
-        showToast('Billing Date is required for Billed stage', 'error');
+      if (ORDER_DATE_REQUIRED_STAGES.includes(stage) && !orderDate) {
+        showToast('Order Date is required from the Close stage onward (committed date at Close, actual date once received)', 'error');
+        return;
+      }
+      if (SALES_ORDERING_STAGES.includes(stage) && !billingDate) {
+        showToast('Billing Date is required from the Order stage onward (committed date at Order, actual date once invoiced)', 'error');
         return;
       }
       
