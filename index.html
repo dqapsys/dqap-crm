@@ -884,18 +884,10 @@
         </div>
       </div>
       
-      <div class="card" id="individualSalesIncentiveCard">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <span>My FY26-27 Sales Incentive Status</span>
-          <select id="individualIncentivePeriodSelect" onchange="renderIndividualSalesIncentiveStatus()" style="padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--p);font-weight:800;font-family:inherit">
-            <option value="annual">Annual</option>
-            <option value="q1">Q1 Apr-Jun</option>
-            <option value="q2">Q2 Jul-Sep</option>
-            <option value="q3">Q3 Oct-Dec</option>
-            <option value="q4">Q4 Jan-Mar</option>
-          </select>
-        </div>
-        <div id="individualSalesIncentiveStatus"></div>
+      <div class="card" id="dqapSalesSynopsisCard">
+        <div class="card-header">DQAP Sales Synopsis</div>
+        <div style="font-size:10.5px;color:var(--t2);margin:-4px 0 10px">Order value uses each deal's Close Date; Billing value uses each deal's Billing Date (Billed stage only). Figures in ₹ Lakh.</div>
+        <canvas id="salesSynopsisChart" height="80"></canvas>
       </div>
       
       <div class="card">
@@ -1592,6 +1584,7 @@
     let taskRefreshTimer = null;
     let taskUnsubscribers = [];
     let pipelineChart = null;
+    let salesSynopsisChart = null;
     let currentCalendarDate = new Date();
     let meetingQuota = { new: 0, existing: 0, weekStart: getWeekStart() };
     let contactSortState = { key: 'name', type: 'text', dir: 'asc' };
@@ -2761,58 +2754,6 @@
           <div style="background:var(--bg);padding:9px;border-radius:8px"><b>Company GP</b><br>₹${Math.round(companyActual.grossProfit).toLocaleString('en-IN')} / ₹${Math.round(plan.company.grossProfit).toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">${companyGate.grossProfitPct.toFixed(0)}%</span></div>
         </div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:920px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">Salesperson</th><th style="text-align:left;padding:8px">Sales</th><th style="text-align:left;padding:8px">Billing</th><th style="text-align:left;padding:8px">Gross Profit</th><th style="text-align:left;padding:8px">Gate</th><th style="text-align:left;padding:8px">Incentive</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-    }
-
-    function renderIndividualSalesIncentiveStatus() {
-      const container = document.getElementById('individualSalesIncentiveStatus');
-      if (!container) return;
-      const period = document.getElementById('individualIncentivePeriodSelect')?.value || 'annual';
-      const periodLabels = { annual: 'Annual', q1: 'Q1 Apr-Jun', q2: 'Q2 Jul-Sep', q3: 'Q3 Oct-Dec', q4: 'Q4 Jan-Mar' };
-      const calc = salesIncentiveForOwner(currentUser, period);
-      const company = calc.companyGate;
-      const companyLabel = company.qualified ? 'Company gate qualified' : 'Company gate pending';
-      const companyColor = company.qualified ? '#2E7D32' : '#E65100';
-      if (!calc.quota) {
-        if (String(currentUser || '').toLowerCase() === 'updesh') {
-          container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-            <div><div style="font-size:13px;font-weight:900;color:${companyColor}">DQAP target status: ${companyLabel}</div><div style="font-size:11px;color:var(--t2);margin-top:3px">Showing ${periodLabels[period]}. Updesh carries company/DQAP targets, not an individual salesperson quota.</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-            ${targetProgressCell(calc.companyActual.sales, calc.companyTarget.sales, '#1565C0', 'Booking')}
-            ${targetProgressCell(calc.companyActual.billing, calc.companyTarget.billing, '#2E7D32', 'Billing')}
-            ${targetProgressCell(calc.companyActual.grossProfit, calc.companyTarget.grossProfit, '#E65100', 'GM')}
-          </div>`;
-        } else {
-          container.innerHTML = `<div class="alert warning" style="margin:0"><i class="ti ti-alert-triangle"></i><span>No FY26-27 individual sales quota is mapped for @${escapeHtml(currentUser || '')}. Sales incentive allocation will not apply until a quota is added.</span></div>`;
-        }
-        return;
-      }
-      const personal = calc.individualGate;
-      const personalLabel = personal.qualified ? 'Individual gate qualified' : 'Individual gate pending';
-      const personalColor = personal.qualified ? '#2E7D32' : '#B71C1C';
-      const metric = (label, actual, target, pct, color = 'var(--p)') => `<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px">
-        <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase;letter-spacing:.04em">${label}</div>
-        <div style="font-size:16px;font-weight:900;color:${color};margin-top:4px">${pct.toFixed(0)}%</div>
-        <div style="font-size:11px;color:var(--t2);margin-top:2px">₹${Math.round(actual).toLocaleString('en-IN')} / ₹${Math.round(target).toLocaleString('en-IN')}</div>
-      </div>`;
-      container.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-          <div>
-            <div style="font-size:13px;font-weight:900;color:${calc.qualified ? '#2E7D32' : '#E65100'}">${escapeHtml(calc.reason)}</div>
-            <div style="font-size:11px;color:var(--t2);margin-top:3px">Showing ${periodLabels[period]} · ${companyLabel} · ${personalLabel} · Gate ${calc.plan.gatePct}% on Sales, Billing and GP</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:10px;color:var(--t2);font-weight:800;text-transform:uppercase">Earned Incentive</div>
-            <div style="font-size:20px;font-weight:900;color:${calc.qualified ? '#2E7D32' : 'var(--t2)'}">₹${Math.round(calc.incentive).toLocaleString('en-IN')}</div>
-            <div style="font-size:10px;color:var(--t2)">Plan ₹${Math.round(calc.targetIncentive || 0).toLocaleString('en-IN')}</div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-          ${metric('Sales', calc.actual.sales, calc.target.sales, personal.salesPct, personal.salesPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
-          ${metric('Billing', calc.actual.billing, calc.target.billing, personal.billingPct, personal.billingPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
-          ${metric('Gross Profit', calc.actual.grossProfit, calc.target.grossProfit, personal.grossProfitPct, personal.grossProfitPct >= calc.plan.gatePct ? '#2E7D32' : '#B71C1C')}
-          ${metric('Company Gate', calc.companyActual.grossProfit, calc.companyTarget.grossProfit, Math.min(company.salesPct, company.billingPct, company.grossProfitPct), companyColor)}
-        </div>
-        <div style="font-size:10.5px;color:var(--t2);margin-top:8px">FY26-27 period: ${formatDate(calc.plan.startDate)} to ${formatDate(calc.plan.endDate)}. Incentive rate: ${calc.plan.incentiveRatePct}% of achieved Gross Profit after both gates qualify.</div>`;
     }
 
     function leadStatusBadge(status) {
@@ -5799,6 +5740,74 @@
       container.innerHTML = html;
     }
     
+    function isInCurrentCalendarMonth(dateValue) {
+      const d = toDateObject(dateValue);
+      if (!d) return false;
+      const now = new Date();
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+    function isInCurrentFyQuarter(dateValue) {
+      const plan = activeSalesIncentivePlan();
+      return inPlanDate(dateValue, plan) && fyQuarterKey(dateValue) === fyQuarterKey(new Date());
+    }
+    // DQAP Sales Synopsis - Order value uses Close Date (any non-Lost stage,
+    // since an order can be "closing" before it reaches Billed); Billing value
+    // uses Billing Date and only counts deals actually in the Billed stage.
+    function renderSalesSynopsisChart() {
+      const canvas = document.getElementById('salesSynopsisChart');
+      if (!canvas) return;
+      const deals = Object.values(dealData);
+      const orderMonth = deals.filter(d => d.stage !== 'Lost' && isInCurrentCalendarMonth(d.closeDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const orderQuarter = deals.filter(d => d.stage !== 'Lost' && isInCurrentFyQuarter(d.closeDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const billingMonth = deals.filter(d => d.stage === 'Billed' && isInCurrentCalendarMonth(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const billingQuarter = deals.filter(d => d.stage === 'Billed' && isInCurrentFyQuarter(d.billingDate)).reduce((sum, d) => sum + Number(d.value || 0), 0);
+      const labels = ['Order - This Month', 'Order - This Quarter', 'Billing - This Month', 'Billing - This Quarter'];
+      const values = [orderMonth, orderQuarter, billingMonth, billingQuarter].map(v => Number((v / 100000).toFixed(2)));
+      const ctx = canvas.getContext('2d');
+      if (salesSynopsisChart) salesSynopsisChart.destroy();
+      salesSynopsisChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: '₹ Lakh',
+            data: values,
+            backgroundColor: ['#1565C0', '#0D47A1', '#2E7D32', '#1B5E20'],
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          layout: { padding: { top: 22 } },
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: v => '₹' + v + 'L' }
+            }
+          }
+        },
+        plugins: [{
+          id: 'synopsisValueLabels',
+          afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            chart.data.datasets.forEach((dataset, i) => {
+              chart.getDatasetMeta(i).data.forEach((bar, idx) => {
+                ctx.save();
+                ctx.fillStyle = '#111';
+                ctx.font = '700 12px inherit';
+                ctx.textAlign = 'center';
+                ctx.fillText('₹' + dataset.data[idx] + 'L', bar.x, bar.y - 8);
+                ctx.restore();
+              });
+            });
+          }
+        }]
+      });
+    }
+
     function populatePipelineSalespersonSelect() {
       const select = document.getElementById('pipelineSalespersonSelect');
       if (!select) return;
@@ -5822,7 +5831,7 @@
       const selectedPerson = document.getElementById('pipelineSalespersonSelect')?.value || '';
       const selectedPeriod = document.getElementById('pipelinePeriodSelect')?.value || '';
       const plan = activeSalesIncentivePlan();
-      const stages = ['Lead', 'Prospect', 'Bid Submission', 'Negotiations', 'Billed'];
+      const stages = ['Lead', 'Suspect', 'Prospect', 'Tender Submission', 'Bid Submission', 'Technical Evaluation', 'Negotiations', 'Close', 'Order', 'Engineering Approvals', 'Billed', 'Lost'];
       const dealsForChart = Object.values(dealData).filter(deal => {
         if (selectedPerson && dealShareForUser(deal, selectedPerson) <= 0) return false;
         if (!selectedPeriod) return true;
@@ -5830,7 +5839,7 @@
         return inPlanDate(deal.closeDate, plan) && fyQuarterKey(deal.closeDate) === selectedPeriod;
       });
       const stageValues = stages.map(stage =>
-        dealsForChart.filter(deal => deal.stage === stage)
+        dealsForChart.filter(deal => (deal.stage || 'Lead') === stage)
           .reduce((sum, deal) => sum + Number(deal.value || 0) * (selectedPerson ? dealShareForUser(deal, selectedPerson) : 1), 0)
       );
       const canvas = document.getElementById('pipelineChart');
@@ -5844,7 +5853,7 @@
           datasets: [{
             label: 'Deal Value (₹)',
             data: stageValues,
-            backgroundColor: ['#1565C0', '#F57F17', '#2196F3', '#FF6F00', '#2E7D32'],
+            backgroundColor: ['#1565C0', '#6A1B9A', '#F57F17', '#00838F', '#2196F3', '#AD1457', '#FF6F00', '#5D4037', '#0277BD', '#EF6C00', '#2E7D32', '#B71C1C'],
             borderRadius: 6,
             borderSkipped: false
           }]
@@ -5893,7 +5902,7 @@
         .reduce((sum, d) => sum + Number(d.value || 0), 0);
       const billedOutsideFyValue = Math.max(0, allBilledValue - wonValue);
       document.getElementById('statWonValue').textContent = '₹' + formatCurrency(wonValue);
-      renderIndividualSalesIncentiveStatus();
+      renderSalesSynopsisChart();
       
       renderPipelineChart();
       
