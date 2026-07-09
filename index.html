@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <!-- DQAP CRM 2026.07.03.1 - deferred KAM history load and faster first render -->
 <html lang="en">
@@ -566,6 +568,20 @@
     .meeting-detail strong {
       color: var(--p);
     }
+
+    @media (max-width: 980px) {
+      .meeting-calendar-wrap {
+        grid-template-columns: 1fr !important;
+      }
+      .meeting-calendar-wrap aside {
+        display: none;
+      }
+      #calendarLegendTop {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+      }
+    }
     
     .deal-stage {
       display: inline-block;
@@ -979,7 +995,14 @@
             <button class="btn" onclick="nextMonth()">Next &gt;</button>
           </div>
         </div>
-        <table class="calendar" id="calendarTable"></table>
+        <div id="calendarLegendTop" style="display:none;margin-bottom:12px"></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start" class="meeting-calendar-wrap">
+          <div id="calendarTable"></div>
+          <aside style="position:sticky;top:12px">
+            <div style="font-size:11px;color:var(--t2);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">User Legend</div>
+            <div id="calendarLegendSide" style="display:flex;flex-direction:column;gap:8px"></div>
+          </aside>
+        </div>
         <div id="calendarDayDetailsContainer" style="margin-top: 20px;"></div>
       </div>
     </div>
@@ -4293,6 +4316,79 @@
       return events;
     }
 
+    const CRM_CALENDAR_COLORS = ['#1565C0', '#2E7D32', '#F57F17', '#6A1B9A', '#00838F', '#E64A19', '#0277BD', '#AD1457', '#5D4037', '#455A64'];
+
+    function crmCalendarSalespeople() {
+      const planUsers = activeSalesIncentivePlan().users || {};
+      const people = Object.keys(planUsers).map((username, index) => {
+        const user = wikiUsers.find(w => String(w.username || '').toLowerCase() === username);
+        return {
+          username,
+          name: user?.fullName || planUsers[username].name || username,
+          salesTarget: Number(planUsers[username].sales || 0),
+          color: CRM_CALENDAR_COLORS[index % CRM_CALENDAR_COLORS.length]
+        };
+      });
+      const known = new Set(people.map(p => p.username));
+      const visibleUsers = new Set();
+      Object.values(activityData).forEach(activity => {
+        if (activity.username) visibleUsers.add(String(activity.username).toLowerCase());
+        if (activity.responsibleUsername) visibleUsers.add(String(activity.responsibleUsername).toLowerCase());
+        getSupportingUsernames(activity).forEach(username => visibleUsers.add(String(username).toLowerCase()));
+      });
+      Object.values(dealData).forEach(deal => dealParticipantUsernames(deal, false).forEach(username => visibleUsers.add(username)));
+      [...visibleUsers].sort().forEach(username => {
+        if (known.has(username)) return;
+        const user = wikiUsers.find(w => String(w.username || '').toLowerCase() === username);
+        people.push({
+          username,
+          name: user?.fullName || username,
+          salesTarget: 0,
+          color: CRM_CALENDAR_COLORS[people.length % CRM_CALENDAR_COLORS.length]
+        });
+      });
+      return people;
+    }
+
+    function crmCalendarPerson(username) {
+      const key = String(username || currentUser || '').toLowerCase();
+      return crmCalendarSalespeople().find(person => person.username === key) || {
+        username: key,
+        name: key || 'Unassigned',
+        salesTarget: 0,
+        color: CRM_CALENDAR_COLORS[0]
+      };
+    }
+
+    function crmCalendarCustomerName(activity) {
+      const account = customerData[getActivityAccountId(activity)] || customerData[dealData[activity.dealId]?.customerId];
+      return account?.name || dealData[activity.dealId]?.title || activity.customerName || activity.accountName || 'Customer';
+    }
+
+    function crmCalendarEntry(activity) {
+      const owner = crmCalendarPerson(activity.username || activity.responsibleUsername || currentUser);
+      return {
+        ...activity,
+        owner,
+        customerName: crmCalendarCustomerName(activity)
+      };
+    }
+
+    function renderCalendarLegend() {
+      const legendHtml = crmCalendarSalespeople().map(person => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:${person.color}1f;border-left:4px solid ${person.color};min-width:0">
+          <div style="width:11px;height:11px;background:${person.color};border-radius:3px;flex-shrink:0"></div>
+          <div style="min-width:0">
+            <div style="font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(person.name)}</div>
+            <div style="font-size:9.5px;color:var(--t2);font-weight:700">Sales target ${person.salesTarget ? 'Rs ' + formatCurrency(person.salesTarget) : 'not mapped'}</div>
+          </div>
+        </div>`).join('');
+      const side = document.getElementById('calendarLegendSide');
+      const top = document.getElementById('calendarLegendTop');
+      if (side) side.innerHTML = legendHtml;
+      if (top) top.innerHTML = legendHtml;
+    }
+
     function renderCalendar() {
       const year = currentCalendarDate.getFullYear();
       const month = currentCalendarDate.getMonth();
@@ -4301,79 +4397,73 @@
       
       const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const daysInPrevMonth = new Date(year, month, 0).getDate();
+      const todayKey = dateKey(new Date());
+      renderCalendarLegend();
       
-      let html = '<thead><tr>';
+      let html = '<div style="border:.5px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--card)">';
+      html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--pl);border-bottom:.5px solid var(--bd)">';
       const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       dayLabels.forEach(label => {
-        html += `<th>${label}</th>`;
+        html += `<div style="padding:8px;text-align:center;font-weight:800;font-size:11px;color:var(--p)">${label}</div>`;
       });
-      html += '</tr></thead><tbody><tr>';
+      html += '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:.5px;background:var(--bd);padding:.5px">';
       
-      let cellCount = 0;
-      
-      // Previous month days
-      for (let i = firstDay - 1; i >= 0; i--) {
-        html += `<td class="other-month"><div class="day-num">${daysInPrevMonth - i}</div></td>`;
-        cellCount++;
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div style="background:var(--card);padding:6px;min-height:95px"></div>';
       }
       
-      // Current month days
       for (let day = 1; day <= daysInMonth; day++) {
-        if (cellCount === 7) {
-          html += '</tr><tr>';
-          cellCount = 0;
-        }
-        
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayActivities = calendarMeetingsForDate(dateStr);
+        const dayActivities = calendarMeetingsForDate(dateStr).map(crmCalendarEntry)
+          .sort((a, b) => a.owner.name.localeCompare(b.owner.name) || a.customerName.localeCompare(b.customerName));
+        const isToday = dateStr === todayKey;
+        const dow = new Date(year, month, day).getDay();
+        const cellBg = dow === 0 ? '#F5F5F5' : (dow === 6 ? '#E3F2FD' : (isToday ? 'var(--pl)' : 'var(--card)'));
         
-        html += `<td onclick="showDayDetails('${dateStr}')">
-          <div class="day-num">${day}</div>`;
+        html += `<div onclick="showDayDetails('${dateStr}')" style="background:${cellBg};padding:6px;min-height:95px;display:flex;flex-direction:column;border:.5px solid var(--bd);box-sizing:border-box;overflow:hidden;cursor:pointer">
+          <div style="font-weight:800;margin-bottom:4px;color:${isToday ? 'var(--p)' : 'var(--t1)'};font-size:12px">${day}</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px;overflow-y:auto;width:100%;box-sizing:border-box">`;
         
-        dayActivities.slice(0, 3).forEach(a => {
-          html += `<div class="event">${a.calendarPlanned ? 'Planned Meeting' : a.activityType}</div>`;
+        dayActivities.forEach(a => {
+          html += `<div title="${escapeHtml(a.owner.name)} - ${escapeHtml(a.customerName)}${a.calendarPlanned ? ' - planned' : ''}" style="background:${a.owner.color};color:#fff;padding:4px 6px;border-radius:4px;font-size:10px;font-weight:800;overflow-wrap:break-word;line-height:1.22;flex-shrink:0;width:100%;box-sizing:border-box;border-left:3px solid rgba(0,0,0,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)">
+            <div>${escapeHtml(a.customerName)}${a.calendarPlanned ? ' (planned)' : ''}</div>
+          </div>`;
         });
         
-        if (dayActivities.length > 3) {
-          html += `<div class="event" style="font-size: 9px;">+${dayActivities.length - 3}</div>`;
-        }
-        
-        html += '</td>';
-        cellCount++;
+        html += '</div></div>';
       }
       
-      // Next month days
-      while (cellCount > 0 && cellCount < 7) {
-        for (let i = 1; cellCount < 7; i++, cellCount++) {
-          html += `<td class="other-month"><div class="day-num">${i}</div></td>`;
-        }
+      const totalCells = firstDay + daysInMonth;
+      const remainingCells = 7 - (totalCells % 7);
+      if (remainingCells < 7) {
+        for (let i = 0; i < remainingCells; i++) html += '<div style="background:var(--card);padding:6px;min-height:95px;border:.5px solid var(--bd)"></div>';
       }
       
-      html += '</tr></tbody>';
+      html += '</div></div>';
       document.getElementById('calendarTable').innerHTML = html;
     }
     
     function showDayDetails(dateStr) {
-      const dayActivities = calendarMeetingsForDate(dateStr);
+      const dayActivities = calendarMeetingsForDate(dateStr).map(crmCalendarEntry);
       const date = new Date(dateStr);
       const dayName = `${date.toLocaleDateString('en-IN', { weekday: 'long' })}, ${formatDate(dateStr)}`;
       
       let html = `<div style="background: var(--pl); border-left: 3px solid var(--p); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-        <strong style="color: var(--p);">📅 ${dayName}</strong> – ${dayActivities.length} meeting(s)
+        <strong style="color: var(--p);">Calendar - ${dayName}</strong> - ${dayActivities.length} meeting(s)
       </div>`;
       
       if (dayActivities.length === 0) {
         html += '<div class="empty" style="padding: 20px;"><p>No meetings scheduled for this day.</p></div>';
       } else {
         dayActivities.forEach(a => {
-          const dealInfo = dealData[a.dealId] ? ` – ${dealData[a.dealId].title}` : ` – ${customerData[getActivityAccountId(a)]?.name || 'Contact'}`;
-          html += `<div class="meeting-detail">
+          const dealInfo = dealData[a.dealId] ? ` - ${dealData[a.dealId].title}` : '';
+          html += `<div class="meeting-detail" style="border-left-color:${a.owner.color}">
             <div style="display: flex; justify-content: space-between; align-items: start;">
               <div>
-                <strong>${a.calendarPlanned ? 'Planned Meeting' : a.activityType}</strong>${dealInfo}
+                <strong>${escapeHtml(a.customerName)}</strong>${escapeHtml(dealInfo)}
+                <div style="margin-top:4px"><span style="display:inline-flex;align-items:center;gap:5px;background:${a.owner.color}1f;color:${a.owner.color};border-left:3px solid ${a.owner.color};border-radius:5px;padding:3px 7px;font-size:10px;font-weight:800">${escapeHtml(a.owner.name)}${a.calendarPlanned ? ' - planned' : ''}</span></div>
                 <div style="margin-top: 6px; color: var(--t1);">${a.description || 'No details'}</div>
-                ${!a.calendarPlanned && a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">📌 Next: ${escapeHtml(a.nextActivityType || 'Activity')} · ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` — ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>` : ''}
+                ${!a.calendarPlanned && a.nextActivityDate ? `<div style="margin-top:6px;padding:7px;background:#EAF3FF;border-left:3px solid #1565C0;color:#1565C0;font-size:11px">Next: ${escapeHtml(a.nextActivityType || 'Activity')} - ${formatDate(a.nextActivityDate)}${a.nextActivityDescription ? ` - ${escapeHtml(a.nextActivityDescription)}` : ''}<br>Supporting Hands: ${escapeHtml(supportingHandsLabel(a))}</div>` : ''}
               </div>
             </div>
           </div>`;
@@ -4382,8 +4472,7 @@
       
       document.getElementById('calendarDayDetailsContainer').innerHTML = html;
     }
-    
-    function prevMonth() {
+        function prevMonth() {
       currentCalendarDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1);
       renderCalendar();
       document.getElementById('calendarDayDetailsContainer').innerHTML = '';
