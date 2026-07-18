@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <!-- DQAP CRM 2026.07.03.1 - deferred KAM history load and faster first render -->
 <html lang="en">
@@ -1629,6 +1626,10 @@
     const CRM_LEAD_CONFIG = 'dqap_crm_lead_incentive_config';
     const CRM_INCENTIVE_LEDGER = 'dqap_crm_incentive_ledger';
     const CRM_TENDERS = 'dqap_crm_tenders';
+    // Shared with the DORBIT Wiki app (same Firebase project) so a PMO kickoff
+    // task created here shows up immediately in Keshav's Wiki task list/modal.
+    const TASK_COL = 'dqap_tasks';
+    const PMO_KICKOFF_SLA_HOURS = 24;
 
     const FY26_27_SALES_INCENTIVE_PLAN = {
       label: 'FY 2026-27',
@@ -4014,6 +4015,15 @@
           dealId: savedDealId,
           message: `${currentUser} invited you as a partner on deal "${title}". Revenue and gross margin will be shared equally after acceptance.`
         })));
+
+        // Deal just crossed into the Order stage (won) - kick off PMO project
+        // creation. Fire-and-forget: a failure here must never block the deal
+        // save the user is waiting on.
+        const enteringOrderStage = stage === 'Order' && (existingDeal?.stage || null) !== 'Order';
+        if (enteringOrderStage) {
+          createPmoKickoffTask(savedDealId, { ...dealObj, dealCode: dealData[savedDealId]?.dealCode }, companyName)
+            .catch(err => console.warn('PMO kickoff task creation failed:', err));
+        }
         
         populateCustomerDropdowns();
         closeModal('addDealModal');
@@ -4986,6 +4996,61 @@
       if (record.recipientUsername === String(currentUser).toLowerCase()) {
         notificationData[ref.id] = { id: ref.id, ...record };
       }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PMO KICKOFF ON DEAL → ORDER
+    // Writes directly into the Wiki app's shared "dqap_tasks" collection so the
+    // task appears immediately in Keshav's Wiki task list and, because it's
+    // filed as Critical priority, in the Wiki app's red colour-coded blocking
+    // task modal (the same mechanism used for attendance disputes and project
+    // change approvals). The 24-hour SLA + escalation to Pratim/Updesh is
+    // enforced client-side inside the Wiki app (see checkPmoKickoffEscalations
+    // there) since this CRM app isn't always the one left open.
+    // ═══════════════════════════════════════════════════════════════════════════
+    async function createPmoKickoffTask(dealId, dealObj, companyName) {
+      // Don't fire twice for the same deal if it's edited again while still
+      // an open kickoff (e.g. Order → Engineering Approvals still pending PMO).
+      const existingOpen = await db.collection(TASK_COL)
+        .where('taskType', '==', 'pmo_kickoff')
+        .where('dealId', '==', dealId)
+        .where('status', '!=', 'Completed')
+        .limit(1).get().catch(() => null);
+      if (existingOpen && !existingOpen.empty) return;
+
+      const keshav = (wikiUsers || []).find(u => String(u.username || '').toLowerCase() === 'keshav');
+      const pratim = (wikiUsers || []).find(u => String(u.username || '').toLowerCase() === 'pratim');
+      const assignedToName = keshav?.fullName || 'Keshav Sharma';
+      const now = new Date();
+      const deadline = new Date(now.getTime() + PMO_KICKOFF_SLA_HOURS * 60 * 60 * 1000);
+      const valueStr = '₹' + formatCurrency(dealObj.value || 0);
+
+      const ref = db.collection(TASK_COL).doc();
+      await ref.set({
+        title: `PMO Kickoff — ${dealObj.title}`,
+        description: `Deal "${dealObj.title}" (${dealObj.dealCode || ''}) for ${companyName || 'the customer'} has moved to Order stage (value ${valueStr}).\n\nAction required within ${PMO_KICKOFF_SLA_HOURS} hours:\n1. Create the project in Manage Projects\n2. Create the matching entry in New PMO Project\n\nUnresolved after ${PMO_KICKOFF_SLA_HOURS} hours will escalate to Pratim and Updesh.`,
+        taskCode: 'TASK-' + String(now.getFullYear()).slice(-2) + '-' + ref.id.slice(0, 6).toUpperCase(),
+        assignedBy: 'Sales CRM', assignedByRole: 'system',
+        assignedTo: assignedToName, assignedToUsername: 'keshav', assignedToRole: 'user',
+        supervisor: pratim?.fullName || 'Pratim Sinha',
+        deadline: deadline.toISOString(),
+        priority: 'Critical', project: dealObj.title, frequency: 'One Time',
+        status: 'Open', createdAt: now.toISOString(), updatedAt: now.toISOString(),
+        assigneeActionRequiredAt: now.toISOString(), assigneeActionResolvedAt: null,
+        deadlineChangeStatus: null,
+        taskType: 'pmo_kickoff',
+        dealId, dealCode: dealObj.dealCode || '', dealTitle: dealObj.title,
+        customerCompanyName: companyName || '', dealValue: dealObj.value || 0,
+        pmoSlaDeadline: deadline.toISOString(), escalated: false
+      });
+
+      // Best-effort in-app CRM notification too, in addition to the Wiki task.
+      createCrmNotification({
+        recipientUsername: 'keshav',
+        type: 'pmo_kickoff',
+        dealId,
+        message: `Deal "${dealObj.title}" is now at Order stage. Create the project and PMO entry within ${PMO_KICKOFF_SLA_HOURS} hours.`
+      }).catch(() => {});
     }
 
     function getDueActivityForAcknowledgement() {
