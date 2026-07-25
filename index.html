@@ -814,592 +814,6 @@
     .hidden-group.visible {
       display: block;
     }
-/* ═══════════════════════════════════════════════════════════════════════════
-   SALES REVIEWS TAB - COLORFUL THEME
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Review color palette - vibrant and professional */
-:root {
-  --review-primary: #6366F1;      /* Indigo */
-  --review-secondary: #8B5CF6;    /* Purple */
-  --review-accent1: #EC4899;      /* Pink */
-  --review-accent2: #F59E0B;      /* Amber */
-  --review-accent3: #10B981;      /* Emerald */
-  --review-accent4: #3B82F6;      /* Blue */
-  --review-accent5: #EF4444;      /* Red */
-  
-  --review-light-1: #EEF2FF;      /* Indigo light */
-  --review-light-2: #F3E8FF;      /* Purple light */
-  --review-light-3: #FCE7F3;      /* Pink light */
-  --review-light-4: #FFFBEB;      /* Amber light */
-  --review-light-5: #ECFDF5;      /* Emerald light */
-}
-
-/* Review Tab Container */
-.review-container {
-  background: linear-gradient(135deg, #f5f3ff 0%, #faf7ff 100%);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-}
-
-/* Review Header */
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.review-header h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-}
-
-.review-header-icon {
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-}
-
-.review-controls {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.review-controls select,
-.review-controls input {
-  padding: 8px 12px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  background: #fff;
-  color: #6366F1;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.review-controls select:hover,
-.review-controls input:hover {
-  border-color: #6366F1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-/* Review Cards Grid */
-.review-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-/* Individual Review Card */
-.review-card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.review-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--card-color, #6366F1), var(--card-color-light, #A5B4FC));
-  transition: all 0.3s;
-}
-
-.review-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.15);
-}
-
-.review-card.over .review-card::before {
-  --card-color: #10B981;
-}
-
-.review-card.under .review-card::before {
-  --card-color: #EF4444;
-}
-
-.review-card.at-target .review-card::before {
-  --card-color: #F59E0B;
-}
-
-/* Review Card Header */
-.review-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.review-card-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.review-card-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-}
-
-.review-card-status {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.review-card-status.on-track {
-  background: #ECFDF5;
-  color: #10B981;
-}
-
-.review-card-status.at-risk {
-  background: #FEF3C7;
-  color: #D97706;
-}
-
-.review-card-status.behind {
-  background: #FEE2E2;
-  color: #DC2626;
-}
-
-/* Review Metrics */
-.review-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.review-metric {
-  background: #F9FAFB;
-  border-radius: 8px;
-  padding: 12px;
-  border-left: 3px solid var(--metric-color, #6366F1);
-}
-
-.review-metric-label {
-  font-size: 10px;
-  color: #6B7280;
-  text-transform: uppercase;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.review-metric-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.review-metric-percent {
-  font-size: 12px;
-  color: #6B7280;
-  font-weight: 500;
-}
-
-/* Progress Bars */
-.review-progress {
-  width: 100%;
-  height: 8px;
-  background: #E5E7EB;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 8px;
-}
-
-.review-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--metric-color, #6366F1), var(--metric-color-light, #A5B4FC));
-  border-radius: 4px;
-  transition: width 0.5s ease;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
-}
-
-/* Review Actions */
-.review-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #E5E7EB;
-}
-
-.review-actions button {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  background: #F9FAFB;
-  color: #6B7280;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.review-actions button:hover {
-  background: #6366F1;
-  color: white;
-  border-color: #6366F1;
-}
-
-/* Review Details Modal */
-.review-details-panel {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 24px;
-  margin-bottom: 20px;
-}
-
-.review-details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #F3F4F6;
-}
-
-.review-details-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-}
-
-.review-close-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: #6B7280;
-  padding: 0;
-}
-
-/* Review Sections */
-.review-section {
-  margin-bottom: 24px;
-}
-
-.review-section-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #6366F1;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.review-section-content {
-  background: #F9FAFB;
-  border-radius: 8px;
-  padding: 16px;
-  border-left: 3px solid #6366F1;
-}
-
-/* Review Dashboard Grid */
-.review-dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.review-stat-card {
-  background: white;
-  border-radius: 10px;
-  padding: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  text-align: center;
-}
-
-.review-stat-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.review-stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111;
-  margin-bottom: 4px;
-}
-
-.review-stat-label {
-  font-size: 11px;
-  color: #6B7280;
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-/* Chart Container */
-.review-chart-container {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  margin-bottom: 20px;
-  position: relative;
-  height: 400px;
-}
-
-/* Review Table */
-.review-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
-}
-
-.review-table th {
-  background: linear-gradient(135deg, #EEF2FF, #F3E8FF);
-  padding: 12px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 700;
-  color: #6366F1;
-  text-transform: uppercase;
-  border-bottom: 2px solid #6366F1;
-}
-
-.review-table td {
-  padding: 12px;
-  border-bottom: 1px solid #E5E7EB;
-  font-size: 12px;
-}
-
-.review-table tr:hover {
-  background: #F9FAFB;
-}
-
-/* Summary Box */
-.review-summary-box {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  color: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.review-summary-title {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-}
-
-.review-summary-content {
-  font-size: 13px;
-  line-height: 1.6;
-  opacity: 0.95;
-}
-
-/* Color Coded Metrics */
-.metric-over {
-  --metric-color: #10B981;
-  --metric-color-light: #6EE7B7;
-}
-
-.metric-under {
-  --metric-color: #EF4444;
-  --metric-color-light: #FCA5A5;
-}
-
-.metric-at-target {
-  --metric-color: #F59E0B;
-  --metric-color-light: #FCD34D;
-}
-
-.metric-on-track {
-  --metric-color: #3B82F6;
-  --metric-color-light: #93C5FD;
-}
-
-/* Empty State */
-.review-empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-}
-
-.review-empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-
-.review-empty-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111;
-  margin-bottom: 8px;
-}
-
-.review-empty-text {
-  font-size: 13px;
-  color: #6B7280;
-  line-height: 1.6;
-}
-
-/* Loading State */
-.review-loading {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6B7280;
-}
-
-.review-spinner {
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-  border: 3px solid #E5E7EB;
-  border-top-color: #6366F1;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .review-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .review-metrics {
-    grid-template-columns: 1fr;
-  }
-  
-  .review-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .review-actions {
-    flex-direction: column;
-  }
-  
-  .review-actions button {
-    width: 100%;
-  }
-}
-
-/* Badge */
-.review-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.review-badge.primary {
-  background: #EEF2FF;
-  color: #6366F1;
-}
-
-.review-badge.success {
-  background: #ECFDF5;
-  color: #10B981;
-}
-
-.review-badge.warning {
-  background: #FFFBEB;
-  color: #F59E0B;
-}
-
-.review-badge.danger {
-  background: #FEE2E2;
-  color: #DC2626;
-}
-
-/* Button variants */
-.review-btn {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.review-btn-primary {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  color: white;
-}
-
-.review-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
-}
-
-.review-btn-secondary {
-  background: #F3F4F6;
-  color: #6B7280;
-  border: 1px solid #E5E7EB;
-}
-
-.review-btn-secondary:hover {
-  background: #E5E7EB;
-  border-color: #D1D5DB;
-}
-
-/* Tab visibility for Updesh only */
-#reviewsTabButton {
-  display: none;
-}
-
-#reviewsTabButton.visible {
-  display: inline-flex;
-}
   </style>
 </head>
 <body>
@@ -1719,19 +1133,23 @@
     </div>
 
     <!-- TENDER MANAGEMENT TAB -->
+
+<!-- SALES REVIEWS TAB - FIXED VERSION -->
 <div id="tab-reviews" class="tab-content">
-  <div class="review-container">
-    <div class="review-header">
+  <div style="background: linear-gradient(135deg, #f5f3ff 0%, #faf7ff 100%); border-radius: 12px; padding: 24px;">
+    
+    <!-- HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid rgba(99, 102, 241, 0.2);">
       <div>
-        <h2 class="review-header-icon">📊 Sales Performance Reviews</h2>
-        <p style="margin:8px 0 0 0;font-size:12px;color:#6B7280">FY26-27 Quarterly Reviews • Real-time CRM Data</p>
+        <h2 style="font-size: 22px; font-weight: 700; color: #111; margin: 0;">📊 Sales Performance Reviews</h2>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: #6B7280;">FY26-27 Quarterly Reviews • Real-time CRM Data</p>
       </div>
-      <div class="review-controls">
-        <select id="reviewUserFilter" onchange="renderReviewsTab()">
+      <div style="display: flex; gap: 8px;">
+        <select id="reviewUserFilter" onchange="renderReviewsTab()" style="border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 8px 12px; font-size: 12px; background: #fff; color: #6366F1;">
           <option value="all">All Users</option>
           <option value="summary">Summary View</option>
         </select>
-        <select id="reviewPeriodFilter" onchange="renderReviewsTab()">
+        <select id="reviewPeriodFilter" onchange="renderReviewsTab()" style="border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 8px 12px; font-size: 12px; background: #fff; color: #6366F1;">
           <option value="annual">Annual</option>
           <option value="q1">Q1 (Apr-Jun)</option>
           <option value="q2">Q2 (Jul-Sep)</option>
@@ -1741,18 +1159,21 @@
       </div>
     </div>
 
-    <!-- REVIEW DASHBOARD SUMMARY -->
-    <div id="reviewDashboard" class="review-dashboard"></div>
+    <!-- DASHBOARD STATS -->
+    <div id="reviewDashboardContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px;"></div>
 
-    <!-- REVIEW CARDS GRID -->
-    <div id="reviewCardsContainer" class="review-grid"></div>
+    <!-- CARDS CONTAINER -->
+    <div id="reviewCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;"></div>
 
-    <!-- REVIEW DETAILS (shown when user clicks on a card) -->
-    <div id="reviewDetailsPanel" style="display:none"></div>
+    <!-- SUMMARY TABLE -->
+    <div id="reviewSummaryTableContainer"></div>
 
-    <!-- TEAM SUMMARY TABLE -->
-    <div id="reviewSummaryTable"></div>
+    <!-- DETAILS PANEL -->
+    <div id="reviewDetailsPanel" style="display: none;"></div>
+
   </div>
+</div>
+
     <div id="tab-tenders" class="tab-content">
       <div class="stats">
         <div class="stat"><div class="stat-icon"><i class="ti ti-file-description"></i></div><div class="stat-content"><div class="stat-value" id="tenderStatOpen">0</div><div class="stat-label">Open Tenders</div></div></div>
@@ -6973,383 +6394,222 @@
     // ═══════════════════════════════════════════════════════════════════════════
     window.addEventListener('DOMContentLoaded', initializeAuth);
     window.addEventListener('load', initializeAuth);
-  </script>
+
 // ═══════════════════════════════════════════════════════════════════════════
-// SALES REVIEWS - DATA STRUCTURES
+// SALES REVIEWS TAB - FIXED VERSION (Pure HTML + Vanilla JS)
 // ═══════════════════════════════════════════════════════════════════════════
 
-let reviewsData = {};
 let allUsersReviewData = {};
 
-// Initialize reviews when currentUser is loaded
-function initializeSalesReviews() {
+// Initialize when page loads
+function initSalesReviews() {
   if (currentUser === 'updesh' || currentUser === 'pratim') {
-    document.getElementById('reviewsTabButton').classList.add('visible');
-    console.log('Sales Reviews tab visible for', currentUser);
+    document.getElementById('reviewsTabButton').style.display = 'inline-flex';
+    console.log('✓ Sales Reviews tab enabled for', currentUser);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// LOAD REVIEW DATA FROM FIRESTORE
-// ═══════════════════════════════════════════════════════════════════════════
-
-async function loadReviewsData() {
+// Load all review data
+async function loadSalesReviewsData() {
   try {
-    if (currentUser !== 'updesh' && currentUser !== 'pratim') {
-      console.log('Reviews only available for Updesh/Pratim');
-      return;
-    }
-
-    // Load all targets for all users
+    // Load all targets
     const targetsSnap = await db.collection(CRM_TARGETS).get();
-    
+    const targets = {};
     targetsSnap.forEach(doc => {
-      const targetData = doc.data();
-      const username = targetData.username;
-      
-      if (!allUsersReviewData[username]) {
-        allUsersReviewData[username] = {
-          username: username,
-          targetData: targetData,
-          deals: {},
-          invoices: {},
-          metrics: {}
-        };
-      } else {
-        allUsersReviewData[username].targetData = targetData;
-      }
+      targets[doc.data().username] = doc.data();
     });
 
-    // Load all deals for all users
+    // Load all deals
     const dealsSnap = await db.collection(CRM_DEALS).get();
-    
+    const deals = {};
     dealsSnap.forEach(doc => {
-      const dealData = doc.data();
-      const username = dealData.username || 'unknown';
-      
-      if (!allUsersReviewData[username]) {
-        allUsersReviewData[username] = {
-          username: username,
-          targetData: {},
-          deals: {},
-          invoices: {},
-          metrics: {}
-        };
-      }
-      
-      allUsersReviewData[username].deals[doc.id] = dealData;
+      const username = doc.data().username;
+      if (!deals[username]) deals[username] = [];
+      deals[username].push(doc.data());
     });
 
-    // Load all invoices for all users
+    // Load all invoices
     const invoicesSnap = await db.collection('dqap_crm_invoices').get();
-    
+    const invoices = {};
     invoicesSnap.forEach(doc => {
-      const invoiceData = doc.data();
-      const username = invoiceData.username || 'unknown';
-      
-      if (!allUsersReviewData[username]) {
-        allUsersReviewData[username] = {
-          username: username,
-          targetData: {},
-          deals: {},
-          invoices: {},
-          metrics: {}
-        };
-      }
-      
-      allUsersReviewData[username].invoices[doc.id] = invoiceData;
+      const username = doc.data().username;
+      if (!invoices[username]) invoices[username] = [];
+      invoices[username].push(doc.data());
     });
 
     // Calculate metrics for each user
-    Object.keys(allUsersReviewData).forEach(username => {
-      calculateUserMetrics(username);
+    Object.keys(targets).forEach(username => {
+      const target = targets[username];
+      const userDeals = deals[username] || [];
+      const userInvoices = invoices[username] || [];
+
+      const ytdOrder = userDeals
+        .filter(d => ['Order', 'Billed', 'Engineering Approvals'].includes(d.stage))
+        .reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+
+      const ytdBilling = userInvoices
+        .filter(d => d.status === 'Billed')
+        .reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+
+      const ytdMargin = userInvoices
+        .filter(d => d.status === 'Billed')
+        .reduce((sum, d) => sum + (Number(d.grossMargin) || 0), 0);
+
+      const orderAchievement = target.annualBookingTarget ? Math.round((ytdOrder / target.annualBookingTarget) * 100) : 0;
+      const billingAchievement = target.annualBillingTarget ? Math.round((ytdBilling / target.annualBillingTarget) * 100) : 0;
+
+      allUsersReviewData[username] = {
+        username,
+        ytdOrder,
+        ytdBilling,
+        ytdMargin,
+        annualOrder: target.annualBookingTarget || 0,
+        annualBilling: target.annualBillingTarget || 0,
+        annualMargin: target.marginTarget || 0,
+        orderAchievement,
+        billingAchievement,
+        marginAchievement: target.annualGM ? Math.round((ytdMargin / target.annualMargin) * 100) : 0,
+        dealCount: userDeals.length,
+        pipelineValue: userDeals
+          .filter(d => !['Lost', 'Billed'].includes(d.stage))
+          .reduce((sum, d) => sum + (Number(d.value) || 0), 0)
+      };
     });
 
-    console.log('Reviews data loaded:', allUsersReviewData);
+    console.log('✓ Review data loaded:', Object.keys(allUsersReviewData).length, 'users');
   } catch (error) {
-    console.error('Error loading reviews data:', error);
+    console.error('Error loading review data:', error);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CALCULATE METRICS FOR EACH USER
-// ═══════════════════════════════════════════════════════════════════════════
-
-function calculateUserMetrics(username) {
-  const userData = allUsersReviewData[username];
-  if (!userData || !userData.targetData) return;
-
-  const targets = userData.targetData;
-  const deals = userData.deals || {};
-  const invoices = userData.invoices || {};
-  
-  // Get annual targets
-  const annualBooking = targets.annualBookingTarget || 0;
-  const annualBilling = targets.annualBillingTarget || 0;
-  const annualMargin = targets.marginTarget || 0;
-
-  // Calculate YTD values
-  let ytdBooking = 0;
-  let ytdBilling = 0;
-  let ytdMargin = 0;
-
-  // Sum booking from deals in Order/Billed stages
-  Object.values(deals).forEach(deal => {
-    if (['Order', 'Billed', 'Engineering Approvals'].includes(deal.stage)) {
-      ytdBooking += Number(deal.value) || 0;
-    }
-  });
-
-  // Sum billing from invoices
-  Object.values(invoices).forEach(invoice => {
-    if (invoice.status === 'Billed') {
-      ytdBilling += Number(invoice.amount) || 0;
-      ytdMargin += Number(invoice.grossMargin) || 0;
-    }
-  });
-
-  // Calculate achievement %
-  const bookingAchievement = annualBooking > 0 ? Math.round((ytdBooking / annualBooking) * 100) : 0;
-  const billingAchievement = annualBilling > 0 ? Math.round((ytdBilling / annualBilling) * 100) : 0;
-  const marginAchievement = annualMargin > 0 ? Math.round((ytdMargin / annualMargin) * 100) : 0;
-
-  // Determine status
-  const getStatus = (achievement) => {
-    if (achievement >= 90) return { status: 'on-track', label: 'On Track' };
-    if (achievement >= 70) return { status: 'at-risk', label: 'At Risk' };
-    return { status: 'behind', label: 'Behind' };
-  };
-
-  userData.metrics = {
-    ytdBooking,
-    ytdBilling,
-    ytdMargin,
-    annualBooking,
-    annualBilling,
-    annualMargin,
-    bookingAchievement,
-    billingAchievement,
-    marginAchievement,
-    bookingStatus: getStatus(bookingAchievement),
-    billingStatus: getStatus(billingAchievement),
-    marginStatus: getStatus(marginAchievement),
-    bookingGap: Math.max(0, annualBooking - ytdBooking),
-    billingGap: Math.max(0, annualBilling - ytdBilling),
-    marginGap: Math.max(0, annualMargin - ytdMargin),
-    dealCount: Object.keys(deals).length,
-    pipelineValue: Object.values(deals)
-      .filter(d => !['Lost', 'Billed'].includes(d.stage))
-      .reduce((sum, d) => sum + (Number(d.value) || 0), 0)
-  };
+function formatCurrency(value) {
+  return (value / 100000).toFixed(1) + 'L';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RENDER REVIEWS TAB
-// ═══════════════════════════════════════════════════════════════════════════
+function getStatus(achievement) {
+  if (achievement >= 90) return { status: 'on-track', label: '✓ On Track', color: '#10B981' };
+  if (achievement >= 70) return { status: 'at-risk', label: '⚠ At Risk', color: '#F59E0B' };
+  return { status: 'behind', label: '❌ Behind', color: '#EF4444' };
+}
 
 async function renderReviewsTab() {
-  const container = document.getElementById('tab-reviews');
-  if (!container.classList.contains('active')) return;
+  const tab = document.getElementById('tab-reviews');
+  if (!tab || !tab.classList.contains('active')) return;
 
   if (Object.keys(allUsersReviewData).length === 0) {
-    await loadReviewsData();
+    await loadSalesReviewsData();
   }
 
   const userFilter = document.getElementById('reviewUserFilter')?.value || 'all';
-  const periodFilter = document.getElementById('reviewPeriodFilter')?.value || 'annual';
-
-  // Render dashboard summary
-  renderReviewDashboard(userFilter);
-
-  // Render review cards
+  renderDashboard();
   if (userFilter === 'summary') {
-    renderReviewSummaryTable(periodFilter);
+    renderSummaryTable();
   } else {
-    renderReviewCards(periodFilter);
+    renderReviewCards();
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RENDER DASHBOARD SUMMARY
-// ═══════════════════════════════════════════════════════════════════════════
-
-function renderReviewDashboard(userFilter) {
-  const dashboard = document.getElementById('reviewDashboard');
-  
-  // Calculate team totals
-  let teamBooking = 0;
-  let teamBilling = 0;
-  let teamMargin = 0;
-  let totalTarget = 0;
-  let userCount = 0;
-
-  Object.values(allUsersReviewData).forEach(userData => {
-    if (!userData.metrics) return;
-    teamBooking += userData.metrics.ytdBooking;
-    teamBilling += userData.metrics.ytdBilling;
-    teamMargin += userData.metrics.ytdMargin;
-    totalTarget += userData.metrics.annualBooking;
+function renderDashboard() {
+  let teamOrder = 0, teamBilling = 0, userCount = 0;
+  Object.values(allUsersReviewData).forEach(data => {
+    teamOrder += data.ytdOrder;
+    teamBilling += data.ytdBilling;
     userCount++;
   });
 
-  const bookingAchievementTeam = totalTarget > 0 ? Math.round((teamBooking / totalTarget) * 100) : 0;
-
-  let html = `
-    <div class="review-stat-card">
-      <div class="review-stat-icon">👥</div>
-      <div class="review-stat-value">${userCount}</div>
-      <div class="review-stat-label">Team Members</div>
+  const container = document.getElementById('reviewDashboardContainer');
+  container.innerHTML = `
+    <div style="background: white; border-radius: 10px; padding: 16px; border: 1px solid rgba(0,0,0,0.08); text-align: center;">
+      <div style="font-size: 28px; margin-bottom: 8px;">👥</div>
+      <div style="font-size: 20px; font-weight: 700; color: #111;">${userCount}</div>
+      <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; font-weight: 600;">Team Members</div>
     </div>
-    
-    <div class="review-stat-card">
-      <div class="review-stat-icon">📈</div>
-      <div class="review-stat-value">₹${(teamBooking / 100000).toFixed(0)}L</div>
-      <div class="review-stat-label">Team Booking (YTD)</div>
+    <div style="background: white; border-radius: 10px; padding: 16px; border: 1px solid rgba(0,0,0,0.08); text-align: center;">
+      <div style="font-size: 28px; margin-bottom: 8px;">📈</div>
+      <div style="font-size: 20px; font-weight: 700; color: #111;">₹${formatCurrency(teamOrder)}</div>
+      <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; font-weight: 600;">Team Booking YTD</div>
     </div>
-    
-    <div class="review-stat-card">
-      <div class="review-stat-icon">💰</div>
-      <div class="review-stat-value">₹${(teamBilling / 100000).toFixed(0)}L</div>
-      <div class="review-stat-label">Team Billing (YTD)</div>
-    </div>
-    
-    <div class="review-stat-card">
-      <div class="review-stat-icon">🎯</div>
-      <div class="review-stat-value">${bookingAchievementTeam}%</div>
-      <div class="review-stat-label">Team Achievement</div>
+    <div style="background: white; border-radius: 10px; padding: 16px; border: 1px solid rgba(0,0,0,0.08); text-align: center;">
+      <div style="font-size: 28px; margin-bottom: 8px;">💰</div>
+      <div style="font-size: 20px; font-weight: 700; color: #111;">₹${formatCurrency(teamBilling)}</div>
+      <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; font-weight: 600;">Team Billing YTD</div>
     </div>
   `;
-
-  dashboard.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RENDER INDIVIDUAL REVIEW CARDS
-// ═══════════════════════════════════════════════════════════════════════════
-
-function renderReviewCards(periodFilter) {
+function renderReviewCards() {
   const container = document.getElementById('reviewCardsContainer');
   let html = '';
 
-  Object.entries(allUsersReviewData).forEach(([username, userData]) => {
-    if (!userData.metrics) return;
-
-    const metrics = userData.metrics;
-    const statusClass = metrics.bookingStatus.status;
-    const avatar = username.charAt(0).toUpperCase();
-    
+  Object.values(allUsersReviewData).forEach(data => {
+    const status = getStatus(data.orderAchievement);
     html += `
-      <div class="review-card ${statusClass}">
-        <div class="review-card-header">
-          <div>
-            <h3 class="review-card-name">
-              <div class="review-card-avatar">${avatar}</div>
-              ${username.charAt(0).toUpperCase() + username.slice(1)}
-            </h3>
-          </div>
-          <span class="review-card-status ${metrics.bookingStatus.status}">${metrics.bookingStatus.label}</span>
+      <div style="background: white; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-size: 16px; font-weight: 700; color: #111;">${data.username.charAt(0).toUpperCase() + data.username.slice(1)}</div>
+          <span style="background: ${status.status === 'on-track' ? '#ECFDF5' : status.status === 'at-risk' ? '#FFFBEB' : '#FEE2E2'}; color: ${status.color}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;">${status.label}</span>
         </div>
-
-        <div class="review-metrics">
-          <div class="review-metric metric-on-track">
-            <div class="review-metric-label">📦 Booking</div>
-            <div class="review-metric-value">
-              ₹${(metrics.ytdBooking / 100000).toFixed(1)}L
-              <span class="review-metric-percent">${metrics.bookingAchievement}%</span>
-            </div>
-            <div class="review-progress">
-              <div class="review-progress-bar" style="width:${Math.min(100, metrics.bookingAchievement)}%"></div>
-            </div>
-          </div>
-
-          <div class="review-metric metric-on-track">
-            <div class="review-metric-label">💰 Billing</div>
-            <div class="review-metric-value">
-              ₹${(metrics.ytdBilling / 100000).toFixed(1)}L
-              <span class="review-metric-percent">${metrics.billingAchievement}%</span>
-            </div>
-            <div class="review-progress">
-              <div class="review-progress-bar" style="width:${Math.min(100, metrics.billingAchievement)}%"></div>
-            </div>
-          </div>
-
-          <div class="review-metric metric-on-track">
-            <div class="review-metric-label">📊 Margin</div>
-            <div class="review-metric-value">
-              ₹${(metrics.ytdMargin / 100000).toFixed(1)}L
-              <span class="review-metric-percent">${metrics.marginAchievement}%</span>
-            </div>
-            <div class="review-progress">
-              <div class="review-progress-bar" style="width:${Math.min(100, metrics.marginAchievement)}%"></div>
-            </div>
-          </div>
-
-          <div class="review-metric metric-on-track">
-            <div class="review-metric-label">🔄 Pipeline</div>
-            <div class="review-metric-value">
-              ₹${(metrics.pipelineValue / 100000).toFixed(1)}L
-              <span class="review-metric-percent">${metrics.dealCount} deals</span>
-            </div>
+        <div style="background: #F9FAFB; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 3px solid #6366F1;">
+          <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">📦 Booking</div>
+          <div style="font-size: 18px; font-weight: 700; color: #111;">₹${formatCurrency(data.ytdOrder)}</div>
+          <div style="font-size: 12px; color: #6B7280;">${data.orderAchievement}% of ₹${formatCurrency(data.annualOrder)}</div>
+          <div style="width: 100%; height: 6px; background: #E5E7EB; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+            <div style="height: 100%; width: ${Math.min(100, data.orderAchievement)}%; background: linear-gradient(90deg, #6366F1, #A5B4FC);"></div>
           </div>
         </div>
-
-        <div class="review-actions">
-          <button onclick="expandReviewDetails('${username}')">📊 Full Review</button>
-          <button onclick="exportReview('${username}')">📥 Export</button>
+        <div style="background: #F9FAFB; border-radius: 8px; padding: 12px; border-left: 3px solid #6366F1;">
+          <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">💰 Billing</div>
+          <div style="font-size: 18px; font-weight: 700; color: #111;">₹${formatCurrency(data.ytdBilling)}</div>
+          <div style="font-size: 12px; color: #6B7280;">${data.billingAchievement}% of ₹${formatCurrency(data.annualBilling)}</div>
+          <div style="width: 100%; height: 6px; background: #E5E7EB; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+            <div style="height: 100%; width: ${Math.min(100, data.billingAchievement)}%; background: linear-gradient(90deg, #6366F1, #A5B4FC);"></div>
+          </div>
+        </div>
+        <div style="background: #F9FAFB; border-radius: 8px; padding: 12px; margin-bottom: 16px; border-left: 3px solid #6366F1;">
+          <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; font-weight: 600;">🔄 Pipeline</div>
+          <div style="font-size: 16px; font-weight: 700; color: #111; margin-top: 4px;">₹${formatCurrency(data.pipelineValue)}</div>
+          <div style="font-size: 12px; color: #6B7280;">${data.dealCount} deals</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="expandReviewDetails('${data.username}')" style="flex: 1; padding: 8px 12px; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 11px; font-weight: 600; background: #F9FAFB; color: #6B7280; cursor: pointer; transition: all 0.2s;">📊 Details</button>
+          <button onclick="exportReview('${data.username}')" style="flex: 1; padding: 8px 12px; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 11px; font-weight: 600; background: #F9FAFB; color: #6B7280; cursor: pointer; transition: all 0.2s;">📥 Export</button>
         </div>
       </div>
     `;
   });
 
-  container.innerHTML = html || `
-    <div class="review-empty" style="grid-column: 1/-1">
-      <div class="review-empty-icon">📭</div>
-      <div class="review-empty-title">No Review Data</div>
-      <div class="review-empty-text">Data will load as soon as targets are set</div>
-    </div>
-  `;
+  container.innerHTML = html || '<div style="text-align: center; padding: 40px; color: #6B7280;">No data available. Check if targets are set.</div>';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RENDER SUMMARY TABLE
-// ═══════════════════════════════════════════════════════════════════════════
-
-function renderReviewSummaryTable(periodFilter) {
-  const container = document.getElementById('reviewSummaryTable');
-  
+function renderSummaryTable() {
+  const container = document.getElementById('reviewSummaryTableContainer');
   let html = `
-    <div style="background:white;border-radius:12px;padding:20px;margin-top:20px">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:#111">Team Performance Summary</h3>
-      <table class="review-table">
+    <div style="background: white; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); padding: 20px; overflow-x: auto;">
+      <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 16px; color: #111;">Team Performance Summary</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Booking (₹L)</th>
-            <th>Achievement %</th>
-            <th>Billing (₹L)</th>
-            <th>Margin (₹L)</th>
-            <th>Pipeline (₹L)</th>
-            <th>Status</th>
+          <tr style="background: linear-gradient(135deg, #EEF2FF, #F3E8FF);">
+            <th style="padding: 12px; text-align: left; color: #6366F1; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #6366F1;">Name</th>
+            <th style="padding: 12px; text-align: center; color: #6366F1; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #6366F1;">Booking (₹L)</th>
+            <th style="padding: 12px; text-align: center; color: #6366F1; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #6366F1;">Achievement %</th>
+            <th style="padding: 12px; text-align: center; color: #6366F1; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #6366F1;">Billing (₹L)</th>
+            <th style="padding: 12px; text-align: center; color: #6366F1; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #6366F1;">Pipeline (₹L)</th>
+            <th style="padding: 12px; text-align: center; color: #6366F1; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #6366F1;">Status</th>
           </tr>
         </thead>
         <tbody>
   `;
 
-  Object.entries(allUsersReviewData).forEach(([username, userData]) => {
-    if (!userData.metrics) return;
-    
-    const m = userData.metrics;
-    const statusIcon = m.bookingStatus.status === 'on-track' ? '✅' : m.bookingStatus.status === 'at-risk' ? '⚠️' : '❌';
-    
+  Object.values(allUsersReviewData).forEach((data, idx) => {
+    const status = getStatus(data.orderAchievement);
     html += `
-      <tr>
-        <td><strong>${username.charAt(0).toUpperCase() + username.slice(1)}</strong></td>
-        <td>₹${(m.ytdBooking / 100000).toFixed(1)}L / ${(m.annualBooking / 100000).toFixed(0)}L</td>
-        <td><span style="font-weight:600;color:${m.bookingAchievement >= 90 ? '#10B981' : m.bookingAchievement >= 70 ? '#F59E0B' : '#EF4444'}">${m.bookingAchievement}%</span></td>
-        <td>₹${(m.ytdBilling / 100000).toFixed(1)}L</td>
-        <td>₹${(m.ytdMargin / 100000).toFixed(1)}L</td>
-        <td>₹${(m.pipelineValue / 100000).toFixed(1)}L</td>
-        <td>${statusIcon} ${m.bookingStatus.label}</td>
+      <tr style="border-bottom: 1px solid #E5E7EB; ${idx % 2 === 0 ? 'background: #F9FAFB;' : ''}">
+        <td style="padding: 12px;"><strong>${data.username.charAt(0).toUpperCase() + data.username.slice(1)}</strong></td>
+        <td style="padding: 12px; text-align: center;">₹${formatCurrency(data.ytdOrder)} / ${formatCurrency(data.annualOrder)}</td>
+        <td style="padding: 12px; text-align: center; color: ${status.color}; font-weight: 600;">${data.orderAchievement}%</td>
+        <td style="padding: 12px; text-align: center;">₹${formatCurrency(data.ytdBilling)}</td>
+        <td style="padding: 12px; text-align: center;">₹${formatCurrency(data.pipelineValue)}</td>
+        <td style="padding: 12px; text-align: center;">${status.label}</td>
       </tr>
     `;
   });
@@ -7359,96 +6619,40 @@ function renderReviewSummaryTable(periodFilter) {
       </table>
     </div>
   `;
-
   container.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPAND REVIEW DETAILS
-// ═══════════════════════════════════════════════════════════════════════════
-
 function expandReviewDetails(username) {
-  const userData = allUsersReviewData[username];
-  if (!userData || !userData.metrics) return;
+  const data = allUsersReviewData[username];
+  if (!data) return;
+  const panel = document.getElementById('reviewDetailsPanel');
+  const status = getStatus(data.orderAchievement);
 
-  const m = userData.metrics;
-  const panelContainer = document.getElementById('reviewDetailsPanel');
-
-  let html = `
-    <div class="review-details-panel">
-      <div class="review-details-header">
-        <div>
-          <div style="font-size:14px;color:#6B7280">Detailed Review for</div>
-          <div class="review-details-title">${username.charAt(0).toUpperCase() + username.slice(1)}</div>
-        </div>
-        <button class="review-close-btn" onclick="document.getElementById('reviewDetailsPanel').style.display='none'">✕</button>
+  panel.innerHTML = `
+    <div style="background: white; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); padding: 24px; margin-top: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #F3F4F6;">
+        <h3 style="font-size: 18px; font-weight: 700; color: #111; margin: 0;">Review Details - ${data.username.charAt(0).toUpperCase() + data.username.slice(1)}</h3>
+        <button onclick="document.getElementById('reviewDetailsPanel').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #6B7280;">✕</button>
       </div>
-
-      <!-- Performance Section -->
-      <div class="review-section">
-        <div class="review-section-title">📈 Performance Summary</div>
-        <div class="review-section-content">
-          <p><strong>Annual Booking Target:</strong> ₹${(m.annualBooking / 100000).toFixed(1)}L</p>
-          <p><strong>Achieved (YTD):</strong> ₹${(m.ytdBooking / 100000).toFixed(1)}L (${m.bookingAchievement}%)</p>
-          <p><strong>Remaining Gap:</strong> ₹${(m.bookingGap / 100000).toFixed(1)}L</p>
-          <p><strong>Status:</strong> <span class="review-badge ${m.bookingStatus.status === 'on-track' ? 'success' : m.bookingStatus.status === 'at-risk' ? 'warning' : 'danger'}">${m.bookingStatus.label}</span></p>
-        </div>
-      </div>
-
-      <!-- Billing Section -->
-      <div class="review-section">
-        <div class="review-section-title">💰 Billing Performance</div>
-        <div class="review-section-content">
-          <p><strong>Annual Billing Target:</strong> ₹${(m.annualBilling / 100000).toFixed(1)}L</p>
-          <p><strong>Billed (YTD):</strong> ₹${(m.ytdBilling / 100000).toFixed(1)}L (${m.billingAchievement}%)</p>
-          <p><strong>Remaining:</strong> ₹${(m.billingGap / 100000).toFixed(1)}L</p>
-          <p><strong>Active Deals:</strong> ${m.dealCount}</p>
-        </div>
-      </div>
-
-      <!-- Pipeline Section -->
-      <div class="review-section">
-        <div class="review-section-title">🔄 Pipeline Health</div>
-        <div class="review-section-content">
-          <p><strong>Active Pipeline:</strong> ₹${(m.pipelineValue / 100000).toFixed(1)}L (${m.dealCount} deals)</p>
-          <p><strong>Pipeline to Target Ratio:</strong> ${m.annualBooking > 0 ? (m.pipelineValue / m.annualBooking).toFixed(1) : 0}x</p>
-          <p style="font-size:11px;color:#6B7280">Healthy if > 2.5x, Warning if 1.5-2.5x, Critical if < 1.5x</p>
-        </div>
-      </div>
-
-      <!-- Action Items -->
-      <div class="review-section">
-        <div class="review-section-title">📋 Recommended Actions</div>
-        <div class="review-section-content">
-          ${m.bookingAchievement < 70 ? `<p>🔴 <strong>Urgent:</strong> Current achievement is below 70%. Recommend immediate action to accelerate closures or prioritize high-value deals.</p>` : ''}
-          ${m.billingGap > 0 ? `<p>📅 <strong>Billing Focus:</strong> ₹${(m.billingGap / 100000).toFixed(1)}L billing gap. Review pending invoices and customer approvals.</p>` : ''}
-          ${m.pipelineValue / m.annualBooking < 1.5 ? `<p>⚠️ <strong>Pipeline Build:</strong> Pipeline ratio critically low. Need to generate more leads or accelerate deals.</p>` : ''}
+      <div style="background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px;">Performance Summary</div>
+        <div style="font-size: 13px; line-height: 1.6;">
+          <p><strong>Annual Target:</strong> ₹${formatCurrency(data.annualOrder)}</p>
+          <p><strong>Achieved (YTD):</strong> ₹${formatCurrency(data.ytdOrder)} (${data.orderAchievement}%)</p>
+          <p><strong>Gap:</strong> ₹${formatCurrency(Math.max(0, data.annualOrder - data.ytdOrder))}</p>
+          <p><strong>Status:</strong> ${status.label}</p>
         </div>
       </div>
     </div>
   `;
-
-  panelContainer.innerHTML = html;
-  panelContainer.style.display = 'block';
-  panelContainer.scrollIntoView({ behavior: 'smooth' });
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth' });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPORT REVIEW
-// ═══════════════════════════════════════════════════════════════════════════
-
 function exportReview(username) {
-  const userData = allUsersReviewData[username];
-  if (!userData || !userData.metrics) return;
-
-  const m = userData.metrics;
-  
-  let csvContent = `Sales Review - ${username}\nFY26-27\n\n`;
-  csvContent += `Metric,Target,Achieved,Achievement %,Gap\n`;
-  csvContent += `Booking,${m.annualBooking},${m.ytdBooking},${m.bookingAchievement}%,${m.bookingGap}\n`;
-  csvContent += `Billing,${m.annualBilling},${m.ytdBilling},${m.billingAchievement}%,${m.billingGap}\n`;
-  csvContent += `Margin,${m.annualMargin},${m.ytdMargin},${m.marginAchievement}%,${m.marginGap}\n`;
-
+  const data = allUsersReviewData[username];
+  if (!data) return;
+  const csvContent = `Sales Review - ${username}\nFY26-27\n\nMetric,Target,Achieved,Achievement %\nBooking,${data.annualOrder},${data.ytdOrder},${data.orderAchievement}%\nBilling,${data.annualBilling},${data.ytdBilling},${data.billingAchievement}%\n`;
   const blob = new Blob([csvContent], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -7456,18 +6660,11 @@ function exportReview(username) {
   a.download = `Review_${username}_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   window.URL.revokeObjectURL(url);
-
-  showToast(`Exported review for ${username}`, 'success');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INITIALIZE ON PAGE LOAD
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Call this after currentUser is set
 setTimeout(() => {
-  initializeSalesReviews();
-  loadReviewsData();
+  initSalesReviews();
+  loadSalesReviewsData();
 }, 1000);
 
-</script>
+  </script>
