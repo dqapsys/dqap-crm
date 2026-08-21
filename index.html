@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <!-- DQAP CRM 2026.07.03.1 - deferred KAM history load and faster first render -->
 <html lang="en">
@@ -1990,12 +1989,20 @@
         }
         console.log(`Loaded ${dealsSnap.size} deals for ${isLeadReviewer() ? 'sales oversight' : currentUser}`);
         
-        // Load activities filtered by username
-        const activitiesSnap = await db.collection(CRM_ACTIVITIES).where('username', '==', currentUser).get();
+        // Load activities: admin/lead reviewers see all, salespeople see only their own
+        let activitiesSnap;
+        if (isLeadReviewer()) {
+          // Updesh, Pratim, Chetan see all company-wide activities (including all users' meetings)
+          activitiesSnap = await db.collection(CRM_ACTIVITIES).get();
+          console.log(`Loaded ${activitiesSnap.size} activities for ${currentUser} (company-wide oversight)`);
+        } else {
+          // Other salespeople see only their own activities
+          activitiesSnap = await db.collection(CRM_ACTIVITIES).where('username', '==', currentUser).get();
+          console.log(`Loaded ${activitiesSnap.size} activities for ${currentUser}`);
+        }
         activitiesSnap.forEach(doc => {
           activityData[doc.id] = { id: doc.id, ...doc.data() };
         });
-        console.log(`Loaded ${activitiesSnap.size} activities for ${currentUser}`);
 
         // Include tasks assigned to this user, even when another salesperson created them.
         const assignedActivitiesSnap = await db.collection(CRM_ACTIVITIES)
