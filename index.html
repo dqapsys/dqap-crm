@@ -1630,6 +1630,10 @@
     const CRM_LEADS = 'dqap_crm_leads_v2';
     const CRM_LEAD_CONFIG = 'dqap_crm_lead_incentive_config';
     const CRM_INCENTIVE_LEDGER = 'dqap_crm_incentive_ledger';
+    // Same Firebase project as PayMS ("dqap-wiki") — used to auto-raise a PayMS
+    // payment request the moment Updesh approves a referral incentive in CRM.
+    const PAYMS_SETTINGS_COL = 'dqap_payms_settings';
+    const PAYMS_REQUESTS_COL = 'dqap_payms_requests';
     const CRM_TENDERS = 'dqap_crm_tenders';
     // Shared with the DORBIT Wiki app (same Firebase project) so a PMO kickoff
     // task created here shows up immediately in Keshav's Wiki task list/modal.
@@ -2351,6 +2355,88 @@
       } catch (error) { console.warn('Lead notification failed:', error); }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PAYMS INTEGRATION — "Raise PayMS Request" button (referral incentive payout)
+    // Mirrors PayMS's own field shape / workflow logic exactly so the request
+    // renders and approves normally inside PayMS with no changes needed there.
+    // ═══════════════════════════════════════════════════════════════════════════
+    function paymsNorm(s) { return String(s || '').trim().toLowerCase(); }
+    function paymsToday() { return new Date().toISOString().split('T')[0]; }
+    function paymsNowIso() { return new Date().toISOString(); }
+
+    function paymsInitialWorkflow(managerUsername, managerFullName) {
+      const u = paymsNorm(managerUsername), f = paymsNorm(managerFullName);
+      if (u === 'updesh' || f.includes('updesh')) return { status: 'PENDING_UPDESH', note: 'sent directly to Updesh for verification and approval' };
+      if (u === 'pratim' || f.includes('pratim')) return { status: 'PENDING_PRATIM', note: 'sent directly to Pratim for verification / recommendation' };
+      return { status: 'PENDING_MANAGER', note: 'sent to Reporting Manager' };
+    }
+
+    function paymsUnraisedAmount(lead) {
+      const approved = Number(lead.approvedAmount || 0);
+      const raised = (lead.paymsRequests || []).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      return Math.max(0, approved - raised);
+    }
+
+    async function raisePaymsRequest(id) {
+      if (!isLeadIncentiveAuthority()) return;
+      const lead = leadData[id];
+      if (!lead) return;
+      const unraised = paymsUnraisedAmount(lead);
+      if (unraised <= 0) return showToast('No approved amount pending a PayMS request', 'warning');
+      if (!lead.referrerUsername) return showToast('Lead has no referrer on record', 'error');
+
+      try {
+        const settingsDoc = await db.collection(PAYMS_SETTINGS_COL).doc('hierarchy').get();
+        const reportingManagers = (settingsDoc.exists && settingsDoc.data().reportingManagers) || {};
+        const mapped = reportingManagers[paymsNorm(lead.referrerUsername)] || reportingManagers[paymsNorm(lead.referrerName)];
+        if (!mapped || !(mapped.username || mapped.fullName)) {
+          return showToast(`No PayMS reporting manager mapped for ${lead.referrerName || lead.referrerUsername}. Ask Updesh to configure it in PayMS Settings first.`, 'error');
+        }
+
+        const flow = paymsInitialWorkflow(mapped.username, mapped.fullName);
+        const ref = db.collection(PAYMS_REQUESTS_COL).doc();
+        const requestNo = 'PAY-' + ref.id.slice(0, 6).toUpperCase();
+        const nowIsoStr = paymsNowIso();
+        const req = {
+          requestNo,
+          type: 'Referral Incentive',
+          expenseDate: paymsToday(),
+          title: `Referral incentive \u2013 ${lead.company}`,
+          amount: unraised,
+          projectExpense: false,
+          salesBdExpense: true,
+          projectId: '',
+          crmType: 'ReferralLead',
+          crmId: lead.id,
+          vendor: '',
+          purpose: `Referral incentive for lead "${lead.company}" (${lead.contactPerson}), approved by Updesh in CRM.`,
+          status: flow.status,
+          submitterUsername: lead.referrerUsername,
+          submitterName: lead.referrerName || lead.referrerUsername,
+          managerUsername: mapped.username || mapped.fullName,
+          managerName: mapped.fullName || mapped.username,
+          createdAt: nowIsoStr,
+          updatedAt: nowIsoStr,
+          audit: [{ time: nowIsoStr, actor: currentUserName(), action: `Auto-raised from CRM referral incentive approval and ${flow.note}` }]
+        };
+        await ref.set(req);
+
+        const paymsRequests = [...(lead.paymsRequests || []), { requestId: ref.id, requestNo, amount: unraised, raisedAt: nowIsoStr }];
+        const update = {
+          paymsRequests,
+          updatedAt: new Date(),
+          auditTrail: [...(lead.auditTrail || []), leadAuditEvent('PayMS Request Raised', `${requestNo} for \u20b9${unraised.toLocaleString('en-IN')} sent to ${req.managerName}`)]
+        };
+        await db.collection(CRM_LEADS).doc(id).update(update);
+        Object.assign(lead, update);
+        await notifyLeadReferrer(lead, 'lead_payms_raised', `A PayMS payment request (${requestNo}) for \u20b9${unraised.toLocaleString('en-IN')} has been raised and sent to ${req.managerName} for approval.`);
+        renderLeadManagement();
+        showToast(`PayMS request ${requestNo} raised`, 'success');
+      } catch (error) {
+        showToast('Could not raise PayMS request: ' + error.message, 'error');
+      }
+    }
+
     async function submitCrmLead() {
       if (!currentUser) return showToast('Not authenticated', 'error');
       const company = document.getElementById('leadCompany').value.trim();
@@ -2828,12 +2914,17 @@
         let actions = '';
         if (mode === 'review' && lead.status === 'Submitted') actions = `<button class="btn sm primary" onclick="qualifyCrmLead('${lead.id}')">Qualify</button> <button class="btn sm danger" onclick="openLeadRejection('${lead.id}','lead')">Reject</button>`;
         if (mode === 'review' && lead.status === 'Qualified') actions = `<button class="btn sm primary" onclick="openLeadConversionModal('${lead.id}')">Convert to Deal</button> <button class="btn sm danger" onclick="openLeadRejection('${lead.id}','lead')">Reject</button>`;
+        const paymsUnraised = paymsUnraisedAmount(lead);
         if (mode === 'approval') {
           if (entitlement > approved) actions += `<button class="btn sm primary" onclick="approveLeadIncentive('${lead.id}')">Approve ₹${entitlement.toLocaleString('en-IN')}</button> `;
+          if (paymsUnraised > 0) actions += `<button class="btn sm" onclick="raisePaymsRequest('${lead.id}')"><i class="ti ti-send"></i> Raise PayMS Request ₹${paymsUnraised.toLocaleString('en-IN')}</button> `;
           if (approved > paid) actions += `<button class="btn sm" onclick="markLeadIncentivePaid('${lead.id}')">Mark ₹${(approved-paid).toLocaleString('en-IN')} Paid</button> `;
           if (entitlement > paid) actions += `<button class="btn sm danger" onclick="openLeadRejection('${lead.id}','incentive')">Reject Incentive</button>`;
         }
-        return `<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:9px"><b>${escapeHtml(lead.company)}</b><br><span style="font-size:10px;color:var(--t2)">${escapeHtml(lead.contactPerson)} · ${escapeHtml(lead.contactNumber)}</span></td><td style="padding:9px">${escapeHtml(lead.referrerName || lead.referrerUsername)}</td><td style="padding:9px">${leadStatusBadge(lead.status)}${lead.rejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">${escapeHtml(lead.rejectionReason)}</div>` : ''}</td><td style="padding:9px">₹${entitlement.toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Approved ₹${approved.toLocaleString('en-IN')} · Paid ₹${paid.toLocaleString('en-IN')}</span>${lead.incentiveRejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">Rejected: ${escapeHtml(lead.incentiveRejectionReason)}</div>` : ''}</td><td style="padding:9px">${actions || escapeHtml(lead.incentiveApprovalStatus || '—')}</td></tr>`;
+        const paymsRequestsLine = (lead.paymsRequests || []).length
+          ? `<div style="font-size:10px;color:var(--t2);margin-top:4px">PayMS: ${lead.paymsRequests.map(r => `${escapeHtml(r.requestNo)} (₹${Number(r.amount||0).toLocaleString('en-IN')})`).join(', ')}</div>`
+          : '';
+        return `<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:9px"><b>${escapeHtml(lead.company)}</b><br><span style="font-size:10px;color:var(--t2)">${escapeHtml(lead.contactPerson)} · ${escapeHtml(lead.contactNumber)}</span></td><td style="padding:9px">${escapeHtml(lead.referrerName || lead.referrerUsername)}</td><td style="padding:9px">${leadStatusBadge(lead.status)}${lead.rejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">${escapeHtml(lead.rejectionReason)}</div>` : ''}</td><td style="padding:9px">₹${entitlement.toLocaleString('en-IN')}<br><span style="font-size:10px;color:var(--t2)">Approved ₹${approved.toLocaleString('en-IN')} · Paid ₹${paid.toLocaleString('en-IN')}</span>${paymsRequestsLine}${lead.incentiveRejectionReason ? `<div style="font-size:10px;color:var(--danger);margin-top:4px">Rejected: ${escapeHtml(lead.incentiveRejectionReason)}</div>` : ''}</td><td style="padding:9px">${actions || escapeHtml(lead.incentiveApprovalStatus || '—')}</td></tr>`;
       }).join('');
       return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:760px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:9px">Company / Contact</th><th style="text-align:left;padding:9px">Referrer</th><th style="text-align:left;padding:9px">Lead Status</th><th style="text-align:left;padding:9px">Incentive</th><th style="text-align:left;padding:9px">${mode === 'my' ? 'Approval Status' : 'Actions'}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
