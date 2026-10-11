@@ -1638,6 +1638,8 @@
     // Shared with the DORBIT Wiki app (same Firebase project) so a PMO kickoff
     // task created here shows up immediately in Keshav's Wiki task list/modal.
     const TASK_COL = 'dqap_tasks';
+    // DORBIT tasks created for Supporting Hands (taskType 'crm_support'), keyed by CRM activity id.
+    let supportTasksByActivity = {};
     const PMO_KICKOFF_SLA_HOURS = 24;
     // Same Cloud Run service DORBIT already uses to write project documents
     // straight to Google Drive - files never touch Firebase Storage.
@@ -4166,36 +4168,80 @@
       const t = new Date(); t.setHours(0, 0, 0, 0);
       return Math.round((a - t) / 86400000);
     }
+    // Overall state of a support plan: 'open' | 'awaiting' (all hands done, salesperson to confirm) | 'completed'
+    function activitySupportState(a) {
+      if (a.taskStatus === 'completed' || a.completedDate) return 'completed';
+      const tasks = supportTasksByActivity[a.id] || [];
+      if (tasks.length) return tasks.every(t => t.status === 'Completed') ? 'awaiting' : 'open';
+      return a.taskStatus === 'done-pending-confirmation' ? 'awaiting' : 'open';
+    }
+    // One item per Supporting Hand (from the DORBIT task when present, else from the activity itself).
+    function dealSupportAll(dealId) {
+      const items = [];
+      Object.values(activityData).forEach(a => {
+        if (a.dealId !== dealId || !a.nextActivityDate || !getSupportingUsernames(a).length) return;
+        const st = activitySupportState(a);
+        const tasks = supportTasksByActivity[a.id] || [];
+        if (tasks.length) {
+          tasks.forEach(t => {
+            const deadline = String(t.deadline || '').slice(0, 10) || a.nextActivityDate;
+            const days = supportDaysLeft(deadline);
+            if (days === null) return;
+            items.push({ activity: a, task: t, hand: t.assignedTo || t.assignedToUsername, deadline, days,
+              state: st === 'completed' ? 'done' : t.status === 'Completed' ? 'awaiting' : 'open' });
+          });
+        } else {
+          const days = supportDaysLeft(a.nextActivityDate);
+          if (days === null) return;
+          items.push({ activity: a, task: null, hand: supportingHandsLabel(a), deadline: a.nextActivityDate, days, state: st === 'completed' ? 'done' : st === 'awaiting' ? 'awaiting' : 'open' });
+        }
+      });
+      return items;
+    }
     function dealSupportItems(dealId) {
-      return Object.values(activityData)
-        .filter(a => a.dealId === dealId && a.nextActivityDate && getSupportingUsernames(a).length
-          && a.taskStatus !== 'completed' && !a.completedDate)
-        .map(a => ({ activity: a, days: supportDaysLeft(a.nextActivityDate) }))
-        .filter(item => item.days !== null)
-        .sort((x, y) => x.days - y.days);
+      return dealSupportAll(dealId).filter(i => i.state === 'open').sort((x, y) => x.days - y.days);
     }
     function supportColor(days) { return days <= 0 ? '#D32F2F' : days <= 2 ? '#F57C00' : '#2E7D32'; }
     function supportStateText(days) {
       return days < 0 ? `Overdue by ${-days} day${days === -1 ? '' : 's'}` : days === 0 ? 'Due today' : `Due in ${days} day${days === 1 ? '' : 's'}`;
     }
+    // Priority: open items (red/amber/green) > awaiting confirmation (blue) > all done (green tick).
     function dealSupportBadge(dealId, onclickJs) {
-      const items = dealSupportItems(dealId);
-      if (!items.length) return '';
-      const color = supportColor(items[0].days);
-      const label = items.length > 1 ? `${items.length}` : '';
-      const tip = items.map(i => `${supportingHandsLabel(i.activity)} — ${formatDate(i.activity.nextActivityDate)} (${supportStateText(i.days)})`).join('\n');
-      return `<span title="${escapeHtml(tip)}" ${onclickJs ? `onclick="${onclickJs}"` : ''} style="display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:16px;height:16px;padding:0 5px;margin-left:6px;border-radius:9px;background:${color};color:#fff;font-size:9.5px;font-weight:800;vertical-align:middle;cursor:pointer;line-height:1">${label || '●'}</span>`;
+      const all = dealSupportAll(dealId);
+      if (!all.length) return '';
+      const open = all.filter(i => i.state === 'open').sort((x, y) => x.days - y.days);
+      const awaiting = all.filter(i => i.state === 'awaiting');
+      const tip = all.map(i => `${i.hand} — ${formatDate(i.deadline)} (${i.state === 'done' ? 'Completed' : i.state === 'awaiting' ? 'Done, awaiting confirmation' : supportStateText(i.days)})`).join('\n');
+      let color, label;
+      if (open.length) { color = supportColor(open[0].days); label = open.length > 1 ? String(open.length) : '●'; }
+      else if (awaiting.length) { color = '#1565C0'; label = '⏳'; }
+      else { color = '#2E7D32'; label = '✓'; }
+      return `<span title="${escapeHtml(tip)}" ${onclickJs ? `onclick="${onclickJs}"` : ''} style="display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:16px;height:16px;padding:0 5px;margin-left:6px;border-radius:9px;background:${color};color:#fff;font-size:9.5px;font-weight:800;vertical-align:middle;cursor:pointer;line-height:1">${label}</span>`;
     }
     function dealSupportDetailHtml(dealId) {
-      const items = dealSupportItems(dealId);
-      if (!items.length) return '';
-      const statusText = { pending: 'Awaiting Supporting Hand response', 'date-proposed': 'Revised date proposed', 'sales-review': 'Revised date with salesperson', 'updesh-review': 'Revised date with Updesh', 'sales-approved-final': 'Revised date approved', accepted: 'Accepted' };
-      return `<div style="margin-top:10px"><div class="deal-detail-label">Sales support pending</div>${items.map(({ activity: a, days }) => `
-        <div style="margin-top:5px;padding:7px 9px;border-left:4px solid ${supportColor(days)};background:var(--bg,#f6f8fa);border-radius:4px;font-size:11.5px;line-height:1.55">
-          <b>${escapeHtml(supportingHandsLabel(a))}</b> · ${escapeHtml(a.nextActivityType || 'Activity')}${a.nextActivityDescription ? ' — ' + escapeHtml(a.nextActivityDescription) : ''}<br>
-          Deadline <b>${formatDate(a.nextActivityDate)}</b> · <b style="color:${supportColor(days)}">${supportStateText(days)}</b><br>
-          <span style="color:var(--t2)">Planned by ${escapeHtml(a.creatorName || a.username || '—')} · ${escapeHtml(statusText[a.planResponseStatus || 'pending'] || a.planResponseStatus)}</span>
-        </div>`).join('')}</div>`;
+      const all = dealSupportAll(dealId);
+      if (!all.length) return '';
+      const groups = {};
+      all.forEach(i => { (groups[i.activity.id] = groups[i.activity.id] || []).push(i); });
+      const order = Object.values(groups).sort((g1, g2) => {
+        const o = g => g.some(i => i.state !== 'done') ? 0 : 1;
+        return o(g1) - o(g2) || Math.min(...g1.map(i => i.days)) - Math.min(...g2.map(i => i.days));
+      });
+      return `<div style="margin-top:10px"><div class="deal-detail-label">Sales support</div>${order.map(g => {
+        const a = g[0].activity, st = activitySupportState(a);
+        const openDays = g.filter(i => i.state === 'open').map(i => i.days);
+        const color = st === 'completed' ? '#2E7D32' : st === 'awaiting' || !openDays.length ? '#1565C0' : supportColor(Math.min(...openDays));
+        return `<div style="margin-top:5px;padding:7px 9px;border-left:4px solid ${color};background:var(--bg,#f6f8fa);border-radius:4px;font-size:11.5px;line-height:1.55">
+          <b>${escapeHtml(a.nextActivityType || 'Activity')}</b>${a.nextActivityDescription ? ' — ' + escapeHtml(a.nextActivityDescription) : ''}
+          <span style="color:var(--t2)"> · planned by ${escapeHtml(a.creatorName || a.username || '—')}</span>
+          ${g.map(i => {
+            const c = i.state === 'done' ? '#2E7D32' : i.state === 'awaiting' ? '#1565C0' : supportColor(i.days);
+            const txt = i.state === 'done' ? `✓ Completed${a.supportConfirmedBy ? ' · confirmed by ' + escapeHtml(a.supportConfirmedBy) : ''}` : i.state === 'awaiting' ? `⏳ Done${i.task?.completedByName ? ' by ' + escapeHtml(i.task.completedByName) : ''} — awaiting confirmation${i.task?.completionNote ? ' · ' + escapeHtml(i.task.completionNote) : ''}` : supportStateText(i.days);
+            return `<div>👤 <b>${escapeHtml(i.hand)}</b> · Deadline <b>${formatDate(i.deadline)}</b> · <b style="color:${c}">${txt}</b></div>`;
+          }).join('')}
+          ${a.supportConfirmRejectedReason && st === 'open' ? `<div style="color:#B71C1C">Sent back by ${escapeHtml(a.supportConfirmRejectedBy || '')}: ${escapeHtml(a.supportConfirmRejectedReason)}</div>` : ''}
+          ${supportActionButtons(a)}
+        </div>`; }).join('')}</div>`;
     }
 
     function toggleDealDetailRow(id) {
@@ -4449,7 +4495,7 @@
           const borderColor = d.stage === 'Lost' ? '#B71C1C' : d.stage === 'Billed' ? '#2E7D32' : Number(d.probability || 0) >= 75 ? '#2E7D32' : 'var(--p)';
           html += `<article class="deal-kanban-card" style="border-left-color:${borderColor}">
             <div style="font-size:10px;color:#006994;font-weight:900;margin-bottom:3px">${escapeHtml(d.dealCode || generateDealCode(d.id))}${dealSupportBadge(d.id)}</div>
-            ${dealSupportItems(d.id).length ? `<details style="margin-bottom:5px"><summary style="font-size:10px;cursor:pointer;color:${supportColor(dealSupportItems(d.id)[0].days)};font-weight:700">Sales support · ${supportStateText(dealSupportItems(d.id)[0].days)}</summary>${dealSupportDetailHtml(d.id)}</details>` : ''}
+            ${dealSupportAll(d.id).length ? `<details style="margin-bottom:5px"><summary style="font-size:10px;cursor:pointer;font-weight:700;color:${dealSupportItems(d.id).length ? supportColor(dealSupportItems(d.id)[0].days) : '#2E7D32'}">Sales support · ${dealSupportItems(d.id).length ? supportStateText(dealSupportItems(d.id)[0].days) : (dealSupportAll(d.id).some(i => i.state === 'awaiting') ? 'awaiting confirmation' : 'completed ✓')}</summary>${dealSupportDetailHtml(d.id)}</details>` : ''}
             <div class="deal-kanban-title">${escapeHtml(d.title || 'Untitled Deal')}</div>
             <div class="deal-kanban-customer">${escapeHtml(customer?.name || '—')}${isLeadReviewer() ? `<br>Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}` : ''}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -5074,6 +5120,10 @@
           id: actRef.id,
           ...activityRecord
         };
+        if (hasNextPlan && supportingUsernames.length) {
+          try { await createSupportTasks(actRef.id, { ...activityRecord, keyAccountId }, dealId); }
+          catch (taskError) { console.error('Support tasks could not be created in DORBIT:', taskError); showToast('Plan saved, but the DORBIT task could not be created: ' + taskError.message, 'warning'); }
+        }
 
         const deal = dealData[dealId] || {};
         const customer = customerData[keyAccountId] || {};
@@ -5288,7 +5338,8 @@
           const acknowledged = Array.isArray(activity.dueAcknowledgedBy) ? activity.dueAcknowledgedBy : [];
           return activity.nextActivityDate && dateKey(activity.nextActivityDate) <= today &&
             recipients.includes(currentUser) && !acknowledged.includes(currentUser) &&
-            activity.taskStatus !== 'completed' && !activity.completedDate;
+            activity.taskStatus !== 'completed' && !activity.completedDate &&
+            !(activitySupportState(activity) === 'awaiting' && currentUser !== activity.username);
         })
         .sort((a, b) => dateKey(a.nextActivityDate).localeCompare(dateKey(b.nextActivityDate)))[0] || null;
     }
@@ -5416,6 +5467,27 @@
           renderDeals();
         }, handleLiveError)
       );
+      // DORBIT tasks created for Supporting Hands: reviewers see all, others their own (assigned to / raised by them).
+      const supportSources = {};
+      const onSupportSnap = key => snap => {
+        supportSources[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const byActivity = {}, seen = new Set();
+        Object.values(supportSources).flat().forEach(t => {
+          if (t.taskType !== 'crm_support' || !t.crmActivityId || seen.has(t.id)) return;
+          seen.add(t.id);
+          (byActivity[t.crmActivityId] = byActivity[t.crmActivityId] || []).push(t);
+        });
+        supportTasksByActivity = byActivity;
+        refreshAfterSupportChange();
+      };
+      if (isLeadReviewer()) {
+        taskUnsubscribers.push(db.collection(TASK_COL).where('taskType', '==', 'crm_support').onSnapshot(onSupportSnap('all'), handleLiveError));
+      } else {
+        taskUnsubscribers.push(
+          db.collection(TASK_COL).where('assignedToUsername', '==', currentUser).onSnapshot(onSupportSnap('to'), handleLiveError),
+          db.collection(TASK_COL).where('assignedByUsername', '==', currentUser).onSnapshot(onSupportSnap('by'), handleLiveError)
+        );
+      }
       if (isExtensionApprover()) {
         taskUnsubscribers.push(
           db.collection(CRM_ACTIVITIES).where('extensionStatus', '==', 'pending')
@@ -5776,6 +5848,7 @@
       if (decision === 'approve') {
         const update = { nextActivityDate: activity.proposedNextActivityDate, dueAcknowledgedBy: [], planResponseStatus: 'sales-approved-final', salesDecision: 'approved', salesDecisionBy: currentUser, salesDecisionAt: new Date(), salesAcknowledgedAt: new Date() };
         await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+        await pushSupportTaskDeadline(activity, update.nextActivityDate, activity.dateProposalReason);
         await notifyActivityUsers(activity, [...supportingUsernames, 'updesh'], 'salesperson_approved_proposal', `Salesperson approved the revised date ${formatDate(activity.proposedNextActivityDate)}. Supporting Hand acknowledgement is mandatory.`, activity.proposedNextActivityDate);
       } else {
         const reason = document.getElementById('forcedEscalationReason')?.value.trim();
@@ -5795,6 +5868,7 @@
       const update = { planResponseStatus: 'final-acknowledged', finalDecision: decision, finalDecisionRemarks: remarks, finalDecisionBy: currentUser, finalDecisionAt: new Date() };
       if (decision === 'approved') { update.nextActivityDate = activity.proposedNextActivityDate; update.dueAcknowledgedBy = []; }
       await db.collection(CRM_ACTIVITIES).doc(id).update(update); Object.assign(activity, update);
+      if (decision === 'approved') await pushSupportTaskDeadline(activity, update.nextActivityDate, activity.dateProposalReason);
       await markActivityNotificationsRead(id);
       await notifyActivityUsers(activity, [activity.username, ...supportingUsernames], 'proposal_final_decision', `Updesh ${decision} the proposed date. Remarks: ${remarks}. This is the final decision; no acknowledgement is required.`, decision === 'approved' ? activity.proposedNextActivityDate : activity.nextActivityDate);
       renderActivities(); renderTaskCenter(); renderForcedActionModal();
@@ -5929,24 +6003,171 @@
       container.innerHTML = html + '</div>';
     }
 
-    async function completeAssignedActivity(id) {
-      const activity = activityData[id];
-      if (!activity || !isSupportingHand(activity)) return;
-      await db.collection(CRM_ACTIVITIES).doc(id).update({ taskStatus: 'completed', completedDate: new Date() });
-      activity.taskStatus = 'completed';
-      activity.completedDate = new Date();
-      await createCrmNotification({
-        recipientUsername: activity.username,
-        type: 'activity_completed',
-        activityId: id,
-        dealId: activity.dealId,
-        dueDate: activity.nextActivityDate,
-        message: `${currentUser} completed the Next Activity Plan.`
-      });
-      renderActivities();
-      renderTaskCenter();
-      showToast('Task marked complete', 'success');
+    // ── Supporting Hand tasks: created in DORBIT (dqap_tasks), closed in two steps ──
+    // 1) Supporting Hand completes his DORBIT task (or marks it done here).
+    // 2) When every hand is done the salesperson confirms here -> green tick,
+    //    or sends it back with a reason -> tasks reopen (DORBIT blocks the hand again).
+    // Updesh / Pratim may close any item directly with a reason (backlog clean-up).
+    const supportNow = () => new Date().toISOString();
+    function refreshAfterSupportChange() {
+      try { renderActivities(); renderTaskCenter(); renderDeals(); renderDueActivityModal(); } catch (e) { console.warn(e); }
     }
+    function supportUserFullName(username) {
+      const u = (wikiUsers || []).find(w => String(w.username || '').toLowerCase() === String(username || '').toLowerCase());
+      return u?.fullName || username;
+    }
+    // Creates one DORBIT task per Supporting Hand for a saved Next Activity Plan.
+    async function createSupportTasks(activityId, record, dealId) {
+      const hands = Array.isArray(record.supportingUsernames) ? record.supportingUsernames : [];
+      if (!hands.length || !record.nextActivityDate) return;
+      const deal = dealData[dealId] || {};
+      const customer = customerData[record.keyAccountId] || {};
+      const creatorName = supportUserFullName(currentUser);
+      const supervisorName = supportUserFullName('updesh');
+      const now = new Date();
+      const deadline = String(record.nextActivityDate).slice(0, 10) + 'T23:59:00';
+      const batch = db.batch();
+      const ids = {};
+      hands.forEach(username => {
+        const ref = db.collection(TASK_COL).doc();
+        ids[username] = ref.id;
+        batch.set(ref, {
+          title: `Sales Support — ${deal.title || customer.name || 'Deal'}${record.nextActivityType ? ' (' + record.nextActivityType + ')' : ''}`,
+          description: `${creatorName} requested your support.\nDeal: ${deal.title || '—'}${deal.dealCode ? ' (' + deal.dealCode + ')' : ''}\nCustomer: ${customer.name || deal.customerCompanyName || '—'}\nActivity: ${record.nextActivityType || 'Activity'} — ${record.nextActivityDescription || ''}\nDeadline: ${formatDate(record.nextActivityDate)}\n\nComplete this task when your support is done; ${creatorName} will then confirm. If you cannot meet the date, request a deadline change with the reason.`,
+          taskCode: 'TASK-' + String(now.getFullYear()).slice(-2) + '-' + ref.id.slice(0, 6).toUpperCase(),
+          assignedBy: creatorName, assignedByUsername: currentUser, assignedByRole: 'user',
+          assignedTo: supportUserFullName(username), assignedToUsername: username, assignedToRole: 'user',
+          supervisor: supervisorName,
+          deadline, origDeadline: deadline, deadlineRevisions: [],
+          priority: 'High', project: deal.title || '', frequency: 'One Time',
+          status: 'Open', createdAt: now.toISOString(), updatedAt: now.toISOString(),
+          assigneeActionRequiredAt: now.toISOString(), assigneeActionResolvedAt: null, deadlineChangeStatus: null,
+          taskType: 'crm_support', crmActivityId: activityId, dealId: dealId || '', dealCode: deal.dealCode || '', dealTitle: deal.title || '',
+          customerCompanyName: customer.name || deal.customerCompanyName || ''
+        });
+      });
+      batch.update(db.collection(CRM_ACTIVITIES).doc(activityId), { supportTaskIds: ids });
+      await batch.commit();
+      if (activityData[activityId]) activityData[activityId].supportTaskIds = ids;
+    }
+    // When a CRM date-revision flow finalises a new date, move the open DORBIT tasks to it.
+    async function pushSupportTaskDeadline(activity, newDate, reason) {
+      const tasks = (supportTasksByActivity[activity.id] || []).filter(t => t.status !== 'Completed');
+      if (!tasks.length || !newDate) return;
+      const deadline = String(newDate).slice(0, 10) + 'T23:59:00';
+      const now = supportNow();
+      const batch = db.batch();
+      tasks.forEach(t => {
+        if (String(t.deadline || '').slice(0, 10) === String(newDate).slice(0, 10)) return;
+        batch.update(db.collection(TASK_COL).doc(t.id), {
+          deadline, origDeadline: t.origDeadline || t.deadline, updatedAt: now,
+          deadlineRevisions: firebase.firestore.FieldValue.arrayUnion({ from: t.deadline || '', to: deadline, at: now, by: currentUser, reason: reason || 'Revised via Sales CRM', kind: 'request' })
+        });
+        t.deadline = deadline;
+      });
+      try { await batch.commit(); } catch (e) { console.warn('Support task deadline sync failed:', e); }
+    }
+    async function completeAssignedActivity(id) { return markSupportDone(id); }
+    async function markSupportDone(id) {
+      const activity = activityData[id];
+      if (!activity || !isSupportingHand(activity)) { showToast('Only a Supporting Hand can mark this done', 'error'); return; }
+      const tasks = supportTasksByActivity[id] || [];
+      const mine = tasks.find(t => t.assignedToUsername === currentUser);
+      if (activitySupportState(activity) !== 'open' || (tasks.length && (!mine || mine.status === 'Completed'))) return;
+      const note = prompt('Completion note for ' + (activity.creatorName || activity.username) + ' (what was done) — optional:', '');
+      if (note === null) return;
+      try {
+        if (mine) {
+          const now = supportNow();
+          const patch = { status: 'Completed', completedAt: now, completedBy: currentUser, completedByName: supportUserFullName(currentUser), assigneeActionResolvedAt: now, updatedAt: now, completionNote: note.trim() };
+          await db.collection(TASK_COL).doc(mine.id).update(patch);
+          Object.assign(mine, patch);
+        } else {
+          const patch = { taskStatus: 'done-pending-confirmation', supportDoneAt: new Date(), supportDoneBy: currentUser, supportDoneNote: note.trim(), supportConfirmRejectedReason: null };
+          await db.collection(CRM_ACTIVITIES).doc(id).update(patch);
+          Object.assign(activity, patch);
+        }
+        const all = activitySupportState(activity) === 'awaiting';
+        await notifyActivityUsers(activity, [activity.username, 'updesh'].filter(u => u !== currentUser), 'support_done_pending_confirmation',
+          `${supportUserFullName(currentUser)} marked their support done${note.trim() ? ': ' + note.trim() : ''}. ${all ? 'All support is done — please confirm completion.' : 'Other Supporting Hands are still pending.'}`, activity.nextActivityDate);
+        showToast(all ? 'Marked done — waiting for the salesperson to confirm' : 'Your part is marked done', 'success');
+      } catch (e) { showToast('Could not update: ' + e.message, 'error'); }
+      refreshAfterSupportChange();
+    }
+    function canConfirmSupport(activity) {
+      return activity && (activity.username === currentUser || isExtensionApprover());
+    }
+    async function confirmSupportDone(id) {
+      const activity = activityData[id];
+      if (!canConfirmSupport(activity)) { showToast('Only the salesperson who raised the request can confirm', 'error'); return; }
+      const state = activitySupportState(activity);
+      if (state === 'completed') return;
+      const direct = state !== 'awaiting';
+      if (direct && !isExtensionApprover()) return;
+      let reason = '';
+      if (direct) {
+        const r = prompt('Close this support request although it is not marked done? Reason (required):', '');
+        if (r === null) return;
+        if (!r.trim()) { showToast('A reason is required', 'error'); return; }
+        reason = r.trim();
+      }
+      const patch = { taskStatus: 'completed', completedDate: new Date(), supportConfirmedAt: new Date(), supportConfirmedBy: currentUser, ...(direct ? { supportClosedDirectReason: reason } : {}) };
+      try {
+        const now = supportNow();
+        const batch = db.batch();
+        batch.update(db.collection(CRM_ACTIVITIES).doc(id), patch);
+        (supportTasksByActivity[id] || []).filter(t => t.status !== 'Completed').forEach(t => {
+          batch.update(db.collection(TASK_COL).doc(t.id), { status: 'Completed', completedAt: now, completedBy: currentUser, completedByName: supportUserFullName(currentUser), assigneeActionResolvedAt: now, updatedAt: now, closedDirectlyBy: currentUser, completionNote: 'Closed from Sales CRM: ' + reason });
+        });
+        await batch.commit();
+        Object.assign(activity, patch);
+        (supportTasksByActivity[id] || []).filter(t => t.status !== 'Completed').forEach(t => Object.assign(t, { status: 'Completed', completedAt: now }));
+        await notifyActivityUsers(activity, [...getSupportingUsernames(activity), 'updesh'].filter(u => u !== currentUser), 'support_completed',
+          `${supportUserFullName(currentUser)} confirmed the support task as completed${direct ? ' (closed directly: ' + reason + ')' : ''}.`, activity.nextActivityDate);
+        showToast('Support confirmed complete', 'success');
+      } catch (e) { showToast('Could not update: ' + e.message, 'error'); }
+      refreshAfterSupportChange();
+    }
+    async function rejectSupportDone(id) {
+      const activity = activityData[id];
+      if (!canConfirmSupport(activity) || activitySupportState(activity) !== 'awaiting') return;
+      const reason = prompt('Why is this not complete? (required — sent to the Supporting Hand)', '');
+      if (reason === null) return;
+      if (!reason.trim()) { showToast('A reason is required', 'error'); return; }
+      const patch = { taskStatus: 'open', supportConfirmRejectedReason: reason.trim(), supportConfirmRejectedBy: currentUser, supportConfirmRejectedAt: new Date(), supportDoneAt: null };
+      try {
+        const now = supportNow();
+        const batch = db.batch();
+        batch.update(db.collection(CRM_ACTIVITIES).doc(id), patch);
+        (supportTasksByActivity[id] || []).forEach(t => {
+          batch.update(db.collection(TASK_COL).doc(t.id), { status: 'Open', completedAt: null, completedBy: null, completedByName: null, assigneeActionRequiredAt: now, assigneeActionResolvedAt: null, updatedAt: now, crmSentBackReason: reason.trim(), crmSentBackBy: currentUser });
+        });
+        await batch.commit();
+        Object.assign(activity, patch);
+        (supportTasksByActivity[id] || []).forEach(t => Object.assign(t, { status: 'Open', completedAt: null, completedByName: null }));
+        await notifyActivityUsers(activity, [...getSupportingUsernames(activity), 'updesh'].filter(u => u !== currentUser), 'support_reopened',
+          `${supportUserFullName(currentUser)} sent the support task back: ${reason.trim()}`, activity.nextActivityDate);
+        showToast('Sent back to the Supporting Hand', 'success');
+      } catch (e) { showToast('Could not update: ' + e.message, 'error'); }
+      refreshAfterSupportChange();
+    }
+    // Buttons shown for a supporting-hand activity, depending on who is looking.
+    function supportActionButtons(a) {
+      const state = activitySupportState(a);
+      if (state === 'completed') return '';
+      const btn = (fn, label, cls = '') => `<button class="btn sm ${cls}" onclick="${fn}('${a.id}')">${label}</button>`;
+      const out = [];
+      if (state === 'awaiting') {
+        if (canConfirmSupport(a)) out.push(btn('confirmSupportDone', '✓ Confirm completed', 'primary'), btn('rejectSupportDone', 'Not done — send back'));
+      } else {
+        const tasks = supportTasksByActivity[a.id] || [];
+        const mine = tasks.find(t => t.assignedToUsername === currentUser);
+        if (isSupportingHand(a) && (!tasks.length || (mine && mine.status !== 'Completed'))) out.push(btn('markSupportDone', '✔ Mark my support done', 'primary'));
+        if (isExtensionApprover()) out.push(btn('confirmSupportDone', 'Close (Updesh/Pratim)'));
+      }
+      return out.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${out.join('')}</div>` : '';
+    }
+
 
     async function acceptNextActivityPlan(id) {
       const activity = activityData[id];
@@ -6050,6 +6271,7 @@
       if (decision === 'approved') { update.nextActivityDate = activity.requestedExtensionDate; update.dueAcknowledgedBy = []; }
       await db.collection(CRM_ACTIVITIES).doc(id).update(update);
       Object.assign(activity, update);
+      if (decision === 'approved') await pushSupportTaskDeadline(activity, update.nextActivityDate, activity.extensionReason);
       delete pendingApprovalData[id];
 
       const recipients = [...new Set([...getSupportingUsernames(activity), activity.username].filter(Boolean))];
@@ -6089,7 +6311,7 @@
         const assignedToMe = isSupportingHand(a);
         const planStatus = a.planResponseStatus || 'pending';
         const completed = a.taskStatus === 'completed' || !!a.completedDate;
-        const overdue = !completed && a.nextActivityDate && a.nextActivityDate < new Date().toISOString().split('T')[0];
+        const overdue = !completed && activitySupportState(a) !== 'awaiting' && a.nextActivityDate && a.nextActivityDate < new Date().toISOString().split('T')[0];
         const borderColor = completed ? '#2E7D32' : overdue ? '#D32F2F' : assignedToMe ? '#F57C00' : 'var(--bd)';
         html += `<div style="background: var(--card); border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
@@ -6114,7 +6336,9 @@
           ${a.extensionStatus === 'approved' ? `<div style="font-size:10px;color:#2E7D32;margin-top:5px">Extension approved by ${escapeHtml(a.extensionReviewedBy || '')}</div>` : ''}
           ${a.extensionStatus === 'rejected' ? `<div style="font-size:10px;color:#D32F2F;margin-top:5px">Extension rejected${a.extensionReviewRemarks ? `: ${escapeHtml(a.extensionReviewRemarks)}` : ''}</div>` : ''}
           ${completed ? '<div style="font-size:10px;color:#2E7D32;font-weight:700;margin-top:7px">✓ COMPLETED</div>' : ''}
-          ${assignedToMe && !completed && planStatus === 'accepted' ? `<div style="margin-top:9px"><button class="btn sm primary" onclick="completeAssignedActivity('${a.id}')">Complete Task</button></div>` : ''}
+          ${!completed && activitySupportState(a) === 'awaiting' ? `<div style="font-size:10px;color:#1565C0;font-weight:700;margin-top:6px">⏳ Support marked done — awaiting salesperson confirmation</div>` : ''}
+          ${a.supportConfirmRejectedReason && activitySupportState(a) === 'open' ? `<div style="font-size:10px;color:#B71C1C;margin-top:6px">Sent back by ${escapeHtml(a.supportConfirmRejectedBy || '')}: ${escapeHtml(a.supportConfirmRejectedReason)}</div>` : ''}
+          ${getSupportingUsernames(a).length && a.nextActivityDate ? supportActionButtons(a) : ''}
         </div>`;
       });
       
