@@ -4156,6 +4156,48 @@
       }
     }
     
+    // ── Sales-support urgency badge (by activity date only) ──
+    // Red = today (D) or earlier · Amber = D+1, D+2 · Green = D+3 or later.
+    function supportDaysLeft(dateStr) {
+      const iso = typeof dateStr === 'string' ? dateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+      const d = iso ? new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])) : toDateObject(dateStr);
+      if (!d) return null;
+      const a = new Date(d); a.setHours(0, 0, 0, 0);
+      const t = new Date(); t.setHours(0, 0, 0, 0);
+      return Math.round((a - t) / 86400000);
+    }
+    function dealSupportItems(dealId) {
+      return Object.values(activityData)
+        .filter(a => a.dealId === dealId && a.nextActivityDate && getSupportingUsernames(a).length
+          && a.taskStatus !== 'completed' && !a.completedDate)
+        .map(a => ({ activity: a, days: supportDaysLeft(a.nextActivityDate) }))
+        .filter(item => item.days !== null)
+        .sort((x, y) => x.days - y.days);
+    }
+    function supportColor(days) { return days <= 0 ? '#D32F2F' : days <= 2 ? '#F57C00' : '#2E7D32'; }
+    function supportStateText(days) {
+      return days < 0 ? `Overdue by ${-days} day${days === -1 ? '' : 's'}` : days === 0 ? 'Due today' : `Due in ${days} day${days === 1 ? '' : 's'}`;
+    }
+    function dealSupportBadge(dealId, onclickJs) {
+      const items = dealSupportItems(dealId);
+      if (!items.length) return '';
+      const color = supportColor(items[0].days);
+      const label = items.length > 1 ? `${items.length}` : '';
+      const tip = items.map(i => `${supportingHandsLabel(i.activity)} — ${formatDate(i.activity.nextActivityDate)} (${supportStateText(i.days)})`).join('\n');
+      return `<span title="${escapeHtml(tip)}" ${onclickJs ? `onclick="${onclickJs}"` : ''} style="display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:16px;height:16px;padding:0 5px;margin-left:6px;border-radius:9px;background:${color};color:#fff;font-size:9.5px;font-weight:800;vertical-align:middle;cursor:pointer;line-height:1">${label || '●'}</span>`;
+    }
+    function dealSupportDetailHtml(dealId) {
+      const items = dealSupportItems(dealId);
+      if (!items.length) return '';
+      const statusText = { pending: 'Awaiting Supporting Hand response', 'date-proposed': 'Revised date proposed', 'sales-review': 'Revised date with salesperson', 'updesh-review': 'Revised date with Updesh', 'sales-approved-final': 'Revised date approved', accepted: 'Accepted' };
+      return `<div style="margin-top:10px"><div class="deal-detail-label">Sales support pending</div>${items.map(({ activity: a, days }) => `
+        <div style="margin-top:5px;padding:7px 9px;border-left:4px solid ${supportColor(days)};background:var(--bg,#f6f8fa);border-radius:4px;font-size:11.5px;line-height:1.55">
+          <b>${escapeHtml(supportingHandsLabel(a))}</b> · ${escapeHtml(a.nextActivityType || 'Activity')}${a.nextActivityDescription ? ' — ' + escapeHtml(a.nextActivityDescription) : ''}<br>
+          Deadline <b>${formatDate(a.nextActivityDate)}</b> · <b style="color:${supportColor(days)}">${supportStateText(days)}</b><br>
+          <span style="color:var(--t2)">Planned by ${escapeHtml(a.creatorName || a.username || '—')} · ${escapeHtml(statusText[a.planResponseStatus || 'pending'] || a.planResponseStatus)}</span>
+        </div>`).join('')}</div>`;
+    }
+
     function toggleDealDetailRow(id) {
       const row = document.getElementById('deal-detail-row-' + id);
       if (!row) return;
@@ -4336,7 +4378,7 @@
           <button class="btn sm" onclick="openActivityHistoryModal('deal','${d.id}')"><i class="ti ti-history"></i> Logs</button>
         </div>`;
         return `<tr>
-          <td style="font-weight:900;color:#006994;white-space:nowrap">${escapeHtml(d.dealCode || generateDealCode(d.id))}</td>
+          <td style="font-weight:900;color:#006994;white-space:nowrap">${escapeHtml(d.dealCode || generateDealCode(d.id))}${dealSupportBadge(d.id, `toggleDealDetailRow('${d.id}')`)}</td>
           <td style="min-width:220px"><button type="button" class="deal-title-link" onclick="toggleDealDetailRow('${d.id}')">${escapeHtml(d.title || 'Untitled Deal')}</button>${ownerLine}</td>
           <td>${escapeHtml(customer.name || d.customerCompanyName || '—')}</td>
           <td style="white-space:nowrap">${escapeHtml(d.username || '—')}</td>
@@ -4361,6 +4403,7 @@
                 <div><div class="deal-detail-label">View context</div><div class="deal-detail-value">${escapeHtml(item.group || '—')}</div></div>
                 <div><div class="deal-detail-label">Loss reason</div><div class="deal-detail-value">${d.stage === 'Lost' ? escapeHtml([d.lossReason, d.customLossReason].filter(Boolean).join(' - ') || '—') : '—'}</div></div>
               </div>
+              ${dealSupportDetailHtml(d.id)}
               ${d.notes ? `<div style="margin-top:10px"><div class="deal-detail-label">Notes</div><div style="font-size:11.5px;color:var(--t2)">${escapeHtml(d.notes)}</div></div>` : ''}
               <div style="margin-top:10px">${actions}</div>
             </div>
@@ -4405,7 +4448,8 @@
           else if (d.stage === 'Billed') stageClass = 'won';
           const borderColor = d.stage === 'Lost' ? '#B71C1C' : d.stage === 'Billed' ? '#2E7D32' : Number(d.probability || 0) >= 75 ? '#2E7D32' : 'var(--p)';
           html += `<article class="deal-kanban-card" style="border-left-color:${borderColor}">
-            <div style="font-size:10px;color:#006994;font-weight:900;margin-bottom:3px">${escapeHtml(d.dealCode || generateDealCode(d.id))}</div>
+            <div style="font-size:10px;color:#006994;font-weight:900;margin-bottom:3px">${escapeHtml(d.dealCode || generateDealCode(d.id))}${dealSupportBadge(d.id)}</div>
+            ${dealSupportItems(d.id).length ? `<details style="margin-bottom:5px"><summary style="font-size:10px;cursor:pointer;color:${supportColor(dealSupportItems(d.id)[0].days)};font-weight:700">Sales support · ${supportStateText(dealSupportItems(d.id)[0].days)}</summary>${dealSupportDetailHtml(d.id)}</details>` : ''}
             <div class="deal-kanban-title">${escapeHtml(d.title || 'Untitled Deal')}</div>
             <div class="deal-kanban-customer">${escapeHtml(customer?.name || '—')}${isLeadReviewer() ? `<br>Owner: ${escapeHtml(d.username || '—')}${d.sourceLeadId ? ' · Converted Lead' : ''}` : ''}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
