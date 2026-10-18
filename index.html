@@ -5727,7 +5727,7 @@
       const matches = Object.values(notificationData)
         .filter(notification => notification.activityId === activityId && !notification.read && [
           'next_activity_plan', 'next_activity_date_proposed', 'proposal_escalated',
-          'proposal_final_decision', 'salesperson_approved_proposal'
+          'proposal_final_decision', 'salesperson_approved_proposal', 'support_done_pending_confirmation'
         ].includes(notification.type));
       if (!matches.length) return;
       const batch = db.batch();
@@ -5936,7 +5936,7 @@
           next_activity_plan: ['#1565C0','#EAF3FF'], next_activity_date_proposed: ['#EF6C00','#FFF3E0'],
           proposal_escalated: ['#6A1B9A','#F3E5F5'], proposal_final_decision: ['#2E7D32','#E8F5E9'],
           salesperson_approved_proposal: ['#00838F','#E0F7FA'], next_activity_accepted: ['#2E7D32','#E8F5E9'],
-          activity_completed: ['#2E7D32','#E8F5E9'], deal_partner_invite: ['#006994','#E3F2FD'],
+          activity_completed: ['#2E7D32','#E8F5E9'], support_done_pending_confirmation: ['#1565C0','#E3F2FD'], support_completed: ['#2E7D32','#E8F5E9'], support_reopened: ['#B71C1C','#FFEBEE'], deal_partner_invite: ['#006994','#E3F2FD'],
           deal_partner_accepted: ['#2E7D32','#E8F5E9'], deal_partner_rejected: ['#B71C1C','#FFEBEE'],
           deal_partner_removal_request: ['#E65100','#FFF3E0'], deal_partner_removal_conflict: ['#B71C1C','#FFEBEE'],
           deal_partner_removal_approved: ['#2E7D32','#E8F5E9'], deal_partner_removal_resolved: ['#006994','#E3F2FD']
@@ -5968,6 +5968,7 @@
               <div style="font-size:11.5px;margin-top:4px">${escapeHtml(activity.nextActivityDescription || 'No description')}</div>
             </div>` : (!isCustomHandled ? `<div style="font-size:12px">${escapeHtml(item.message || 'CRM task update')}</div>` : '')}
           ${requiresAction ? '<div style="margin-top:9px;font-size:10.5px;font-weight:700;color:#1565C0">Decision controls are shown in the mandatory modal.</div>' : (!isCustomHandled ? `<button class="btn sm" style="margin-top:8px" onclick="markNotificationRead('${item.id}')">Mark read</button>` : '')}
+          ${item.type === 'support_done_pending_confirmation' && activity ? supportActionButtons(activity) : ''}
         </div>`;
       });
       approvals.forEach(activity => {
@@ -6124,6 +6125,7 @@
         (supportTasksByActivity[id] || []).filter(t => t.status !== 'Completed').forEach(t => Object.assign(t, { status: 'Completed', completedAt: now }));
         await notifyActivityUsers(activity, [...getSupportingUsernames(activity), 'updesh'].filter(u => u !== currentUser), 'support_completed',
           `${supportUserFullName(currentUser)} confirmed the support task as completed${direct ? ' (closed directly: ' + reason + ')' : ''}.`, activity.nextActivityDate);
+        try { await markActivityNotificationsRead(id); } catch (e) { /* non-critical */ }
         showToast('Support confirmed complete', 'success');
       } catch (e) { showToast('Could not update: ' + e.message, 'error'); }
       refreshAfterSupportChange();
@@ -6147,6 +6149,7 @@
         (supportTasksByActivity[id] || []).forEach(t => Object.assign(t, { status: 'Open', completedAt: null, completedByName: null }));
         await notifyActivityUsers(activity, [...getSupportingUsernames(activity), 'updesh'].filter(u => u !== currentUser), 'support_reopened',
           `${supportUserFullName(currentUser)} sent the support task back: ${reason.trim()}`, activity.nextActivityDate);
+        try { await markActivityNotificationsRead(id); } catch (e) { /* non-critical */ }
         showToast('Sent back to the Supporting Hand', 'success');
       } catch (e) { showToast('Could not update: ' + e.message, 'error'); }
       refreshAfterSupportChange();
